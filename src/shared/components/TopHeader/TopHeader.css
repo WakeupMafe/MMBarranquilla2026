@@ -1,0 +1,217 @@
+.topHeader {
+  width: 100%;
+  height: auto;
+  background: transparent;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.7rem 1.5rem;
+  position: relative;
+  box-sizing: border-box;
+}
+
+.topHeader__left {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.topHeader__logoImg {
+  height: 2rem;
+  width: auto;
+  object-fit: contain;
+}
+
+.topHeader__logoPlaceholder {
+  height: 2rem;
+  width: 2rem;
+  border-radius: 0.6rem;
+  background: rgba(146, 189, 74, 0.25);
+}
+
+.topHeader__brand {
+  font-family: "Poppins", sans-serif;
+  font-size: 1.7rem;
+  font-weight: 600;
+  color: #8fbf3f;
+  letter-spacing: -0.02em;
+}
+
+.topHeader__right {
+  display: flex;
+  align-items: center;
+  gap: 1.2rem;
+}
+
+.topHeader__userPill {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+
+  background: #d9d9d9;
+  border-radius: 999rem;
+  padding: 0.5rem 1rem;
+}
+
+.topHeader__avatar {
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 999rem;
+  background: rgba(255, 255, 255, 0.8);
+  border: 0.0625rem solid rgba(0, 0, 0, 0.08);
+}
+
+.topHeader__userName {
+  font-family: "Poppins", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: rgba(31, 42, 68, 0.75);
+}
+
+.topHeader__logout {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+
+  background: transparent;
+  border: none;
+  cursor: pointer;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 1.2rem;
+  font-weight: 600;
+  color: rgba(31, 42, 68, 0.85);
+
+  transition:
+    transform 0.2s ease,
+    opacity 0.2s ease;
+}
+
+.topHeader__logout:hover {
+  transform: translateY(-0.05rem);
+  opacity: 0.9;
+}
+
+.topHeader__logoutIcon {
+  width: 1.4rem;
+  height: 1.4rem;
+  object-fit: contain;
+}
+
+/* ===== Mobile hamburger ===== */
+.topHeader__burger {
+  border: 2px solid black;
+  display: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.6rem;
+}
+
+.topHeader__burgerLine {
+  border: 2px solid black;
+
+  display: block;
+  width: 26px;
+  height: 3px;
+  border-radius: 999px;
+  background: rgba(31, 42, 68, 0.75);
+}
+
+.topHeader__burgerLine + .topHeader__burgerLine {
+  margin-top: 5px;
+}
+
+/* overlay + menu (hidden by default) */
+.topHeader__overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(31, 42, 68, 0.35);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s ease;
+  z-index: 999;
+}
+
+.topHeader__overlay.isOpen {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.topHeader__menu {
+  position: fixed;
+  top: 0;
+  right: 0;
+  height: 100vh;
+  width: min(320px, 86vw);
+  background: #ffffff;
+  box-shadow: -18px 0 40px rgba(31, 42, 68, 0.18);
+  transform: translateX(110%);
+  transition: transform 0.22s ease;
+  z-index: 1000;
+  padding: 1rem;
+  box-sizing: border-box;
+
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.topHeader__menu.isOpen {
+  transform: translateX(0);
+}
+
+.topHeader__menuHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.topHeader__close {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 1.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 0.7rem;
+}
+
+.topHeader__userPill--menu {
+  flex: 1;
+}
+
+.topHeader__logout--menu {
+  width: 100%;
+  justify-content: center;
+  background: rgba(146, 189, 74, 0.12);
+  border-radius: 0.9rem;
+  padding: 0.8rem 1rem;
+}
+.topHeader__logout:hover {
+  color: #d94a4a;
+}
+
+/* ✅ Mobile breakpoint */
+@media (max-width: 680px) {
+  .topHeader__right {
+    display: none;
+  }
+
+  .topHeader__burger {
+    display: none;
+    background: transparent;
+    border: none;
+    cursor: pointer;
+
+    padding: 0.25rem;
+
+    /* 👇 esto es lo que faltaba */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+  }
+}

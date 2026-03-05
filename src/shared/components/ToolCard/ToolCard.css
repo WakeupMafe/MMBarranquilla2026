@@ -1,0 +1,131 @@
+.toolCard {
+  width: 100%;
+  min-width: 90%;
+  height: 100%; /* importante */
+  overflow: hidden;
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1.625rem;
+  padding: 1.25rem 1.25rem 1.1rem 1.25rem;
+  box-shadow: 0 0.75rem 1.75rem rgba(31, 42, 68, 0.08);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+/* Top area */
+.toolCard__top {
+  display: flex;
+  gap: 1.1rem;
+  align-items: flex-start;
+}
+
+.toolCard__iconWrap {
+  width: 7.2rem;
+  height: 7.2rem;
+  border-radius: 1.25rem;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+}
+
+.toolCard__icon {
+  width: 7.2rem;
+  height: 7.2rem;
+  object-fit: contain;
+}
+
+.toolCard__iconPlaceholder {
+  width: 7.2rem;
+  height: 7.2rem;
+  border-radius: 1.25rem;
+  background: rgba(146, 189, 74, 0.18);
+}
+
+/* Text */
+.toolCard__info {
+  flex: 1;
+  padding-top: 0.1rem;
+}
+
+.toolCard__title {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  font-size: 1.65625rem; /* 26.5px */
+  line-height: 1.15;
+  font-weight: 600;
+  color: #4a4a4a;
+  letter-spacing: -0.01em;
+}
+
+.toolCard__subtitle {
+  margin: 0.55rem 0 0.9rem 0;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.95rem;
+  line-height: 1.35;
+  color: rgba(74, 74, 74, 0.85);
+  max-width: none; /* pediste quitar max-width */
+}
+
+.toolCard__chips {
+  display: flex;
+  flex-wrap: wrap; /* ✅ para móvil */
+  gap: 0.75rem;
+}
+
+.toolCard__chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 2.25rem;
+  padding: 0 1.35rem;
+  border-radius: 999rem;
+  background: #bdbdbd;
+  color: #ffffff;
+  font-family: "Poppins", sans-serif;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+/* Button */
+.toolCard__btn {
+  width: 100%; /* ✅ en vez de 33.89375rem */
+  height: 3.2rem;
+  border: none;
+  border-radius: 999rem;
+  background: #92bd4a;
+  color: #ffffff;
+  font-family: "Poppins", sans-serif;
+  font-size: 1.6rem;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 15px;
+
+  transition:
+    transform 0.25s ease,
+    background-color 0.25s ease,
+    box-shadow 0.25s ease;
+}
+
+/* Hover bonito */
+/* Hover bonito */
+.toolCard__btn:hover {
+  transform: scale(1.02);
+  background: #7faa3a; /* verde un poco más oscuro */
+  box-shadow: 0 0.5rem 1.2rem rgba(146, 189, 74, 0.35);
+}
+
+/* click */
+.toolCard__btn:active {
+  transform: scale(1.01);
+}
+
+.toolCard__arrow {
+  font-size: 1.8rem;
+  line-height: 1;
+  transform: translateY(-0.03rem);
+}

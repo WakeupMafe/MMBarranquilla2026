@@ -1,0 +1,126 @@
+.logrosStart {
+  width: 100%;
+  height: 100vh;
+  min-height: calc(100vh - 80px);
+  padding: 22px;
+  background: #f3f7e8; /* verde suave del fondo */
+}
+
+.logrosStart__cardHeader {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto 18px auto;
+
+  border: 2px solid #7b61ff; /* borde morado como tu screenshot */
+  border-radius: 12px;
+
+  background: #eef3dc;
+  padding: 18px 18px;
+
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logrosStart__icon {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.logrosStart__titles {
+  display: grid;
+  gap: 2px;
+}
+
+.logrosStart__title {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  font-size: 28px;
+  font-weight: 600;
+  color: #4b4b4b;
+}
+
+.logrosStart__subtitle {
+  margin: 0;
+  font-family: "Poppins", sans-serif;
+  font-size: 16px;
+  color: #6a6a6a;
+}
+
+.logrosStart__panel {
+  width: 100%;
+  max-width: 980px;
+  margin: 0 auto;
+
+  background: #eef3dc;
+  border-radius: 18px;
+
+  padding: 26px 22px;
+  min-height: 320px;
+}
+
+.logrosStart__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logrosStart__input {
+  width: 330px;
+  height: 44px;
+  border-radius: 999px;
+
+  border: none;
+  outline: none;
+  padding: 0 18px;
+
+  background: #cfe0a8;
+  font-family: "Poppins", sans-serif;
+  font-size: 16px;
+  color: #3c3c3c;
+}
+
+.logrosStart__input::placeholder {
+  color: rgba(40, 40, 40, 0.6);
+}
+
+.logrosStart__btn {
+  height: 44px;
+  padding: 0 22px;
+  border-radius: 999px;
+
+  border: none;
+  cursor: pointer;
+
+  background: #86b63f;
+  color: #ffffff;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.logrosStart__btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.logrosStart__msg {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border-radius: 12px;
+
+  font-family: "Poppins", sans-serif;
+  font-size: 14px;
+}
+
+.logrosStart__msg--error {
+  background: rgba(209, 17, 17, 0.1);
+  color: #b80f0f;
+  font-weight: 600;
+}
+
+.logrosStart__msg--ok {
+  background: rgba(146, 189, 74, 0.18);
+  color: #2f4a14;
+}
