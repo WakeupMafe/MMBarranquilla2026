@@ -1,0 +1,303 @@
+.page {
+  width: 100%;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.logrosBox {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 25px;
+}
+
+/* Botón volver */
+.back {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-size: 25px;
+  font-weight: 400;
+  color: #1f2a44;
+  margin-bottom: 14px;
+  padding: 0;
+
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+
+.back:hover {
+  color: #d11;
+  transform: translateX(-3px);
+}
+
+.title {
+  margin: 6px 0 4px;
+  font-size: 32px;
+  color: #1f2a44;
+}
+
+.subtitle {
+  margin: 0 0 14px;
+  opacity: 0.85;
+  font-size: 15px;
+  color: #4b4b4b;
+}
+
+.form {
+  display: grid;
+  gap: 14px;
+}
+
+.field {
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid rgba(31, 42, 68, 0.12);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.field__label {
+  margin: 0 0 8px;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.field__note {
+  margin: -4px 0 10px;
+  opacity: 0.75;
+  color: #4b4b4b;
+}
+
+.field__grid {
+  display: grid;
+  gap: 8px;
+}
+
+.option {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  color: #1f2a44;
+}
+
+.input {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid #b7cdfa;
+  outline: none;
+  padding: 10px 14px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.select {
+  width: 100%;
+  height: 44px;
+  border-radius: 12px;
+  border: 2px solid #b7cdfa;
+  outline: none;
+  padding: 8px 12px;
+  font-size: 16px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+.sep {
+  border: none;
+  border-top: 1px solid rgba(31, 42, 68, 0.12);
+  margin: 6px 0;
+}
+
+.sectionTitle {
+  margin: 0;
+  color: #1f2a44;
+}
+
+.hint {
+  opacity: 0.75;
+  margin: 0;
+  color: #4b4b4b;
+}
+
+.objetivoCard {
+  border: 1px dashed rgba(31, 42, 68, 0.18);
+  border-radius: 14px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.objetivoCard__title {
+  margin: 0;
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.objetivoCard__subtitle {
+  margin: 6px 0 10px;
+  opacity: 0.8;
+  color: #4b4b4b;
+}
+
+.actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.btn {
+  border: none;
+  border-radius: 14px;
+  padding: 12px 20px;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 16px;
+  background: #86b63f;
+  color: white;
+
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.btn:hover {
+  background: #739c36;
+  transform: scale(1.02);
+  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+}
+
+.btn:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.btn-volverherramientas {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 25px;
+  color: #1f2a44;
+  padding: 0;
+  transition:
+    color 0.2s ease,
+    transform 0.2s ease;
+}
+.logrosBox .back,
+.btn-volverherramientas {
+  font-size: 18px !important;
+}
+
+.btn-volverherramientas:hover {
+  color: #d11;
+  transform: translateX(-3px);
+}
+
+/* =========================
+   TABLETS
+========================= */
+@media (max-width: 900px) {
+  .logrosBox {
+    padding: 16px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+  }
+
+  .field {
+    padding: 12px;
+  }
+
+  .btn {
+    padding: 12px 28px;
+  }
+}
+
+/* =========================
+   MÓVILES
+========================= */
+@media (max-width: 600px) {
+  .page {
+    padding: 14px;
+  }
+
+  .logrosBox {
+    padding: 14px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .field {
+    padding: 12px;
+  }
+
+  .field__grid {
+    gap: 6px;
+  }
+
+  .option {
+    gap: 8px;
+    font-size: 14px;
+  }
+
+  .input,
+  .select {
+    height: 42px;
+    font-size: 15px;
+  }
+
+  .objetivoCard {
+    padding: 10px;
+  }
+
+  .objetivoCard__subtitle {
+    font-size: 14px;
+  }
+
+  .actions {
+    justify-content: center;
+  }
+
+  .btn {
+    width: 100%;
+    padding: 12px;
+  }
+
+  .logrosBox .back,
+  .btn-volverherramientas {
+    font-size: 20px !important;
+  }
+}
+
+/* =========================
+   MÓVILES MUY PEQUEÑOS
+========================= */
+@media (max-width: 420px) {
+  .title {
+    font-size: 20px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .field__label {
+    font-size: 14px;
+  }
+
+  .option {
+    font-size: 13px;
+  }
+}
