@@ -6,21 +6,22 @@ import logoWakeup from "../../../assets/LogoWakeup.png";
 
 import useLogros1Catalog from "./hooks/useLogros1Catalog";
 import useLogros1Form from "./hooks/useLogros1Form";
-
 import { OBJETIVOS } from "./data/logros1Objetivos";
-
 import { buildLogros1Payload } from "./utils/logros1Mapper";
 
 import {
   saveLogros1,
   incrementProfesionalEncuestas,
 } from "../servives/logros1Service";
+
+import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+
 import "./Logros1.css";
 
 const SESSION_KEY = "wk_profesional";
 
 /* =========================
-   UI helpers (solo UI)
+   UI helpers
    ========================= */
 function RadioGroup({ label, name, options, value, onChange }) {
   return (
@@ -113,10 +114,28 @@ export default function Logros1() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const handleLogout = async () => {
+    const ok = await alertConfirm({
+      title: "Cerrar sesión",
+      text: "¿Deseas salir de la plataforma?",
+      confirmText: "Sí, salir",
+      cancelText: "Cancelar",
+    });
+
+    if (!ok) return;
+
+    sessionStorage.removeItem(SESSION_KEY);
+    sessionStorage.removeItem("logros_paciente");
+
+    await alertOk("Sesión cerrada", "Has salido correctamente.");
+    navigate("/", { replace: true });
+  };
+
   // paciente: state -> cache
   const paciente = useMemo(() => {
     const fromState = location.state?.paciente;
     if (fromState) return fromState;
+
     try {
       const raw = sessionStorage.getItem("logros_paciente");
       return raw ? JSON.parse(raw) : null;
@@ -129,6 +148,7 @@ export default function Logros1() {
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
     if (fromState) return fromState;
+
     try {
       const raw = sessionStorage.getItem(SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
@@ -137,7 +157,7 @@ export default function Logros1() {
     }
   }, [location.state]);
 
-  // protección de acceso: si falta profesional, rebotar
+  // proteger acceso
   useEffect(() => {
     if (!profesional) {
       alertError(
@@ -170,7 +190,6 @@ export default function Logros1() {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    // ✅ Validaciones mínimas (SweetAlert)
     if (!form.limitacion_moverse) {
       await alertError(
         "Faltan datos",
@@ -199,10 +218,10 @@ export default function Logros1() {
       }
     }
 
-    // seguridad extra: nombre completo no puede ir vacío
     const nombreCompleto = String(
       paciente.nombre_apellido_documento || "",
     ).trim();
+
     if (!nombreCompleto) {
       await alertError(
         "Paciente inválido",
@@ -223,7 +242,6 @@ export default function Logros1() {
 
       await saveLogros1(payload);
 
-      // best-effort (si falla, no rompemos el flujo)
       try {
         await incrementProfesionalEncuestas(profesional.cedula);
       } catch {
@@ -249,7 +267,11 @@ export default function Logros1() {
 
   return (
     <div className="page">
-      <TopHeader userName={userName} logoSrc={logoWakeup} />
+      <TopHeader
+        userName={userName}
+        logoSrc={logoWakeup}
+        onLogout={handleLogout}
+      />
 
       <div className="logrosBox">
         <button
@@ -267,18 +289,19 @@ export default function Logros1() {
         </p>
 
         <form onSubmit={onSubmit} className="form">
-          {/* P4 */}
           <RadioGroup
             label="1. ¿Qué tan limitada está su vida para moverse?"
             name="limitacion_moverse"
             options={limitacionMoverseOptions}
             value={form.limitacion_moverse}
             onChange={(e) =>
-              setForm((p) => ({ ...p, limitacion_moverse: e.target.value }))
+              setForm((prev) => ({
+                ...prev,
+                limitacion_moverse: e.target.value,
+              }))
             }
           />
 
-          {/* P5 */}
           <CheckboxGroup
             label="2. ¿Qué actividades de la vida diaria se ven afectadas por su limitación?"
             note="(Puede elegir todas las que apliquen)"
@@ -287,7 +310,6 @@ export default function Logros1() {
             onToggle={toggleActividad}
           />
 
-          {/* P6 */}
           <CheckboxGroup
             label="3. Elija los 3 problemas/síntomas más importantes"
             note="(Seleccione mínimo 1 y máximo 3)"
@@ -296,7 +318,6 @@ export default function Logros1() {
             onToggle={toggleSintoma}
           />
 
-          {/* Otro síntoma */}
           {form.sintomas_top.includes("otro") ? (
             <div className="field">
               <p className="field__label">Si marcó “Otro”, escriba cuál</p>
@@ -304,7 +325,10 @@ export default function Logros1() {
                 className="input"
                 value={form.otro_sintoma}
                 onChange={(e) =>
-                  setForm((p) => ({ ...p, otro_sintoma: e.target.value }))
+                  setForm((prev) => ({
+                    ...prev,
+                    otro_sintoma: e.target.value,
+                  }))
                 }
                 placeholder="Escriba el otro síntoma"
               />
@@ -352,7 +376,10 @@ export default function Logros1() {
               className="input"
               value={form.objetivo_extra}
               onChange={(e) =>
-                setForm((p) => ({ ...p, objetivo_extra: e.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  objetivo_extra: e.target.value,
+                }))
               }
               placeholder="Escriba un objetivo adicional (opcional)"
             />
@@ -366,7 +393,10 @@ export default function Logros1() {
               className="input"
               value={form.adicional_no_puede}
               onChange={(e) =>
-                setForm((p) => ({ ...p, adicional_no_puede: e.target.value }))
+                setForm((prev) => ({
+                  ...prev,
+                  adicional_no_puede: e.target.value,
+                }))
               }
               placeholder="Escriba aquí (opcional)"
             />
