@@ -53,7 +53,7 @@
 .toolCard__title {
   margin: 0;
   font-family: "Poppins", sans-serif;
-  font-size: clamp(1rem, 4vw, 1.7rem);
+  font-size: clamp(1.2rem, 4vw, 1.7rem);
   line-height: 1.15;
   font-weight: 600;
   color: #4a4a4a;
@@ -63,7 +63,7 @@
 .toolCard__subtitle {
   margin: 0.55rem 0 0.9rem 0;
   font-family: "Poppins", sans-serif;
-  font-size: 0.8rem;
+  font-size: clamp(0.4rem, 2vw, 0.9rem);
   line-height: 1.35;
   color: rgba(74, 74, 74, 0.85);
   max-width: none; /* pediste quitar max-width */
