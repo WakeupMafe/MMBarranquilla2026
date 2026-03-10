@@ -1,0 +1,180 @@
+.photoTestPage {
+  width: 100%;
+  min-height: 100vh;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background: #f7f8fc;
+  box-sizing: border-box;
+}
+
+.photoTestWrapper {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.photoCard {
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.4rem);
+  box-shadow: 0 0.75rem 1.75rem rgba(31, 42, 68, 0.08);
+}
+
+.photoTitle {
+  margin: 0 0 0.35rem;
+  font-size: clamp(1.2rem, 2.4vw, 1.7rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.photoSubtitle {
+  margin: 0;
+  font-size: clamp(0.94rem, 1.5vw, 1rem);
+  color: #5b6475;
+}
+
+.photoForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.captureGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.fieldLabel {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.fieldHelp {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #667085;
+}
+
+.fileInput {
+  width: 100%;
+  font-size: 0.95rem;
+  padding: 0.7rem;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.15);
+  border-radius: 0.9rem;
+  background: #fff;
+  box-sizing: border-box;
+}
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+.btnPrimary,
+.btnSecondary {
+  border: none;
+  border-radius: 0.95rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.btnPrimary {
+  background: #92bd4a;
+  color: #fff;
+}
+
+.btnSecondary {
+  background: #eef2f7;
+  color: #1f2a44;
+}
+
+.btnPrimary:hover,
+.btnSecondary:hover {
+  transform: translateY(-0.0625rem);
+}
+
+.btnPrimary:disabled,
+.btnSecondary:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.errorText {
+  margin: 0;
+  color: #c62828;
+  font-weight: 600;
+}
+
+.previewGrid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+}
+
+.previewBox {
+  background: #fafbff;
+  border: 0.0625rem dashed rgba(31, 42, 68, 0.18);
+  border-radius: 1rem;
+  padding: 0.8rem;
+}
+
+.previewBox h3 {
+  margin: 0 0 0.7rem;
+  font-size: 1rem;
+  color: #1f2a44;
+}
+
+.previewImage {
+  width: 100%;
+  max-height: 26rem;
+  object-fit: contain;
+  border-radius: 0.9rem;
+  background: #fff;
+}
+
+.metaList {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 0.45rem;
+}
+
+.metaItem {
+  font-size: 0.93rem;
+  color: #344054;
+  word-break: break-word;
+}
+
+.emptyState {
+  margin: 0;
+  color: #6b7280;
+  font-size: 0.95rem;
+}
+
+@media (min-width: 768px) {
+  .captureGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .previewGrid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

@@ -53,10 +53,8 @@ export default function ToolsHome() {
     }
   }, [profesional, navigate]);
 
-  // ✅ CLAVE: si aún no hay profesional, NO renderizar nada (evita .nombre)
   if (!profesional) return null;
 
-  // ✅ solo nombre (tu regla)
   const userName = profesional.nombre;
 
   const handleLogout = async () => {
@@ -84,9 +82,10 @@ export default function ToolsHome() {
 
       <div className="grid">
         <div className="Titulos">
-          <h1> Herramientas</h1>
-          <h3>Encuestas clínicas y seguimientos </h3>
+          <h1>Herramientas</h1>
+          <h3>Encuestas clínicas y seguimientos</h3>
         </div>
+
         <div className="cards">
           <ToolCard
             title="Anamnesis"
@@ -96,8 +95,9 @@ export default function ToolsHome() {
             buttonText="Abrir"
             iconSrc={iconValoracion}
             onOpen={() => navigate("/herramientas/valoracion")}
-          />{" "}
+          />
         </div>
+
         <div className="cards">
           <ToolCard
             title="Logros Fase 1"
@@ -109,8 +109,8 @@ export default function ToolsHome() {
             onOpen={() => navigate("/herramientas/logros-1")}
           />
         </div>
+
         <div className="cards">
-          {" "}
           <ToolCard
             title="Logros Fase 2"
             subtitle="Registro de avances y metas superadas"
@@ -121,6 +121,19 @@ export default function ToolsHome() {
             onOpen={() => navigate("/herramientas/logros-2")}
           />
         </div>
+
+        <div className="cards">
+          <ToolCard
+            title="Prueba de Fotos"
+            subtitle="Selección, vista previa y compresión"
+            chipLeft="Prueba"
+            chipRight="Temporal"
+            buttonText="Abrir"
+            iconSrc={iconValoracion}
+            onOpen={() => navigate("/herramientas/fotos-test")}
+          />
+        </div>
+
         <div className="cards">
           <ToolCard
             title="Consulta en BD"
