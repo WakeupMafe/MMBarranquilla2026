@@ -138,7 +138,7 @@ export default function ToolsHome() {
           <ToolCard
             title="Consulta en BD"
             subtitle="Registro de avances"
-            chipLeft="Página externa"
+            chipLeft="Externo"
             chipRight="Restringido"
             buttonText="Abrir"
             iconSrc={iconConsultaBD}
