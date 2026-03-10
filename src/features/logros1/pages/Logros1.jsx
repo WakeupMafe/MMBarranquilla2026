@@ -7,6 +7,7 @@ import logoWakeup from "../../../assets/LogoWakeup.png";
 import useLogros1Catalog from "./hooks/useLogros1Catalog";
 import useLogros1Form from "./hooks/useLogros1Form";
 import { OBJETIVOS } from "./data/logros1Objetivos";
+import { ENUNCIADOS_OBJETIVOS } from "./data/logros1Enunciados";
 import { buildLogros1Payload } from "./utils/logros1Mapper";
 
 import {
@@ -114,6 +115,11 @@ export default function Logros1() {
 
   const [submitting, setSubmitting] = useState(false);
 
+  const mostrarActividadesAfectadas =
+    form.limitacion_moverse === "mucho" ||
+    form.limitacion_moverse === "bastante" ||
+    form.limitacion_moverse === "poco";
+
   const handleLogout = async () => {
     const ok = await alertConfirm({
       title: "Cerrar sesión",
@@ -167,6 +173,19 @@ export default function Logros1() {
       navigate("/", { replace: true });
     }
   }, [profesional, navigate]);
+
+  // limpiar actividades si responde "nada"
+  useEffect(() => {
+    if (
+      form.limitacion_moverse === "nada" &&
+      form.actividades_afectadas.length
+    ) {
+      setForm((prev) => ({
+        ...prev,
+        actividades_afectadas: [],
+      }));
+    }
+  }, [form.limitacion_moverse, form.actividades_afectadas.length, setForm]);
 
   if (!paciente || !profesional) {
     return (
@@ -302,13 +321,15 @@ export default function Logros1() {
             }
           />
 
-          <CheckboxGroup
-            label="2. ¿Qué actividades de la vida diaria se ven afectadas por su limitación?"
-            note="(Puede elegir todas las que apliquen)"
-            options={actividadesAfectadasOptions}
-            values={form.actividades_afectadas}
-            onToggle={toggleActividad}
-          />
+          {mostrarActividadesAfectadas ? (
+            <CheckboxGroup
+              label="2. ¿Qué actividades de la vida diaria se ven afectadas por su limitación?"
+              note="(Puede elegir todas las que apliquen)"
+              options={actividadesAfectadasOptions}
+              values={form.actividades_afectadas}
+              onToggle={toggleActividad}
+            />
+          ) : null}
 
           <CheckboxGroup
             label="3. Elija los 3 problemas/síntomas más importantes"
@@ -352,15 +373,18 @@ export default function Logros1() {
               const sintomaLabel =
                 sintomasOptions.find((x) => x.value === s)?.label || s;
 
+              const enunciado = ENUNCIADOS_OBJETIVOS[s] || "";
+
               return (
                 <div className="objetivoCard" key={s}>
                   <p className="objetivoCard__title">{sintomaLabel}</p>
-                  <p className="objetivoCard__subtitle">
-                    {meta.objetivoGeneral}
-                  </p>
+
+                  {enunciado ? (
+                    <p className="objetivoCard__subtitle">{enunciado}</p>
+                  ) : null}
 
                   <Select
-                    label="Objetivo específico"
+                    label="Enunciado del objetivo"
                     value={form.objetivos[s] || ""}
                     onChange={(e) => setObjetivo(s, e.target.value)}
                     options={meta.opciones}
