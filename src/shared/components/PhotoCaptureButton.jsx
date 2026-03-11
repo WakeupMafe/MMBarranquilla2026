@@ -5,13 +5,14 @@ export default function PhotoCaptureButton({
   capture,
   multiple = false,
   secondary = false,
+  className = "",
 }) {
   return (
     <label
       htmlFor={inputId}
-      className={
+      className={`${
         secondary ? "btnSecondary fileButton" : "btnPrimary fileButton"
-      }
+      } ${className}`}
     >
       {label}
 

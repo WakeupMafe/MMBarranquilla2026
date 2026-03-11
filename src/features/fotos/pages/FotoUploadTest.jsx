@@ -201,11 +201,7 @@ export default function FotoUploadTest() {
                   }
                   inputId={`camera-${photo.id}`}
                   capture="environment"
-                  className={
-                    photo.preview
-                      ? "slotActionBtn slotActionBtn--success"
-                      : "slotActionBtn"
-                  }
+                  className={photo.preview ? "slotActionBtn--success" : ""}
                   onChange={(e) => {
                     handlePhotoChange(photo.id, e.target.files);
                     e.target.value = "";
