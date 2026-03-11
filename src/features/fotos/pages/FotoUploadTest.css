@@ -41,47 +41,12 @@
   gap: 1rem;
 }
 
-.captureGrid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1rem;
-}
-
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.45rem;
-}
-
-.fieldLabel {
-  font-size: 0.95rem;
-  font-weight: 600;
-  color: #1f2a44;
-}
-
-.fieldHelp {
-  margin: 0;
-  font-size: 0.88rem;
-  color: #667085;
-}
-
-.fileInput {
-  width: 100%;
-  font-size: 0.95rem;
-  padding: 0.7rem;
-  border: 0.0625rem solid rgba(31, 42, 68, 0.15);
-  border-radius: 0.9rem;
-  background: #fff;
-  box-sizing: border-box;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
-.btnPrimary,
 .btnSecondary {
   border: none;
   border-radius: 0.95rem;
@@ -92,28 +57,24 @@
   transition:
     transform 0.18s ease,
     opacity 0.18s ease;
-}
-
-.btnPrimary {
-  background: #92bd4a;
-  color: #fff;
-}
-
-.btnSecondary {
   background: #eef2f7;
   color: #1f2a44;
 }
 
-.btnPrimary:hover,
 .btnSecondary:hover {
   transform: translateY(-0.0625rem);
 }
 
-.btnPrimary:disabled,
 .btnSecondary:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
+}
+
+.fieldHelp {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #667085;
 }
 
 .errorText {
@@ -122,62 +83,109 @@
   font-weight: 600;
 }
 
-.previewGrid {
+.photoSlotsGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
 }
 
-.previewBox {
-  background: #fafbff;
-  border: 0.0625rem dashed rgba(31, 42, 68, 0.18);
-  border-radius: 1rem;
-  padding: 0.8rem;
+.photoSlotCard {
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1.25rem;
+  padding: 1rem;
+  box-shadow: 0 0.75rem 1.75rem rgba(31, 42, 68, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
 }
 
-.previewBox h3 {
-  margin: 0 0 0.7rem;
-  font-size: 1rem;
+.photoSlotHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.photoSlotTitle {
+  margin: 0;
+  font-size: clamp(0.98rem, 1.8vw, 1.05rem);
+  font-weight: 700;
   color: #1f2a44;
 }
 
-.previewImage {
+.photoSlotPreview {
   width: 100%;
-  max-height: 26rem;
-  object-fit: contain;
-  border-radius: 0.9rem;
-  background: #fff;
+  aspect-ratio: 3 / 4;
+  border-radius: 1rem;
+  overflow: hidden;
+  background: #f4f7fb;
+  border: 0.0625rem dashed rgba(31, 42, 68, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.metaList {
+.slotPreviewImage {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.slotEmptyState {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.55rem;
+  text-align: center;
+  padding: 1rem;
+}
+
+.slotEmptyIcon {
+  font-size: clamp(1.8rem, 4vw, 2.2rem);
+  line-height: 1;
+}
+
+.slotEmptyText {
   margin: 0;
-  padding: 0;
-  list-style: none;
-  display: grid;
-  gap: 0.45rem;
-}
-
-.metaItem {
-  font-size: 0.93rem;
-  color: #344054;
-  word-break: break-word;
-}
-
-.emptyState {
-  margin: 0;
-  color: #6b7280;
   font-size: 0.95rem;
+  font-weight: 600;
+  color: #5b6475;
 }
 
-@media (min-width: 768px) {
-  .captureGrid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .previewGrid {
-    grid-template-columns: 1fr 1fr;
-  }
+.photoSlotActions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
 }
+
+.removeBtn {
+  border: none;
+  background: #fdecec;
+  color: #b42318;
+  border-radius: 0.8rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease;
+}
+
+.removeBtn:hover {
+  transform: translateY(-0.0625rem);
+  opacity: 0.95;
+}
+
+.removeBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
 .hiddenFileInput {
   display: none;
 }
@@ -189,36 +197,14 @@
   text-decoration: none;
 }
 
-.photoList {
-  display: grid;
-  gap: 1rem;
+@media (min-width: 640px) {
+  .photoSlotsGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
-.photoItemHeader {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 0.8rem;
-}
-
-.photoItemTitle {
-  margin: 0;
-  font-size: 1rem;
-  color: #1f2a44;
-}
-
-.removeBtn {
-  border: none;
-  background: #fdecec;
-  color: #b42318;
-  border-radius: 0.8rem;
-  padding: 0.6rem 0.85rem;
-  font-size: 0.9rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.removeBtn:hover {
-  opacity: 0.9;
+@media (min-width: 992px) {
+  .photoSlotsGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }

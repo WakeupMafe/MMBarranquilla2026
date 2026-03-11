@@ -195,7 +195,9 @@ export default function FotoUploadTest() {
               <div className="photoSlotActions">
                 <PhotoCaptureButton
                   label={
-                    processingId === photo.id ? "Procesando..." : "Tomar foto"
+                    processingId === photo.id
+                      ? "Procesando..."
+                      : `Tomar ${photo.title.toLowerCase()}`
                   }
                   inputId={`camera-${photo.id}`}
                   capture="environment"
@@ -206,7 +208,7 @@ export default function FotoUploadTest() {
                 />
 
                 <PhotoCaptureButton
-                  label="Galería"
+                  label={`Elegir ${photo.title.toLowerCase()}`}
                   inputId={`gallery-${photo.id}`}
                   secondary
                   onChange={(e) => {
