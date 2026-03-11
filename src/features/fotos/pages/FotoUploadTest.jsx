@@ -201,6 +201,11 @@ export default function FotoUploadTest() {
                   }
                   inputId={`camera-${photo.id}`}
                   capture="environment"
+                  className={
+                    photo.preview
+                      ? "slotActionBtn slotActionBtn--success"
+                      : "slotActionBtn"
+                  }
                   onChange={(e) => {
                     handlePhotoChange(photo.id, e.target.files);
                     e.target.value = "";
@@ -211,6 +216,11 @@ export default function FotoUploadTest() {
                   label={`Elegir ${photo.title.toLowerCase()}`}
                   inputId={`gallery-${photo.id}`}
                   secondary
+                  className={
+                    photo.preview
+                      ? "slotActionBtn slotActionBtn--successSoft"
+                      : "slotActionBtn"
+                  }
                   onChange={(e) => {
                     handlePhotoChange(photo.id, e.target.files);
                     e.target.value = "";
