@@ -41,18 +41,44 @@
   gap: 1rem;
 }
 
+.fieldHelp {
+  margin: 0;
+  font-size: 0.88rem;
+  color: #667085;
+}
+
 .actions {
   display: flex;
   flex-wrap: wrap;
   gap: 0.75rem;
 }
 
+.btnPrimary {
+  padding: clamp(8px, 1.2vw, 10px) clamp(12px, 2vw, 16px);
+  font-weight: 520;
+  text-align: center;
+  font-size: clamp(12px, 1.2vw, 15px);
+  color: rgb(16, 16, 16);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition:
+    background-color 0.25s ease,
+    transform 0.15s ease;
+}
+
+.btnPrimary:hover {
+  background-color: #92bd4a;
+  transform: translateY(-1px);
+}
+
 .btnSecondary {
+  text-align: center;
   border: none;
   border-radius: 0.95rem;
   padding: 0.85rem 1rem;
   font-size: 0.95rem;
-  font-weight: 600;
+  font-weight: 520;
   cursor: pointer;
   transition:
     transform 0.18s ease,
@@ -65,25 +91,39 @@
   transform: translateY(-0.0625rem);
 }
 
-.btnSecondary:disabled {
+.btnSecondary:disabled,
+.btnPrimary:disabled,
+.removeBtn:disabled {
   opacity: 0.6;
   cursor: not-allowed;
   transform: none;
 }
 
-.fieldHelp {
-  margin: 0;
-  font-size: 0.88rem;
-  color: #667085;
+.photoGroupsList {
+  display: grid;
+  gap: 1rem;
 }
 
-.errorText {
-  margin: 0;
-  color: #c62828;
-  font-weight: 600;
+.photoGroupCard {
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1.25rem;
+  padding: clamp(1rem, 2vw, 1.25rem);
+  box-shadow: 0 0.75rem 1.75rem rgba(31, 42, 68, 0.08);
 }
 
-.photoSlotsGrid {
+.photoGroupHeader {
+  margin-bottom: 1rem;
+}
+
+.photoGroupTitle {
+  margin: 0;
+  font-size: clamp(1rem, 1.8vw, 1.2rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.photoGroupGrid {
   display: grid;
   grid-template-columns: 1fr;
   gap: 1rem;
@@ -180,12 +220,6 @@
   opacity: 0.95;
 }
 
-.removeBtn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-  transform: none;
-}
-
 .hiddenFileInput {
   display: none;
 }
@@ -195,19 +229,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-
   padding: 0.85rem 1rem;
-
   border-radius: 0.9rem;
   border: 1px solid rgba(31, 42, 68, 0.15);
-
   font-size: 0.95rem;
   font-weight: 600;
-
   cursor: pointer;
-
   box-shadow: 0 2px 6px rgba(31, 42, 68, 0.08);
-
   transition:
     background 0.18s ease,
     color 0.18s ease,
@@ -215,17 +243,6 @@
     box-shadow 0.15s ease;
 }
 
-@media (min-width: 640px) {
-  .photoSlotsGrid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-}
-
-@media (min-width: 992px) {
-  .photoSlotsGrid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
 .slotActionBtn {
   transition:
     transform 0.18s ease,
@@ -267,4 +284,19 @@
 
 .slotActionBtn--successSoft:hover {
   background: #e7f3d3 !important;
+}
+
+@media (min-width: 768px) {
+  .photoGroupGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+.slotGuideImage {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+  padding: 0.6rem;
+  box-sizing: border-box;
+  opacity: 0.85;
 }

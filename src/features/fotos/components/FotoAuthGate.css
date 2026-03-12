@@ -1,0 +1,147 @@
+.fotoAuthPage {
+  width: 100%;
+  min-height: 100vh;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  background: #f7f8fc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+}
+
+.fotoAuthCard {
+  width: min(100%, 28rem);
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1.25rem;
+  padding: 1.25rem;
+  box-shadow: 0 0.75rem 1.75rem rgba(31, 42, 68, 0.08);
+  box-sizing: border-box;
+}
+
+.fotoAuthTitle {
+  margin: 0 0 0.4rem;
+  font-size: clamp(1.15rem, 2.4vw, 1.5rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.fotoAuthText {
+  margin: 0;
+  color: #667085;
+  font-size: 0.95rem;
+}
+
+.fotoAuthForm {
+  margin-top: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.9rem;
+}
+
+.fotoAuthField {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.fotoAuthLabel {
+  font-size: 0.92rem;
+  font-weight: 600;
+  color: #1f2a44;
+}
+
+.fotoAuthInput {
+  width: 100%;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.15);
+  border-radius: 0.9rem;
+  padding: 0.85rem 0.95rem;
+  font-size: 0.95rem;
+  box-sizing: border-box;
+  background: #fff;
+}
+
+.fotoAuthInput:focus {
+  outline: none;
+  border-color: #92bd4a;
+  box-shadow: 0 0 0 0.18rem rgba(146, 189, 74, 0.16);
+}
+
+.fotoAuthSubmit,
+.fotoAuthLogoutBtn {
+  border: none;
+  border-radius: 0.95rem;
+  padding: 0.85rem 1rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition:
+    transform 0.18s ease,
+    opacity 0.18s ease,
+    background 0.18s ease;
+}
+
+.fotoAuthSubmit {
+  background: #1f2a44;
+  color: #fff;
+}
+
+.fotoAuthSubmit:hover,
+.fotoAuthLogoutBtn:hover {
+  transform: translateY(-0.0625rem);
+}
+
+.fotoAuthSubmit:active {
+  background: #92bd4a;
+}
+
+.fotoAuthSubmit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.fotoAuthError {
+  margin: 0;
+  color: #c62828;
+  font-size: 0.92rem;
+  font-weight: 600;
+}
+
+.fotoAuthTopbar {
+  width: 100%;
+  padding: 0.75rem 1rem 0;
+  box-sizing: border-box;
+}
+
+.fotoAuthTopbar__content {
+  width: min(100%, 72rem);
+  margin: 0 auto;
+  background: #ffffff;
+  border: 0.0625rem solid rgba(31, 42, 68, 0.12);
+  border-radius: 1rem;
+  padding: 0.8rem 1rem;
+  box-shadow: 0 0.5rem 1.2rem rgba(31, 42, 68, 0.06);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  box-sizing: border-box;
+}
+
+.fotoAuthUser {
+  margin: 0;
+  color: #344054;
+  font-size: 0.92rem;
+  word-break: break-word;
+}
+
+.fotoAuthLogoutBtn {
+  background: #eef2f7;
+  color: #1f2a44;
+  flex-shrink: 0;
+}
+
+.fotoAuthLogoutBtn:active {
+  background: #dbe7ff;
+}

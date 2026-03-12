@@ -3,14 +3,12 @@ import { createBrowserRouter } from "react-router-dom";
 import Inicio from "../pages/Inicio";
 
 import ToolsHome from "../features/tools/pages/ToolsHome";
-
+import FotosTestPage from "../features/fotos/pages/FotosTestPage";
 import Logros1Start from "../features/logros1/pages/Logros1Start";
 import Logros1 from "../features/logros1/pages/Logros1";
 
 import Logros2 from "../features/logros2/pages/Logros2";
 import Valoracion from "../features/valoracion/pages/Valoracion";
-
-import FotoUploadTest from "../features/fotos/pages/FotoUploadTest";
 
 export const router = createBrowserRouter([
   { path: "/", element: <Inicio /> },
@@ -22,7 +20,7 @@ export const router = createBrowserRouter([
   { path: "/herramientas/logros-1/encuesta", element: <Logros1 /> },
 
   // PRUEBA FOTOS
-  { path: "/herramientas/fotos-test", element: <FotoUploadTest /> },
+  { path: "/herramientas/fotos-test", element: <FotosTestPage /> },
 
   // OTROS
   { path: "/herramientas/logros-2", element: <Logros2 /> },
