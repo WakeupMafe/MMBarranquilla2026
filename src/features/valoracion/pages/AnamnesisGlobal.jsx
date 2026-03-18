@@ -480,6 +480,32 @@ export default function AnamnesisGlobal() {
               {renderSiNo("dolor_lumbar", "¿Tiene dolor en espalda baja?")}
             </section>
 
+            <section className="anamnesisSection">
+              <h3 className="anamnesisSectionTitle">
+                5.1 Diagnósticos específicos
+              </h3>
+
+              {renderSiNo(
+                "dx_artrosis_rodilla",
+                "¿Tiene diagnóstico de artrosis de rodilla? (por radiografía o resonancia)",
+              )}
+
+              {renderSiNo(
+                "dx_artrosis_cadera",
+                "¿Tiene diagnóstico de artrosis de cadera? (por radiografía o resonancia)",
+              )}
+
+              {renderSiNo(
+                "dx_lumbalgia_cronica",
+                "¿Tiene diagnóstico de lumbalgia crónica? (dolor lumbar de más de 3 meses)",
+              )}
+
+              {renderSiNo(
+                "dx_manguito_rotador",
+                "¿Tiene diagnóstico de daño de manguito rotador? (por ecografía o resonancia)",
+              )}
+            </section>
+
             <div className="valoracionActions">
               <button className="valoracionPrimaryBtn" type="submit">
                 Evaluar anamnesis global

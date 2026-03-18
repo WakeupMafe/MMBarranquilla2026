@@ -75,6 +75,11 @@ export const anamnesisGlobalInitialState = {
   dolor_lumbar: "",
   dolor_hombro: "",
 
+  dx_artrosis_rodilla: "",
+  dx_artrosis_cadera: "",
+  dx_lumbalgia_cronica: "",
+  dx_manguito_rotador: "",
+
   // flujo interno
   descartado: false,
   motivo_descarte: "",
