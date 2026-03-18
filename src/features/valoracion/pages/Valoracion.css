@@ -207,7 +207,7 @@
   border-radius: 999px;
   background: linear-gradient(90deg, #8eb944 0%, #a3c857 100%);
   color: #ffffff;
-  font-size: clamp(18px, 3vw, 26px);
+  font-size: clamp(14px, 2vw, 20px);
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 10px 22px rgba(146, 189, 74, 0.28);
