@@ -580,10 +580,17 @@ export default function AnamnesisGlobal() {
                   {resultado.descartado ? "Sí" : "No"}
                 </li>
                 <li>
-                  <strong>Zonas con dolor:</strong>{" "}
-                  {resultado.zonasDolor.length > 0
-                    ? resultado.zonasDolor.join(", ")
-                    : "Ninguna"}
+                  <strong>Cantidad de zonas con dolor:</strong>{" "}
+                  {resultado.cantidadZonasDolor}
+                </li>
+
+                <li>
+                  <strong>Pendiente de aprobación:</strong>{" "}
+                  {resultado.pendienteAprobacion ? "Sí" : "No"}
+                </li>
+
+                <li>
+                  <strong>Resultado:</strong> {resultado.mensajeResultado}
                 </li>
                 <li>
                   <strong>Siguiente paso:</strong> {resultado.siguientePaso}

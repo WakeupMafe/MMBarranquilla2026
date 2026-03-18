@@ -35,7 +35,7 @@ export function evaluarAnamnesisGlobal(formData) {
 
   const motivosDescarte = [];
   const alertas = [];
-  const zonasDolor = [];
+  const zonasDetectadas = [];
 
   if (obesidad) {
     alertas.push("IMC igual o mayor a 30");
@@ -63,19 +63,37 @@ export function evaluarAnamnesisGlobal(formData) {
     }
   }
 
-  if (esSi(formData.dolor_rodilla)) zonasDolor.push("rodilla");
-  if (esSi(formData.dolor_cadera)) zonasDolor.push("cadera");
-  if (esSi(formData.dolor_lumbar)) zonasDolor.push("lumbar");
-  if (esSi(formData.dolor_hombro)) zonasDolor.push("hombro");
+  if (esSi(formData.dolor_rodilla)) zonasDetectadas.push("rodilla");
+  if (esSi(formData.dolor_cadera)) zonasDetectadas.push("cadera");
+  if (esSi(formData.dolor_lumbar)) zonasDetectadas.push("lumbar");
+  if (esSi(formData.dolor_hombro)) zonasDetectadas.push("hombro");
 
+  const cantidadZonasDolor = zonasDetectadas.length;
   const descartado = motivosDescarte.length > 0;
 
-  let siguientePaso = "pruebas_funcionales_generales";
+  let pendienteAprobacion = false;
+  let siguientePaso = "funcional";
+  let mensajeResultado = "Paciente apto para pruebas funcionales generales.";
 
   if (descartado) {
     siguientePaso = "descartado";
-  } else if (zonasDolor.length > 0) {
+    mensajeResultado =
+      "Paciente con criterios de descarte. No debe realizar anamnesis de zona ni pruebas videográficas.";
+  } else if (cantidadZonasDolor >= 3) {
+    pendienteAprobacion = true;
+    siguientePaso = "pendiente_aprobacion";
+    alertas.push(
+      "Paciente con 3 o más zonas de dolor. Requiere aprobación médica antes de abrir anamnesis de zona.",
+    );
+    mensajeResultado =
+      "Paciente pendiente de aprobación médica por múltiples zonas de dolor.";
+  } else if (cantidadZonasDolor >= 1 && cantidadZonasDolor <= 2) {
     siguientePaso = "anamnesis_especifica_zona";
+    mensajeResultado =
+      "Paciente apto para anamnesis de zona en las áreas reportadas.";
+  } else {
+    siguientePaso = "funcional";
+    mensajeResultado = "Paciente sin dolor por zonas. Continúa a funcional.";
   }
 
   return {
@@ -84,7 +102,10 @@ export function evaluarAnamnesisGlobal(formData) {
     alertas,
     descartado,
     motivosDescarte,
-    zonasDolor,
+    zonasDetectadas,
+    cantidadZonasDolor,
+    pendienteAprobacion,
     siguientePaso,
+    mensajeResultado,
   };
 }
