@@ -1,9 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
-import { alertError } from "../../../shared/lib/alerts";
+import { alertConfirm, alertError } from "../../../shared/lib/alerts";
 
 import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
 import {
@@ -11,19 +11,29 @@ import {
   evaluarAnamnesisGlobal,
 } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
+import {
+  guardarAnamnesisGlobalDraft,
+  obtenerAnamnesisGlobalDraft,
+} from "../utils/anamnesisGlobalDraft";
 
 import "./Valoracion.css";
 
 export default function AnamnesisGlobal() {
   const navigate = useNavigate();
 
-  const [formData, setFormData] = useState(anamnesisGlobalInitialState);
+  const [formData, setFormData] = useState(() => {
+    return obtenerAnamnesisGlobalDraft() || anamnesisGlobalInitialState;
+  });
   const [resultado, setResultado] = useState(null);
   const [errores, setErrores] = useState({});
 
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(formData.peso, formData.talla);
   }, [formData.peso, formData.talla]);
+
+  useEffect(() => {
+    guardarAnamnesisGlobalDraft(formData);
+  }, [formData]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -66,9 +76,45 @@ export default function AnamnesisGlobal() {
     console.log("evaluacionAnamnesisGlobal", evaluacion);
   }
 
+  async function handleContinuar() {
+    if (!resultado) return;
+
+    const ok = await alertConfirm({
+      title: "Guardar primera fase",
+      text: "La anamnesis global quedará guardada y pasarás a la siguiente fase. ¿Deseas continuar?",
+      confirmText: "Continuar",
+      cancelText: "Seguir editando",
+    });
+
+    if (!ok) return;
+
+    guardarAnamnesisGlobalDraft(formData);
+
+    if (resultado.siguientePaso === "funcional") {
+      navigate("/herramientas/fotos-test", {
+        state: { resultado, formData },
+      });
+      return;
+    }
+
+    if (resultado.siguientePaso === "anamnesis_especifica_zona") {
+      navigate("/herramientas/anamnesis-zona", {
+        state: {
+          zonasDetectadas: resultado.zonasDetectadas,
+          resultado,
+          formData,
+        },
+      });
+      return;
+    }
+
+    if (resultado.siguientePaso === "pendiente_aprobacion") {
+      return;
+    }
+  }
+
   function renderError(name) {
     if (!errores[name]) return null;
-
     return <p className="valoracionFieldError">{errores[name]}</p>;
   }
 
@@ -106,6 +152,16 @@ export default function AnamnesisGlobal() {
     );
   }
 
+  function getSiguientePasoLabel(siguientePaso) {
+    const labels = {
+      funcional: "Evaluación funcional general",
+      anamnesis_especifica_zona: "Anamnesis por zona",
+      pendiente_aprobacion: "Pendiente de aprobación médica",
+    };
+
+    return labels[siguientePaso] || "No definido";
+  }
+
   return (
     <div className="valoracionShell">
       <TopHeader
@@ -117,6 +173,7 @@ export default function AnamnesisGlobal() {
       <main className="valoracionPage">
         <div className="valoracionTopActions">
           <button
+            type="button"
             className="valoracionBackBtn"
             onClick={() => navigate("/herramientas/valoracion")}
           >
@@ -224,34 +281,25 @@ export default function AnamnesisGlobal() {
               </h3>
 
               {renderSiNo("diabetes", "¿Tienes diabetes?")}
-              {formData.diabetes === "SI" && (
-                <>
-                  {renderSiNo(
-                    "diabetes_tratamiento",
-                    "¿Tienes tratamiento para diabetes?",
-                  )}
-                </>
-              )}
+              {formData.diabetes === "SI" &&
+                renderSiNo(
+                  "diabetes_tratamiento",
+                  "¿Tienes tratamiento para diabetes?",
+                )}
 
               {renderSiNo("hipertension", "¿Sufres de hipertensión?")}
-              {formData.hipertension === "SI" && (
-                <>
-                  {renderSiNo(
-                    "hipertension_tratamiento",
-                    "¿Tienes tratamiento para hipertensión?",
-                  )}
-                </>
-              )}
+              {formData.hipertension === "SI" &&
+                renderSiNo(
+                  "hipertension_tratamiento",
+                  "¿Tienes tratamiento para hipertensión?",
+                )}
 
               {renderSiNo("colesterol_alto", "¿Sufres de colesterol alto?")}
-              {formData.colesterol_alto === "SI" && (
-                <>
-                  {renderSiNo(
-                    "colesterol_tratamiento",
-                    "¿Tienes tratamiento para colesterol alto?",
-                  )}
-                </>
-              )}
+              {formData.colesterol_alto === "SI" &&
+                renderSiNo(
+                  "colesterol_tratamiento",
+                  "¿Tienes tratamiento para colesterol alto?",
+                )}
             </section>
 
             <section className="anamnesisSection">
@@ -565,60 +613,88 @@ export default function AnamnesisGlobal() {
           </form>
 
           {resultado && (
-            <div className="anamnesisResultadoCard">
-              <h3 className="anamnesisSectionTitle">Resultado de evaluación</h3>
+            <>
+              <div className="anamnesisResultadoCard">
+                <h3 className="anamnesisSectionTitle">
+                  Resultado de evaluación
+                </h3>
 
-              <ul className="valoracionPacienteList">
-                <li>
-                  <strong>IMC:</strong> {resultado.imc ?? "Sin calcular"}
-                </li>
-                <li>
-                  <strong>Obesidad:</strong> {resultado.obesidad ? "Sí" : "No"}
-                </li>
-                <li>
-                  <strong>Descartado:</strong>{" "}
-                  {resultado.descartado ? "Sí" : "No"}
-                </li>
-                <li>
-                  <strong>Cantidad de zonas con dolor:</strong>{" "}
-                  {resultado.cantidadZonasDolor}
-                </li>
+                <ul className="valoracionPacienteList">
+                  <li>
+                    <strong>IMC:</strong> {resultado.imc ?? "Sin calcular"}
+                  </li>
+                  <li>
+                    <strong>Obesidad:</strong>{" "}
+                    {resultado.obesidad ? "Sí" : "No"}
+                  </li>
+                  <li>
+                    <strong>Descartado:</strong>{" "}
+                    {resultado.descartado ? "Sí" : "No"}
+                  </li>
+                  <li>
+                    <strong>Cantidad de zonas con dolor:</strong>{" "}
+                    {resultado.cantidadZonasDolor}
+                  </li>
+                  <li>
+                    <strong>Pendiente de aprobación:</strong>{" "}
+                    {resultado.pendienteAprobacion ? "Sí" : "No"}
+                  </li>
+                  <li>
+                    <strong>Resultado:</strong> {resultado.mensajeResultado}
+                  </li>
+                  <li>
+                    <strong>Siguiente paso:</strong>{" "}
+                    {getSiguientePasoLabel(resultado.siguientePaso)}
+                  </li>
+                </ul>
 
-                <li>
-                  <strong>Pendiente de aprobación:</strong>{" "}
-                  {resultado.pendienteAprobacion ? "Sí" : "No"}
-                </li>
+                {resultado.siguientePaso === "pendiente_aprobacion" && (
+                  <div className="valoracionStatusAlert valoracionStatusAlert--warn">
+                    <strong>Pendiente de aprobación médica</strong>
 
-                <li>
-                  <strong>Resultado:</strong> {resultado.mensajeResultado}
-                </li>
-                <li>
-                  <strong>Siguiente paso:</strong> {resultado.siguientePaso}
-                </li>
-              </ul>
+                    <p>
+                      El paciente reporta dolor en{" "}
+                      <strong>{resultado.cantidadZonasDolor}</strong> zonas
+                      corporales. Este caso debe ser revisado por el equipo
+                      médico antes de iniciar una anamnesis específica.
+                    </p>
+                  </div>
+                )}
 
-              {resultado.motivosDescarte.length > 0 && (
-                <div className="valoracionStatusAlert valoracionStatusAlert--warn">
-                  <strong>Motivos de descarte:</strong>
-                  <ul className="anamnesisInlineList">
-                    {resultado.motivosDescarte.map((motivo) => (
-                      <li key={motivo}>{motivo}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
+                {resultado.alertas?.length > 0 && (
+                  <div className="valoracionStatusAlert valoracionStatusAlert--info">
+                    <strong>Alertas:</strong>
+                    <ul className="anamnesisInlineList">
+                      {resultado.alertas.map((alerta) => (
+                        <li key={alerta}>{alerta}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
 
-              {resultado.alertas.length > 0 && (
+              {resultado.siguientePaso === "funcional" && (
                 <div className="valoracionStatusAlert valoracionStatusAlert--info">
-                  <strong>Alertas:</strong>
-                  <ul className="anamnesisInlineList">
-                    {resultado.alertas.map((alerta) => (
-                      <li key={alerta}>{alerta}</li>
-                    ))}
-                  </ul>
+                  <strong>Apto para sesión de pruebas físicas</strong>
+                  <p>
+                    El paciente no reporta ningún tipo de dolor. Puede continuar
+                    con su sesión de pruebas físicas y toma de fotos.
+                  </p>
                 </div>
               )}
-            </div>
+
+              {resultado.siguientePaso !== "pendiente_aprobacion" && (
+                <div className="valoracionActions valoracionActions--result">
+                  <button
+                    type="button"
+                    className="valoracionPrimaryBtn"
+                    onClick={handleContinuar}
+                  >
+                    Continuar
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </section>
       </main>

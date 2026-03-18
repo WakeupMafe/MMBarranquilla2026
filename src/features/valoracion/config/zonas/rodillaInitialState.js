@@ -1,0 +1,60 @@
+export const rodillaInitialState = {
+  // Dolor en rodilla
+  dolor_lado: "",
+  dolor_localizacion: "",
+  intensidad_dolor_actual: "",
+  horas_dolor_dia: "",
+  momento_dolor: "",
+  mejora_con: [],
+  mejora_con_otro: "",
+  dolor_inicial_mejora: "",
+  dolor_final_mejora: "",
+  trastorna_descanso: "",
+  crepito_ruido: "",
+  al_caminar_sintoma: "",
+  dolor_otro_segmento: "",
+
+  // Artrosis de rodilla
+  tiene_artrosis_diagnostico: "",
+  artrosis_lado: "",
+  tiempo_diagnostico_valor: "",
+  tiempo_diagnostico_unidad: "",
+  tiene_radiografia_artrosis: "",
+  sintomas_mayor_6_meses: "",
+  problemas_caminar: "",
+  tratamiento_artrosis: "",
+  cirugia_artrosis_tiempo: "",
+  dolor_ultima_semana: "",
+  parar_por_dolor_distancia: "",
+  limita_descanso: "",
+  artrosis_mejora_con: "",
+  artrosis_mejora_con_otro: "",
+  artrosis_dolor_inicial: "",
+  artrosis_dolor_final: "",
+
+  // Marcha / síntomas asociados
+  derrame_al_caminar: "",
+  dolor_al_caminar: "",
+  cojera_por_rodilla: "",
+  usa_baston: "",
+  bloqueos: "",
+  fallas: "",
+
+  // Ejercicio / terapia
+  hace_ejercicios: "",
+  tipo_ejercicio: "",
+  veces_ejercicio_semana: "",
+  razon_menos_3_semana: "",
+  hace_cardio: "",
+  tipo_cardio: "",
+  tipo_cardio_otro: "",
+  veces_cardio_semana: "",
+
+  // Estado clínico adicional
+  derrame_general: "",
+  diagnostico_confirmado: "",
+  pendiente_examen: "",
+  en_tratamiento: "",
+  espera_cita_manejo: "",
+  espera_cirugia: "",
+};
