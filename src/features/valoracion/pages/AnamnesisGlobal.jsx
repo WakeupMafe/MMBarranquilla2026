@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
+import { alertError } from "../../../shared/lib/alerts";
 
 import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
 import {
   calcularImc,
   evaluarAnamnesisGlobal,
 } from "../services/anamnesisGlobalRules";
+import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
 
 import "./Valoracion.css";
 
@@ -17,6 +19,7 @@ export default function AnamnesisGlobal() {
 
   const [formData, setFormData] = useState(anamnesisGlobalInitialState);
   const [resultado, setResultado] = useState(null);
+  const [errores, setErrores] = useState({});
 
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(formData.peso, formData.talla);
@@ -29,17 +32,44 @@ export default function AnamnesisGlobal() {
       ...prev,
       [name]: value,
     }));
+
+    setErrores((prev) => {
+      if (!prev[name]) return prev;
+      const next = { ...prev };
+      delete next[name];
+      return next;
+    });
   }
 
   function handleSubmit(e) {
     e.preventDefault();
 
+    const nuevosErrores = validarAnamnesisGlobal(formData);
+
+    if (Object.keys(nuevosErrores).length > 0) {
+      setErrores(nuevosErrores);
+      setResultado(null);
+
+      alertError(
+        "Formulario incompleto",
+        "Debes responder todos los campos obligatorios antes de continuar.",
+      );
+      return;
+    }
+
     const evaluacion = evaluarAnamnesisGlobal(formData);
 
+    setErrores({});
     setResultado(evaluacion);
 
     console.log("formData", formData);
     console.log("evaluacionAnamnesisGlobal", evaluacion);
+  }
+
+  function renderError(name) {
+    if (!errores[name]) return null;
+
+    return <p className="valoracionFieldError">{errores[name]}</p>;
   }
 
   function renderSiNo(name, label) {
@@ -70,6 +100,8 @@ export default function AnamnesisGlobal() {
             <span>No</span>
           </label>
         </div>
+
+        {renderError(name)}
       </div>
     );
   }
@@ -146,6 +178,7 @@ export default function AnamnesisGlobal() {
                   onChange={handleChange}
                   placeholder="Ejemplo: 7"
                 />
+                {renderError("horas_sueno")}
               </div>
 
               <div className="valoracionField">
@@ -163,6 +196,7 @@ export default function AnamnesisGlobal() {
                   <option value="4-7">4 a 7</option>
                   <option value=">7">Más de 7</option>
                 </select>
+                {renderError("horas_sentado")}
               </div>
 
               <div className="valoracionField">
@@ -180,6 +214,7 @@ export default function AnamnesisGlobal() {
                   <option value="3-5">3 a 5</option>
                   <option value="6-8">6 a 8</option>
                 </select>
+                {renderError("horas_movimiento")}
               </div>
             </section>
 
@@ -189,25 +224,34 @@ export default function AnamnesisGlobal() {
               </h3>
 
               {renderSiNo("diabetes", "¿Tienes diabetes?")}
-              {formData.diabetes === "SI" &&
-                renderSiNo(
-                  "diabetes_tratamiento",
-                  "¿Tienes tratamiento para diabetes?",
-                )}
+              {formData.diabetes === "SI" && (
+                <>
+                  {renderSiNo(
+                    "diabetes_tratamiento",
+                    "¿Tienes tratamiento para diabetes?",
+                  )}
+                </>
+              )}
 
               {renderSiNo("hipertension", "¿Sufres de hipertensión?")}
-              {formData.hipertension === "SI" &&
-                renderSiNo(
-                  "hipertension_tratamiento",
-                  "¿Tienes tratamiento para hipertensión?",
-                )}
+              {formData.hipertension === "SI" && (
+                <>
+                  {renderSiNo(
+                    "hipertension_tratamiento",
+                    "¿Tienes tratamiento para hipertensión?",
+                  )}
+                </>
+              )}
 
               {renderSiNo("colesterol_alto", "¿Sufres de colesterol alto?")}
-              {formData.colesterol_alto === "SI" &&
-                renderSiNo(
-                  "colesterol_tratamiento",
-                  "¿Tienes tratamiento para colesterol alto?",
-                )}
+              {formData.colesterol_alto === "SI" && (
+                <>
+                  {renderSiNo(
+                    "colesterol_tratamiento",
+                    "¿Tienes tratamiento para colesterol alto?",
+                  )}
+                </>
+              )}
             </section>
 
             <section className="anamnesisSection">
@@ -225,6 +269,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Ejemplo: 70"
                   />
+                  {renderError("peso")}
                 </div>
 
                 <div className="valoracionField">
@@ -238,6 +283,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Ejemplo: 1.60"
                   />
+                  {renderError("talla")}
                 </div>
               </div>
 
@@ -346,6 +392,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Escribe cuál"
                   />
+                  {renderError("cirugia_otra_cual")}
                 </div>
               )}
 
@@ -384,6 +431,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Ejemplo: 8"
                   />
+                  {renderError("dolor_pelvis_nivel")}
                 </div>
               )}
             </section>
@@ -407,6 +455,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Escribe la razón"
                   />
+                  {renderError("razon_uci")}
                 </div>
               )}
             </section>
@@ -446,6 +495,7 @@ export default function AnamnesisGlobal() {
                     onChange={handleChange}
                     placeholder="Ejemplo: 3"
                   />
+                  {renderError("cigarrillos_dia")}
                 </div>
               )}
 
@@ -465,6 +515,7 @@ export default function AnamnesisGlobal() {
                     <option value="SEMANAL">Semanal</option>
                     <option value="EVENTUAL">Eventual</option>
                   </select>
+                  {renderError("frecuencia_licor")}
                 </div>
               )}
             </section>
