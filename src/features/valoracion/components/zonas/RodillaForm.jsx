@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import { rodillaInitialState } from "../../config/zonas/rodillaInitialState";
 import { validarRodilla } from "../../services/zonas/validarRodilla";
 import { evaluarRodilla } from "../../services/zonas/evaluarRodilla";
+import { alertError } from "../../../../shared/lib/alerts";
 
 export default function RodillaForm() {
+  const navigate = useNavigate();
+
   const [formData, setFormData] = useState(rodillaInitialState);
   const [errores, setErrores] = useState({});
   const [resultado, setResultado] = useState(null);
@@ -56,6 +60,27 @@ export default function RodillaForm() {
 
     console.log("Rodilla formData", formData);
     console.log("Rodilla evaluación", evaluacion);
+  }
+
+  async function handleIrAFotos() {
+    if (!resultado) return;
+
+    if (resultado.descartado) {
+      await alertError(
+        "Caso no apto para protocolo fotográfico",
+        "El resultado actual presenta criterios de descarte y no permite continuar al protocolo de fotos.",
+      );
+      return;
+    }
+
+    navigate("/herramientas/fotos-test", {
+      state: {
+        resultado,
+        formData,
+        zonaProtocoloFotos: "rodilla",
+        zonaSeleccionadaFinal: "rodilla",
+      },
+    });
   }
 
   function renderError(name) {
@@ -798,6 +823,15 @@ export default function RodillaForm() {
               </ul>
             </div>
           )}
+          <div className="valoracionActions" style={{ marginTop: "16px" }}>
+            <button
+              type="button"
+              className="valoracionPrimaryBtn"
+              onClick={handleIrAFotos}
+            >
+              Continuar a protocolo fotográfico
+            </button>
+          </div>
         </div>
       )}
     </section>

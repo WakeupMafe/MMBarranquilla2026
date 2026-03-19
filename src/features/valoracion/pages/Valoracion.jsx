@@ -13,6 +13,58 @@ import "./Valoracion.css";
 
 const SESSION_KEY = "wk_profesional";
 
+function crearPacienteSimulacro(documento) {
+  return {
+    numero_documento_fisico: documento,
+    nombre_apellido_documento: "Usuario Simulacro",
+    numero_telefono: "+573000000001",
+    genero: "Simulacro",
+    esSimulacro: true,
+    clasificacionPaciente: {
+      hizoParteMmb2025: false,
+      esPacienteNuevo: true,
+      esPacienteAntiguo: false,
+
+      valoracionEncontrada: false,
+      asistenciaEncontrada: false,
+      encuestaLogrosRealizada: false,
+
+      encuestaLogrosEstado: "No aplica",
+      objetivosCumplidos: false,
+      cantidadObjetivos: 0,
+      cantidadObjetivosCumplidos: 0,
+
+      porcentajeAsistencia: 0,
+      cumpleAsistencia: false,
+
+      clasificacionPreliminar: null,
+      clasificacionSecundaria: null,
+      tieneClasificacionSecundariaValida: false,
+      clasificacionFinal: null,
+
+      flujo: "NUEVO_PROCESO",
+      estadoPreclasificacion: "Simulacro activo",
+      mensajePreclasificacion:
+        "Paciente en modo simulacro. Se habilita un flujo teórico equivalente al de un paciente nuevo.",
+
+      ocultarDeteccionDolor: false,
+      mostrarOpcionZonaSecundaria: false,
+      mostrarOpcionPreliminarFuncional: false,
+
+      zonaPrincipal: null,
+      zonaSecundaria: null,
+      zonaDestino: null,
+      destinoSugerido: "anamnesis_global",
+      mensajeFlujoGlobal:
+        "Paciente de simulacro habilitado para realizar el flujo teórico de valoración inicial.",
+
+      preclasifica: false,
+      tipoAnamnesis: "Anamnesis global",
+      ruta: "ruta_global",
+    },
+  };
+}
+
 export default function Valoracion() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -56,7 +108,7 @@ export default function Valoracion() {
     e.preventDefault();
 
     if (!cedula.trim()) {
-      alertError("Falta información", "Debes ingresar una cédula");
+      await alertError("Falta información", "Debes ingresar una cédula");
       return;
     }
 
@@ -76,9 +128,24 @@ export default function Valoracion() {
       if (error || !data) {
         setPaciente(null);
 
-        alertError(
-          "Paciente no encontrado",
-          "No existe un paciente con esa cédula en la base de datos",
+        const crearSimulacro = await alertConfirm({
+          title: "Paciente no encontrado",
+          text: "Este paciente no existe en la base de datos. ¿Deseas iniciar un proceso de simulacro?",
+          confirmText: "Sí, iniciar simulacro",
+          cancelText: "Cancelar",
+        });
+
+        if (!crearSimulacro) {
+          return;
+        }
+
+        const pacienteSimulacro = crearPacienteSimulacro(documento);
+
+        setPaciente(pacienteSimulacro);
+
+        await alertOk(
+          "Simulacro habilitado",
+          "Se creó un paciente de simulacro para continuar con el flujo teórico de valoración.",
         );
 
         return;
@@ -91,12 +158,13 @@ export default function Valoracion() {
 
       setPaciente({
         ...data,
+        esSimulacro: false,
         clasificacionPaciente,
       });
     } catch (err) {
       console.error(err);
 
-      alertError(
+      await alertError(
         "Error de consulta",
         err.message || "No se pudo consultar el paciente",
       );
@@ -110,11 +178,7 @@ export default function Valoracion() {
 
     iniciarValoracionActiva(paciente);
 
-    const destino = paciente.clasificacionPaciente.preclasifica
-      ? "/herramientas/anamnesis-zona"
-      : "/herramientas/anamnesis-global";
-
-    navigate(destino, {
+    navigate("/herramientas/anamnesis-global", {
       state: {
         profesional,
         paciente,
@@ -144,12 +208,16 @@ export default function Valoracion() {
   const estadoPreclasificacion =
     paciente?.clasificacionPaciente?.estadoPreclasificacion || "Sin dato";
 
-  const claseAlerta = paciente?.clasificacionPaciente?.preclasifica
-    ? "valoracionStatusAlert valoracionStatusAlert--ok"
-    : paciente?.clasificacionPaciente?.estadoPreclasificacion ===
-        "Se sugiere nuevo análisis"
-      ? "valoracionStatusAlert valoracionStatusAlert--info"
-      : "valoracionStatusAlert valoracionStatusAlert--warn";
+  const claseAlerta = paciente?.esSimulacro
+    ? "valoracionStatusAlert valoracionStatusAlert--info"
+    : paciente?.clasificacionPaciente?.preclasifica
+      ? "valoracionStatusAlert valoracionStatusAlert--ok"
+      : paciente?.clasificacionPaciente?.estadoPreclasificacion ===
+            "Se sugiere nuevo análisis" ||
+          paciente?.clasificacionPaciente?.estadoPreclasificacion ===
+            "Simulacro activo"
+        ? "valoracionStatusAlert valoracionStatusAlert--info"
+        : "valoracionStatusAlert valoracionStatusAlert--warn";
 
   const mensajeAlerta =
     paciente?.clasificacionPaciente?.mensajePreclasificacion ||
@@ -205,8 +273,8 @@ export default function Valoracion() {
             <h2 className="valoracionCardTitle">Buscar paciente</h2>
 
             <p className="valoracionCardDescription">
-              Ingresa la cédula para validar si el paciente pasa a anamnesis
-              global o a anamnesis por zona.
+              Ingresa la cédula para validar el flujo de valoración del
+              paciente.
             </p>
           </div>
 
@@ -250,7 +318,11 @@ export default function Valoracion() {
                   <strong>{mensajeAlerta}</strong>
                 </div>
 
-                <h3>Paciente encontrado</h3>
+                <h3>
+                  {paciente.esSimulacro
+                    ? "Paciente de simulacro"
+                    : "Paciente encontrado"}
+                </h3>
 
                 <ul className="valoracionPacienteList">
                   <li>
@@ -272,6 +344,11 @@ export default function Valoracion() {
                   </li>
 
                   <li>
+                    <strong>Tipo de registro:</strong>{" "}
+                    {paciente.esSimulacro ? "Simulacro" : "Real"}
+                  </li>
+
+                  <li>
                     <strong>Hizo parte MMB 2025:</strong>{" "}
                     {paciente.clasificacionPaciente?.hizoParteMmb2025
                       ? "Sí"
@@ -289,16 +366,14 @@ export default function Valoracion() {
                   </li>
 
                   <li>
-                    <strong>Clasificación Final:</strong>{" "}
+                    <strong>Clasificación final:</strong>{" "}
                     {paciente.clasificacionPaciente?.clasificacionFinal ||
                       "Sin dato"}
                   </li>
 
                   <li>
                     <strong>Asistencia:</strong>{" "}
-                    {paciente.clasificacionPaciente?.porcentajeAsistencia ??
-                      "Sin dato"}
-                    %
+                    {paciente.clasificacionPaciente?.porcentajeAsistencia ?? 0}%
                   </li>
 
                   <li>
