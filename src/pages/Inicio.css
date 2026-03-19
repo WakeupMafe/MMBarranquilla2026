@@ -234,8 +234,9 @@
 
   /* input */
   .inicio__pill {
+    width: 100%;
     box-sizing: border-box;
-    height: 44px;
+    height: 50px;
     padding: 4px 6px 4px 14px;
   }
 
