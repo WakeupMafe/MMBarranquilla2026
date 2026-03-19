@@ -1,53 +1,145 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import { alertConfirm, alertError } from "../../../shared/lib/alerts";
 
-import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
+import { anamnesisSections } from "../config/anamnesisSections";
 import {
   calcularImc,
   evaluarAnamnesisGlobal,
 } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
-import {
-  guardarAnamnesisGlobalDraft,
-  obtenerAnamnesisGlobalDraft,
-} from "../utils/anamnesisGlobalDraft";
+import { guardarAnamnesisGlobalDraft } from "../utils/anamnesisGlobalDraft";
+import { obtenerValoracionActiva } from "../utils/valoracionSession";
+import { useAnamnesisGlobalForm } from "../hooks/useAnamnesisGlobalForm";
+import AnamnesisSectionRenderer from "../components/AnamnesisSectionRenderer";
+import AnamnesisResultCard from "../components/AnamnesisResultCard";
 
-import "./Valoracion.css";
+import "./AnamnesisGlobal.css";
+
+function normalizarZonaParaNavegacion(zona) {
+  const value = String(zona || "")
+    .trim()
+    .toUpperCase();
+
+  if (!value) return null;
+  if (value.includes("HOMBRO")) return "hombro";
+  if (value.includes("RODILLA")) return "rodilla";
+  if (value.includes("CADERA")) return "cadera";
+  if (value.includes("ESPALDA") || value.includes("LUMBAR")) return "lumbar";
+  if (value.includes("FUNCIONAL")) return "funcional";
+
+  return String(zona || "")
+    .trim()
+    .toLowerCase();
+}
+
+function construirResultadoPorFlujo(evaluacionBase, clasificacionPaciente) {
+  const flujo = clasificacionPaciente?.flujo;
+  const zonaDestinoNormalizada = normalizarZonaParaNavegacion(
+    clasificacionPaciente?.zonaDestino,
+  );
+
+  if (evaluacionBase.descartado) {
+    return {
+      ...evaluacionBase,
+      siguientePaso: "revision_critica",
+      mensajeResultado:
+        "El paciente ha marcado criterios críticos que no permiten su clasificación al programa. Queda alertado para revisión.",
+    };
+  }
+
+  // ANTIGUO que no cumplió: directo a fotos de su zona preliminar
+  if (flujo === "ANTIGUO_REINICIA_ZONA") {
+    return {
+      ...evaluacionBase,
+      zonasDetectadas: zonaDestinoNormalizada ? [zonaDestinoNormalizada] : [],
+      cantidadZonasDolor: zonaDestinoNormalizada ? 1 : 0,
+      pendienteAprobacion: false,
+      siguientePaso: "fotos_zona_antiguo",
+      mensajeResultado: "",
+    };
+  }
+
+  // ANTIGUO que cumplió y tiene secundaria: elegir preliminar o secundaria, pero ambos van a fotos
+  if (flujo === "ANTIGUO_ELIGE_PRELIMINAR_O_SECUNDARIA") {
+    return {
+      ...evaluacionBase,
+      zonasDetectadas: zonaDestinoNormalizada ? [zonaDestinoNormalizada] : [],
+      cantidadZonasDolor: 0,
+      pendienteAprobacion: false,
+      siguientePaso: "decision_fotos_preliminar_o_secundaria",
+      mensajeResultado: "",
+    };
+  }
+
+  // ANTIGUO que cumplió y no tiene secundaria: elegir preliminar o funcional, ambos van a fotos
+  if (flujo === "ANTIGUO_ELIGE_PRELIMINAR_O_FUNCIONAL") {
+    return {
+      ...evaluacionBase,
+      zonasDetectadas: zonaDestinoNormalizada ? [zonaDestinoNormalizada] : [],
+      cantidadZonasDolor: 0,
+      pendienteAprobacion: false,
+      siguientePaso: "decision_fotos_preliminar_o_funcional",
+      mensajeResultado: "",
+    };
+  }
+
+  // NUEVO: puede elegir continuar zona o funcional
+  if (flujo === "NUEVO_PROCESO") {
+    if (evaluacionBase.pendienteAprobacion) {
+      return evaluacionBase;
+    }
+
+    return {
+      ...evaluacionBase,
+      siguientePaso: "decision_zona_o_funcional",
+      mensajeResultado: "",
+    };
+  }
+
+  return evaluacionBase;
+}
 
 export default function AnamnesisGlobal() {
   const navigate = useNavigate();
-
-  const [formData, setFormData] = useState(() => {
-    return obtenerAnamnesisGlobalDraft() || anamnesisGlobalInitialState;
-  });
   const [resultado, setResultado] = useState(null);
-  const [errores, setErrores] = useState({});
+
+  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
+  const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
+
+  const { formData, errores, setErrores, handleChange } =
+    useAnamnesisGlobalForm();
 
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(formData.peso, formData.talla);
   }, [formData.peso, formData.talla]);
 
-  useEffect(() => {
-    guardarAnamnesisGlobalDraft(formData);
-  }, [formData]);
+  const ocultarDeteccionDolor = !!clasificacionPaciente?.ocultarDeteccionDolor;
 
-  function handleChange(e) {
-    const { name, value } = e.target;
+  const seccionesVisibles = useMemo(() => {
+    return anamnesisSections.filter((section) => {
+      if (
+        ocultarDeteccionDolor &&
+        section.title === "5. Identificación de dolor"
+      ) {
+        return false;
+      }
+      return true;
+    });
+  }, [ocultarDeteccionDolor]);
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setErrores((prev) => {
-      if (!prev[name]) return prev;
-      const next = { ...prev };
-      delete next[name];
-      return next;
+  function irAFotos(zonaProtocoloFotos) {
+    navigate("/herramientas/fotos-test", {
+      state: {
+        resultado,
+        formData,
+        clasificacionPaciente,
+        zonaProtocoloFotos: zonaElegida,
+        zonaSeleccionadaFinal: zonaElegida,
+      },
     });
   }
 
@@ -67,17 +159,29 @@ export default function AnamnesisGlobal() {
       return;
     }
 
-    const evaluacion = evaluarAnamnesisGlobal(formData);
+    const evaluacionBase = evaluarAnamnesisGlobal(formData);
+    const evaluacionFinal = construirResultadoPorFlujo(
+      evaluacionBase,
+      clasificacionPaciente,
+    );
 
     setErrores({});
-    setResultado(evaluacion);
+    setResultado(evaluacionFinal);
 
     console.log("formData", formData);
-    console.log("evaluacionAnamnesisGlobal", evaluacion);
+    console.log("evaluacionAnamnesisGlobal", evaluacionFinal);
   }
 
   async function handleContinuar() {
     if (!resultado) return;
+
+    if (resultado.siguientePaso === "revision_critica") {
+      await alertError(
+        "Paciente alertado para revisión",
+        "El paciente ha marcado criterios críticos que no permiten su clasificación al programa.",
+      );
+      return;
+    }
 
     const ok = await alertConfirm({
       title: "Guardar primera fase",
@@ -91,75 +195,122 @@ export default function AnamnesisGlobal() {
     guardarAnamnesisGlobalDraft(formData);
 
     if (resultado.siguientePaso === "funcional") {
-      navigate("/herramientas/fotos-test", {
-        state: { resultado, formData },
-      });
+      irAFotos("funcional");
       return;
     }
 
+    // ANTIGUO: directo a fotos de la zona preliminar
+    if (resultado.siguientePaso === "fotos_zona_antiguo") {
+      const zonaPreliminar = normalizarZonaParaNavegacion(
+        clasificacionPaciente?.zonaDestino,
+      );
+
+      irAFotos(zonaPreliminar || "funcional");
+      return;
+    }
+
+    // NUEVO: sí puede ir a anamnesis de zona
     if (resultado.siguientePaso === "anamnesis_especifica_zona") {
       navigate("/herramientas/anamnesis-zona", {
         state: {
           zonasDetectadas: resultado.zonasDetectadas,
           resultado,
           formData,
+          clasificacionPaciente,
         },
       });
       return;
     }
 
-    if (resultado.siguientePaso === "pendiente_aprobacion") {
+    // ANTIGUO: elegir entre preliminar o segundo diagnóstico, ambos directos a fotos
+    if (resultado.siguientePaso === "decision_fotos_preliminar_o_secundaria") {
+      const activarSecundaria = await alertConfirm({
+        title: "Definir continuidad terapéutica",
+        text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o activar el protocolo de su segundo diagnóstico?",
+        confirmText: "Activar segundo diagnóstico",
+        cancelText: "Continuar zona preliminar",
+      });
+
+      if (activarSecundaria) {
+        const zonaSecundaria = normalizarZonaParaNavegacion(
+          clasificacionPaciente?.zonaSecundaria,
+        );
+
+        irAFotos(zonaSecundaria || "funcional");
+        return;
+      }
+
+      const zonaPreliminar = normalizarZonaParaNavegacion(
+        clasificacionPaciente?.zonaDestino,
+      );
+
+      irAFotos(zonaPreliminar || "funcional");
       return;
     }
-  }
 
-  function renderError(name) {
-    if (!errores[name]) return null;
-    return <p className="valoracionFieldError">{errores[name]}</p>;
-  }
+    // ANTIGUO: elegir entre preliminar o funcional, ambos directos a fotos
+    if (resultado.siguientePaso === "decision_fotos_preliminar_o_funcional") {
+      const zonaEsFuncional =
+        normalizarZonaParaNavegacion(clasificacionPaciente?.zonaDestino) ===
+        "funcional";
 
-  function renderSiNo(name, label) {
-    return (
-      <div className="valoracionField">
-        <label className="valoracionLabel">{label}</label>
+      if (zonaEsFuncional) {
+        irAFotos("funcional");
+        return;
+      }
 
-        <div className="valoracionRadioGroup">
-          <label className="valoracionRadioOption">
-            <input
-              type="radio"
-              name={name}
-              value="SI"
-              checked={formData[name] === "SI"}
-              onChange={handleChange}
-            />
-            <span>Sí</span>
-          </label>
+      const avanzarAFuncional = await alertConfirm({
+        title: "Definir continuidad terapéutica",
+        text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o avanzar al protocolo funcional?",
+        confirmText: "Avanzar a funcional",
+        cancelText: "Continuar zona preliminar",
+      });
 
-          <label className="valoracionRadioOption">
-            <input
-              type="radio"
-              name={name}
-              value="NO"
-              checked={formData[name] === "NO"}
-              onChange={handleChange}
-            />
-            <span>No</span>
-          </label>
-        </div>
+      if (avanzarAFuncional) {
+        irAFotos("funcional");
+        return;
+      }
 
-        {renderError(name)}
-      </div>
-    );
-  }
+      const zonaPreliminar = normalizarZonaParaNavegacion(
+        clasificacionPaciente?.zonaDestino,
+      );
 
-  function getSiguientePasoLabel(siguientePaso) {
-    const labels = {
-      funcional: "Evaluación funcional general",
-      anamnesis_especifica_zona: "Anamnesis por zona",
-      pendiente_aprobacion: "Pendiente de aprobación médica",
-    };
+      irAFotos(zonaPreliminar || "funcional");
+      return;
+    }
 
-    return labels[siguientePaso] || "No definido";
+    // NUEVO: si tiene zona puede elegir zona o funcional
+    if (resultado.siguientePaso === "decision_zona_o_funcional") {
+      const tieneZonas = Array.isArray(resultado.zonasDetectadas)
+        ? resultado.zonasDetectadas.length > 0
+        : false;
+
+      if (!tieneZonas) {
+        irAFotos("funcional");
+        return;
+      }
+
+      const avanzarAFuncional = await alertConfirm({
+        title: "Definir continuidad terapéutica",
+        text: "¿Desea continuar con la intervención en la zona identificada o avanzar a la fase funcional?",
+        confirmText: "Avanzar a funcional",
+        cancelText: "Continuar intervención específica",
+      });
+
+      if (avanzarAFuncional) {
+        irAFotos("funcional");
+        return;
+      }
+
+      navigate("/herramientas/anamnesis-zona", {
+        state: {
+          zonasDetectadas: resultado.zonasDetectadas,
+          resultado,
+          formData,
+          clasificacionPaciente,
+        },
+      });
+    }
   }
 
   return (
@@ -220,390 +371,27 @@ export default function AnamnesisGlobal() {
           </div>
 
           <form className="valoracionForm" onSubmit={handleSubmit}>
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">4.1 Estilo de vida</h3>
-
-              <div className="valoracionField">
-                <label className="valoracionLabel">
-                  ¿Cuántas horas duermes?
-                </label>
-                <input
-                  className="valoracionInput"
-                  type="number"
-                  name="horas_sueno"
-                  value={formData.horas_sueno}
-                  onChange={handleChange}
-                  placeholder="Ejemplo: 7"
-                />
-                {renderError("horas_sueno")}
-              </div>
-
-              <div className="valoracionField">
-                <label className="valoracionLabel">
-                  ¿Cuántas horas permaneces sentado o sentada?
-                </label>
-                <select
-                  className="valoracionInput"
-                  name="horas_sentado"
-                  value={formData.horas_sentado}
-                  onChange={handleChange}
-                >
-                  <option value="">Selecciona una opción</option>
-                  <option value="1-3">1 a 3</option>
-                  <option value="4-7">4 a 7</option>
-                  <option value=">7">Más de 7</option>
-                </select>
-                {renderError("horas_sentado")}
-              </div>
-
-              <div className="valoracionField">
-                <label className="valoracionLabel">
-                  ¿Cuántas horas te mueves al día?
-                </label>
-                <select
-                  className="valoracionInput"
-                  name="horas_movimiento"
-                  value={formData.horas_movimiento}
-                  onChange={handleChange}
-                >
-                  <option value="">Selecciona una opción</option>
-                  <option value="1-2">1 a 2</option>
-                  <option value="3-5">3 a 5</option>
-                  <option value="6-8">6 a 8</option>
-                </select>
-                {renderError("horas_movimiento")}
-              </div>
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                4.2 Enfermedades metabólicas
-              </h3>
-
-              {renderSiNo("diabetes", "¿Tienes diabetes?")}
-              {formData.diabetes === "SI" &&
-                renderSiNo(
-                  "diabetes_tratamiento",
-                  "¿Tienes tratamiento para diabetes?",
-                )}
-
-              {renderSiNo("hipertension", "¿Sufres de hipertensión?")}
-              {formData.hipertension === "SI" &&
-                renderSiNo(
-                  "hipertension_tratamiento",
-                  "¿Tienes tratamiento para hipertensión?",
-                )}
-
-              {renderSiNo("colesterol_alto", "¿Sufres de colesterol alto?")}
-              {formData.colesterol_alto === "SI" &&
-                renderSiNo(
-                  "colesterol_tratamiento",
-                  "¿Tienes tratamiento para colesterol alto?",
-                )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">4.3 Obesidad</h3>
-
-              <div className="anamnesisGrid">
-                <div className="valoracionField">
-                  <label className="valoracionLabel">Peso (kg)</label>
-                  <input
-                    className="valoracionInput"
-                    type="number"
-                    step="0.1"
-                    name="peso"
-                    value={formData.peso}
-                    onChange={handleChange}
-                    placeholder="Ejemplo: 70"
-                  />
-                  {renderError("peso")}
-                </div>
-
-                <div className="valoracionField">
-                  <label className="valoracionLabel">Talla (m)</label>
-                  <input
-                    className="valoracionInput"
-                    type="number"
-                    step="0.01"
-                    name="talla"
-                    value={formData.talla}
-                    onChange={handleChange}
-                    placeholder="Ejemplo: 1.60"
-                  />
-                  {renderError("talla")}
-                </div>
-              </div>
-
-              <div className="anamnesisInfoBox">
-                <p>
-                  <strong>IMC:</strong> {imc ?? "Sin calcular"}
-                </p>
-                <p>
-                  <strong>Obesidad:</strong> {obesidad ? "Sí" : "No"}
-                </p>
-              </div>
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                4.4 Riesgo cardiovascular
-              </h3>
-
-              {renderSiNo(
-                "infarto",
-                "¿Te ha dado un infarto o tienes problemas de corazón?",
-              )}
-
-              {formData.infarto === "SI" &&
-                renderSiNo("infarto_menos_3_meses", "¿Hace menos de 3 meses?")}
-
-              {renderSiNo(
-                "evento_cerebrovascular",
-                "¿Te ha dado un evento cardiovascular (derrame cerebral)?",
-              )}
-
-              {formData.evento_cerebrovascular === "SI" &&
-                renderSiNo("ecv_menos_6_meses", "¿Hace menos de 6 meses?")}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                4.5 Enfermedades sistémicas
-              </h3>
-
-              {renderSiNo(
-                "enfermedad_higado",
-                "¿Sufre de alguna enfermedad del hígado?",
-              )}
-
-              {renderSiNo(
-                "enfermedad_rinon",
-                "¿Sufre de alguna enfermedad del riñón?",
-              )}
-
-              {renderSiNo("anemia", "¿Le han diagnosticado anemia?")}
-              {formData.anemia === "SI" &&
-                renderSiNo("anemia_controlada", "¿Está controlada?")}
-
-              {renderSiNo(
-                "enfermedad_autoinmune",
-                "¿Tiene alguna enfermedad autoinmune?",
-              )}
-
-              {renderSiNo(
-                "enfermedad_psiquiatrica",
-                "¿Tiene alguna enfermedad psiquiátrica que requiere tratamiento?",
-              )}
-
-              {renderSiNo(
-                "cancer_ultimos_5_anos",
-                "¿Ha tenido cáncer en los últimos 5 años?",
-              )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                4.6 Procedimientos recientes
-              </h3>
-
-              {renderSiNo(
-                "cirugia_rodilla",
-                "¿Le han realizado cirugía de rodilla?",
-              )}
-              {renderSiNo(
-                "cirugia_cadera",
-                "¿Le han realizado cirugía de cadera?",
-              )}
-              {renderSiNo(
-                "cirugia_hombro",
-                "¿Le han realizado cirugía de hombro?",
-              )}
-              {renderSiNo(
-                "cirugia_columna",
-                "¿Le han realizado cirugía de columna?",
-              )}
-              {renderSiNo(
-                "cirugia_pelvis",
-                "¿Le han realizado cirugía de pelvis?",
-              )}
-              {renderSiNo("cirugia_otra", "¿Le han realizado otra cirugía?")}
-
-              {formData.cirugia_otra === "SI" && (
-                <div className="valoracionField">
-                  <label className="valoracionLabel">¿Cuál cirugía?</label>
-                  <input
-                    className="valoracionInput"
-                    type="text"
-                    name="cirugia_otra_cual"
-                    value={formData.cirugia_otra_cual}
-                    onChange={handleChange}
-                    placeholder="Escribe cuál"
-                  />
-                  {renderError("cirugia_otra_cual")}
-                </div>
-              )}
-
-              {(formData.cirugia_rodilla === "SI" ||
-                formData.cirugia_cadera === "SI" ||
-                formData.cirugia_hombro === "SI" ||
-                formData.cirugia_columna === "SI" ||
-                formData.cirugia_pelvis === "SI" ||
-                formData.cirugia_otra === "SI") &&
-                renderSiNo(
-                  "cirugia_menos_3_meses",
-                  "¿La cirugía fue hace menos de 3 meses?",
-                )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">4.7 Trauma reciente</h3>
-
-              {renderSiNo(
-                "golpe_pelvis",
-                "¿Ha tenido un golpe fuerte en su pelvis en menos de 3 meses?",
-              )}
-
-              {formData.golpe_pelvis === "SI" && (
-                <div className="valoracionField">
-                  <label className="valoracionLabel">
-                    Nivel de dolor en pelvis (1 a 10)
-                  </label>
-                  <input
-                    className="valoracionInput"
-                    type="number"
-                    min="1"
-                    max="10"
-                    name="dolor_pelvis_nivel"
-                    value={formData.dolor_pelvis_nivel}
-                    onChange={handleChange}
-                    placeholder="Ejemplo: 8"
-                  />
-                  {renderError("dolor_pelvis_nivel")}
-                </div>
-              )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">4.8 Hospitalización</h3>
-
-              {renderSiNo("paso_uci", "¿Ha permanecido en UCI?")}
-
-              {formData.paso_uci === "SI" &&
-                renderSiNo("uci_menos_1_ano", "¿Hace menos de 1 año?")}
-
-              {formData.paso_uci === "SI" && (
-                <div className="valoracionField">
-                  <label className="valoracionLabel">¿Cuál fue la razón?</label>
-                  <input
-                    className="valoracionInput"
-                    type="text"
-                    name="razon_uci"
-                    value={formData.razon_uci}
-                    onChange={handleChange}
-                    placeholder="Escribe la razón"
-                  />
-                  {renderError("razon_uci")}
-                </div>
-              )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                4.9 Tratamientos oncológicos
-              </h3>
-
-              {renderSiNo(
-                "quimioterapia",
-                "¿Ha sido sometido a tratamiento por quimioterapia?",
-              )}
-
-              {renderSiNo(
-                "radioterapia",
-                "¿Ha sido sometido a tratamiento por radioterapia?",
-              )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">4.10 Hábitos</h3>
-
-              {renderSiNo("fuma", "¿Usted fuma?")}
-
-              {formData.fuma === "SI" && (
-                <div className="valoracionField">
-                  <label className="valoracionLabel">
-                    ¿Cuántos cigarrillos al día?
-                  </label>
-                  <input
-                    className="valoracionInput"
-                    type="number"
-                    min="0"
-                    name="cigarrillos_dia"
-                    value={formData.cigarrillos_dia}
-                    onChange={handleChange}
-                    placeholder="Ejemplo: 3"
-                  />
-                  {renderError("cigarrillos_dia")}
-                </div>
-              )}
-
-              {renderSiNo("toma_licor", "¿Usted toma licor?")}
-
-              {formData.toma_licor === "SI" && (
-                <div className="valoracionField">
-                  <label className="valoracionLabel">Frecuencia</label>
-                  <select
-                    className="valoracionInput"
-                    name="frecuencia_licor"
-                    value={formData.frecuencia_licor}
-                    onChange={handleChange}
-                  >
-                    <option value="">Selecciona una opción</option>
-                    <option value="DIARIO">Diario</option>
-                    <option value="SEMANAL">Semanal</option>
-                    <option value="EVENTUAL">Eventual</option>
-                  </select>
-                  {renderError("frecuencia_licor")}
-                </div>
-              )}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                5. Identificación de dolor
-              </h3>
-
-              {renderSiNo("dolor_rodilla", "¿Tiene dolor en rodillas?")}
-              {renderSiNo("dolor_hombro", "¿Tiene dolor en hombros?")}
-              {renderSiNo("dolor_cadera", "¿Tiene dolor en cadera?")}
-              {renderSiNo("dolor_lumbar", "¿Tiene dolor en espalda baja?")}
-            </section>
-
-            <section className="anamnesisSection">
-              <h3 className="anamnesisSectionTitle">
-                5.1 Diagnósticos específicos
-              </h3>
-
-              {renderSiNo(
-                "dx_artrosis_rodilla",
-                "¿Tiene diagnóstico de artrosis de rodilla? (por radiografía o resonancia)",
-              )}
-
-              {renderSiNo(
-                "dx_artrosis_cadera",
-                "¿Tiene diagnóstico de artrosis de cadera? (por radiografía o resonancia)",
-              )}
-
-              {renderSiNo(
-                "dx_lumbalgia_cronica",
-                "¿Tiene diagnóstico de lumbalgia crónica? (dolor lumbar de más de 3 meses)",
-              )}
-
-              {renderSiNo(
-                "dx_manguito_rotador",
-                "¿Tiene diagnóstico de daño de manguito rotador? (por ecografía o resonancia)",
-              )}
-            </section>
+            {seccionesVisibles.map((section) => (
+              <AnamnesisSectionRenderer
+                key={section.title}
+                section={section}
+                formData={formData}
+                errores={errores}
+                handleChange={handleChange}
+                extraContent={
+                  section.title === "4.3 Obesidad" ? (
+                    <div className="anamnesisInfoBox">
+                      <p>
+                        <strong>IMC:</strong> {imc ?? "Sin calcular"}
+                      </p>
+                      <p>
+                        <strong>Obesidad:</strong> {obesidad ? "Sí" : "No"}
+                      </p>
+                    </div>
+                  ) : null
+                }
+              />
+            ))}
 
             <div className="valoracionActions">
               <button className="valoracionPrimaryBtn" type="submit">
@@ -612,90 +400,11 @@ export default function AnamnesisGlobal() {
             </div>
           </form>
 
-          {resultado && (
-            <>
-              <div className="anamnesisResultadoCard">
-                <h3 className="anamnesisSectionTitle">
-                  Resultado de evaluación
-                </h3>
-
-                <ul className="valoracionPacienteList">
-                  <li>
-                    <strong>IMC:</strong> {resultado.imc ?? "Sin calcular"}
-                  </li>
-                  <li>
-                    <strong>Obesidad:</strong>{" "}
-                    {resultado.obesidad ? "Sí" : "No"}
-                  </li>
-                  <li>
-                    <strong>Descartado:</strong>{" "}
-                    {resultado.descartado ? "Sí" : "No"}
-                  </li>
-                  <li>
-                    <strong>Cantidad de zonas con dolor:</strong>{" "}
-                    {resultado.cantidadZonasDolor}
-                  </li>
-                  <li>
-                    <strong>Pendiente de aprobación:</strong>{" "}
-                    {resultado.pendienteAprobacion ? "Sí" : "No"}
-                  </li>
-                  <li>
-                    <strong>Resultado:</strong> {resultado.mensajeResultado}
-                  </li>
-                  <li>
-                    <strong>Siguiente paso:</strong>{" "}
-                    {getSiguientePasoLabel(resultado.siguientePaso)}
-                  </li>
-                </ul>
-
-                {resultado.siguientePaso === "pendiente_aprobacion" && (
-                  <div className="valoracionStatusAlert valoracionStatusAlert--warn">
-                    <strong>Pendiente de aprobación médica</strong>
-
-                    <p>
-                      El paciente reporta dolor en{" "}
-                      <strong>{resultado.cantidadZonasDolor}</strong> zonas
-                      corporales. Este caso debe ser revisado por el equipo
-                      médico antes de iniciar una anamnesis específica.
-                    </p>
-                  </div>
-                )}
-
-                {resultado.alertas?.length > 0 && (
-                  <div className="valoracionStatusAlert valoracionStatusAlert--info">
-                    <strong>Alertas:</strong>
-                    <ul className="anamnesisInlineList">
-                      {resultado.alertas.map((alerta) => (
-                        <li key={alerta}>{alerta}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {resultado.siguientePaso === "funcional" && (
-                <div className="valoracionStatusAlert valoracionStatusAlert--info">
-                  <strong>Apto para sesión de pruebas físicas</strong>
-                  <p>
-                    El paciente no reporta ningún tipo de dolor. Puede continuar
-                    con su sesión de pruebas físicas y toma de fotos.
-                  </p>
-                </div>
-              )}
-
-              {resultado.siguientePaso !== "pendiente_aprobacion" && (
-                <div className="valoracionActions valoracionActions--result">
-                  <button
-                    type="button"
-                    className="valoracionPrimaryBtn"
-                    onClick={handleContinuar}
-                  >
-                    Continuar
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+          <AnamnesisResultCard
+            resultado={resultado}
+            clasificacionPaciente={clasificacionPaciente}
+            onContinuar={handleContinuar}
+          />
         </section>
       </main>
     </div>

@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { iniciarValoracionActiva } from "../utils/valoracionSession";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
@@ -107,6 +108,8 @@ export default function Valoracion() {
   function handleContinuar() {
     if (!paciente?.clasificacionPaciente) return;
 
+    iniciarValoracionActiva(paciente);
+
     const destino = paciente.clasificacionPaciente.preclasifica
       ? "/herramientas/anamnesis-zona"
       : "/herramientas/anamnesis-global";
@@ -119,7 +122,7 @@ export default function Valoracion() {
     });
   }
 
-  const handleLogout = async () => {
+  async function handleLogout() {
     const ok = await alertConfirm({
       title: "Cerrar sesión",
       text: "¿Deseas salir de la plataforma?",
@@ -132,7 +135,7 @@ export default function Valoracion() {
     sessionStorage.removeItem(SESSION_KEY);
     await alertOk("Sesión cerrada", "Has salido correctamente.");
     navigate("/", { replace: true });
-  };
+  }
 
   if (!profesional) return null;
 

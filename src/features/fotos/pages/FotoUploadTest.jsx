@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import "./FotoUploadTest.css";
 import { compressImage } from "../utils/imageCompression";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
@@ -6,9 +7,59 @@ import { PHOTO_GROUPS } from "../constants/photoGroups";
 import PhotoGroupCard from "../components/PhotoGroupCard";
 import { uploadFotoPaciente } from "../services/fotosService";
 
+function normalizarZonaProtocolo(zona) {
+  const value = String(zona || "")
+    .trim()
+    .toLowerCase();
+
+  if (!value) return "funcional";
+  if (value.includes("hombro")) return "hombro";
+  if (value.includes("rodilla")) return "rodilla";
+  if (value.includes("cadera")) return "cadera";
+  if (value.includes("espalda") || value.includes("lumbar")) return "lumbar";
+  if (value.includes("funcional")) return "funcional";
+
+  return "funcional";
+}
+
+function getZonaTitle(zona) {
+  const labels = {
+    funcional: "Funcional",
+    hombro: "Hombro",
+    rodilla: "Rodilla",
+    cadera: "Cadera",
+    lumbar: "Lumbar",
+  };
+
+  return labels[zona] || "Funcional";
+}
+
 export default function FotoUploadTest() {
+  const location = useLocation();
+
+  const zonaProtocoloFotos = useMemo(() => {
+    return normalizarZonaProtocolo(
+      location.state?.zonaSeleccionadaFinal ||
+        location.state?.zonaProtocoloFotos ||
+        location.state?.resultado?.zonasDetectadas?.[0] ||
+        location.state?.clasificacionPaciente?.zonaSecundaria ||
+        location.state?.clasificacionPaciente?.zonaDestino ||
+        "funcional",
+    );
+  }, [location.state]);
+
+  const gruposActivos = useMemo(() => {
+    if (zonaProtocoloFotos === "funcional") {
+      return PHOTO_GROUPS;
+    }
+
+    return PHOTO_GROUPS.filter((group) =>
+      group.zonas?.includes(zonaProtocoloFotos),
+    );
+  }, [zonaProtocoloFotos]);
+
   const createEmptyPhotos = () =>
-    PHOTO_GROUPS.flatMap((group) =>
+    gruposActivos.flatMap((group) =>
       group.items.map((item) => ({
         ...item,
         groupId: group.id,
@@ -23,9 +74,16 @@ export default function FotoUploadTest() {
       })),
     );
 
-  const [photos, setPhotos] = useState(createEmptyPhotos());
+  const [photos, setPhotos] = useState([]);
   const [processingId, setProcessingId] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [faseCompletada, setFaseCompletada] = useState(false);
+
+  useEffect(() => {
+    setPhotos(createEmptyPhotos());
+    setProcessingId("");
+    setFaseCompletada(false);
+  }, [zonaProtocoloFotos]);
 
   useEffect(() => {
     return () => {
@@ -38,11 +96,30 @@ export default function FotoUploadTest() {
   }, [photos]);
 
   const groupedPhotos = useMemo(() => {
-    return PHOTO_GROUPS.map((group) => ({
+    return gruposActivos.map((group) => ({
       ...group,
       photos: photos.filter((photo) => photo.groupId === group.id),
     }));
-  }, [photos]);
+  }, [gruposActivos, photos]);
+
+  const completedCount = photos.filter(
+    (photo) => photo.status === "ready",
+  ).length;
+
+  const todasCompletas =
+    photos.length > 0 && photos.every((photo) => photo.status === "ready");
+
+  useEffect(() => {
+    if (faseCompletada) return;
+    if (!todasCompletas) return;
+
+    setFaseCompletada(true);
+
+    alertOk(
+      "Primera fase completada",
+      "Excelente. Has completado la primera fase de valoración. Puedes continuar con la encuesta de logros. Por favor digita tu cédula para crear un seguimiento de los profesionales.",
+    );
+  }, [todasCompletas, faseCompletada]);
 
   const handlePhotoChange = async (slotId, fileList) => {
     const file = fileList?.[0];
@@ -131,6 +208,8 @@ export default function FotoUploadTest() {
         };
       }),
     );
+
+    setFaseCompletada(false);
   };
 
   const handleReset = async () => {
@@ -161,6 +240,7 @@ export default function FotoUploadTest() {
 
     setPhotos(createEmptyPhotos());
     setProcessingId("");
+    setFaseCompletada(false);
 
     await alertOk(
       "Formulario limpiado",
@@ -171,10 +251,18 @@ export default function FotoUploadTest() {
   const handleUpload = async () => {
     const readyPhotos = photos.filter((photo) => photo.status === "ready");
 
-    if (readyPhotos.length === 0) {
+    if (photos.length === 0) {
       await alertError(
-        "No hay fotos",
-        "Debes tomar al menos una foto antes de subir.",
+        "Sin protocolo activo",
+        "No se encontró un protocolo fotográfico para esta valoración.",
+      );
+      return;
+    }
+
+    if (completedCount !== photos.length) {
+      await alertError(
+        "Protocolo incompleto",
+        "Debes completar todas las fotografías del protocolo antes de continuar.",
       );
       return;
     }
@@ -182,9 +270,11 @@ export default function FotoUploadTest() {
     try {
       setUploading(true);
 
-      const pacienteDocumento = "test123";
-      const profesionalCedula = "1037670182";
-      const sesionTipo = "evaluacion_inicial";
+      const pacienteDocumento =
+        location.state?.paciente?.numero_documento_fisico || "test123";
+      const profesionalCedula =
+        location.state?.profesional?.cedula || "1037670182";
+      const sesionTipo = `evaluacion_${zonaProtocoloFotos}`;
 
       for (const photo of readyPhotos) {
         await uploadFotoPaciente({
@@ -208,6 +298,7 @@ export default function FotoUploadTest() {
       });
 
       setPhotos(createEmptyPhotos());
+      setFaseCompletada(false);
     } catch (error) {
       await alertError(
         "Error subiendo fotos",
@@ -218,18 +309,15 @@ export default function FotoUploadTest() {
     }
   };
 
-  const completedCount = photos.filter(
-    (photo) => photo.status === "ready",
-  ).length;
-
   return (
     <div className="photoTestPage">
       <div className="photoTestWrapper">
         <section className="photoCard">
           <h1 className="photoTitle">Protocolo de captura fotográfica</h1>
           <p className="photoSubtitle">
-            Registra las tomas del protocolo clínico. Cada imagen se comprime
-            automáticamente y se visualiza de inmediato en su recuadro.
+            Protocolo activo para la zona{" "}
+            <strong>{getZonaTitle(zonaProtocoloFotos)}</strong>. Registra
+            únicamente las tomas requeridas para esta fase clínica.
           </p>
         </section>
 
@@ -254,7 +342,12 @@ export default function FotoUploadTest() {
                 type="button"
                 className="btnPrimary"
                 onClick={handleUpload}
-                disabled={uploading || processingId !== ""}
+                disabled={
+                  uploading ||
+                  processingId !== "" ||
+                  completedCount !== photos.length ||
+                  photos.length === 0
+                }
               >
                 {uploading ? "Subiendo..." : "Subir fotos"}
               </button>

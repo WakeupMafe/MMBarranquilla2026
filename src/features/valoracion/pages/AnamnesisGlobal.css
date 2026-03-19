@@ -41,12 +41,12 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 14px;
+  padding: 6px 12px;
   border: 1px solid #d9ddd2;
   border-radius: 999px;
   background: #fcfcfa;
   color: #4b5563;
-  font-size: clamp(14px, 1.8vw, 16px);
+  font-size: clamp(17.5px, 1.8vw, 20px);
 }
 
 .valoracionRadioOption input {
@@ -55,6 +55,8 @@
 
 .anamnesisResultadoCard {
   margin-top: clamp(22px, 3vw, 30px);
+  gap: 5px;
+  margin-bottom: 20px;
   padding-top: clamp(18px, 2.5vw, 24px);
   border-top: 1px solid #ecece6;
 }
@@ -67,7 +69,13 @@
 .anamnesisInlineList li {
   margin: 4px 0;
 }
+.valoracionPacienteList {
+  margin-bottom: 12px;
+}
 
+.valoracionStatusAlert {
+  margin-top: 20px;
+}
 @media (max-width: 640px) {
   .anamnesisGrid {
     grid-template-columns: 1fr;

@@ -16,6 +16,9 @@ import asimetricaLadoIzquierda from "../../../assets/asimetricaLadoIzquierda.svg
 import rodillaLado from "../../../assets/rodilla_lado.svg";
 import rodillaSuperior from "../../../assets/rodilla_superior.svg";
 
+import frenteElevacionAbierta from "../../../assets/frenteEleacionAbierta.png";
+import frenteElevacionNormal from "../../../assets/frenteElevacionNormal.png";
+
 export const PHOTO_GUIDES = {
   bipodal_frente: bipodalFrente,
   bipodal_lado: bipodalLado,
@@ -34,4 +37,7 @@ export const PHOTO_GUIDES = {
 
   rodilla_lado: rodillaLado,
   rodilla_superior: rodillaSuperior,
+
+  hombro_frente_baston_arriba: frenteElevacionNormal,
+  hombro_frente_agarre_variable: frenteElevacionAbierta,
 };

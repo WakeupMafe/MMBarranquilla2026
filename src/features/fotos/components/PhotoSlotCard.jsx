@@ -16,23 +16,31 @@ export default function PhotoSlotCard({
       </div>
 
       <div className="photoSlotPreview">
+        {/* ✅ Si ya hay foto */}
         {photo.preview ? (
           <img
             src={photo.preview}
             alt={photo.title}
             className="slotPreviewImage"
           />
-        ) : guideImage ? (
-          <img
-            src={guideImage}
-            alt={`Guía ${photo.title}`}
-            className="slotGuideImage"
-          />
         ) : (
-          <div className="slotEmptyState">
-            <span className="slotEmptyIcon">📷</span>
-            <p className="slotEmptyText">{photo.title}</p>
-          </div>
+          <>
+            {/* ✅ Si existe guía */}
+            {guideImage ? (
+              <img
+                src={guideImage}
+                alt={`Guía ${photo.title}`}
+                className="slotGuideImage"
+              />
+            ) : (
+              /* ✅ Fallback clínico bonito */
+              <div className="slotEmptyState slotEmptyState--pro">
+                <span className="slotEmptyIcon">📷</span>
+                <p className="slotEmptyText">{photo.title}</p>
+                <span className="slotEmptyHint">Guía no disponible</span>
+              </div>
+            )}
+          </>
         )}
       </div>
 
@@ -41,7 +49,7 @@ export default function PhotoSlotCard({
           label={
             processingId === photo.id
               ? "Procesando..."
-              : `Tomar ${photo.title.toLowerCase()}`
+              : `Capturar ${photo.title.toLowerCase()}`
           }
           inputId={`camera-${photo.id}`}
           capture="environment"
@@ -53,7 +61,7 @@ export default function PhotoSlotCard({
         />
 
         <PhotoCaptureButton
-          label={`Elegir ${photo.title.toLowerCase()}`}
+          label={`Subir ${photo.title.toLowerCase()}`}
           inputId={`gallery-${photo.id}`}
           secondary
           className={

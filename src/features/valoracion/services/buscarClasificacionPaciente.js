@@ -4,6 +4,14 @@ import {
   evaluarObjetivosEncuesta,
 } from "./valoracionRules";
 
+function normalizarTexto(valor) {
+  return String(valor || "").trim();
+}
+
+function tieneTexto(valor) {
+  return normalizarTexto(valor).length > 0;
+}
+
 export async function buscarClasificacionPaciente(numeroDocumento) {
   if (!numeroDocumento) {
     throw new Error("El número de documento es obligatorio");
@@ -56,81 +64,172 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
 
   const asistencia = asistenciaRows?.[0] || null;
 
-  const hizoParteMmb2025 = !!valoracion;
-  const porcentajeAsistencia = Number(asistencia?.porcentaje_asistencia ?? 0);
-  const cumpleAsistencia = porcentajeAsistencia >= 65;
-  const encuestaLogrosRealizada = !!encuesta2;
-
-  const evaluacionObjetivos = evaluarObjetivosEncuesta(encuesta2);
-
-  const tieneClasificacionSecundariaValida = esClasificacionSecundariaValida(
+  const clasificacionPreliminar = normalizarTexto(
+    valoracion?.clasificacion_preliminar,
+  );
+  const clasificacionSecundaria = normalizarTexto(
     valoracion?.clasificacion_secundaria,
   );
 
-  const clasificacionFinal = tieneClasificacionSecundariaValida
-    ? valoracion?.clasificacion_secundaria
-    : valoracion?.clasificacion_preliminar || null;
+  const valoracionEncontrada = !!valoracion;
+  const asistenciaEncontrada = !!asistencia;
+  const encuestaLogrosRealizada = !!encuesta2;
 
-  const clasificacionZonaDetectada = tieneClasificacionSecundariaValida
-    ? valoracion?.clasificacion_secundaria
+  const hizoParteMmb2025 = valoracionEncontrada || asistenciaEncontrada;
+  const esPacienteNuevo = !hizoParteMmb2025;
+  const esPacienteAntiguo = hizoParteMmb2025;
+
+  const porcentajeAsistencia = Number(asistencia?.porcentaje_asistencia ?? 0);
+  const cumpleAsistencia = porcentajeAsistencia >= 65;
+
+  const evaluacionObjetivos = evaluarObjetivosEncuesta(encuesta2);
+  const objetivosCumplidos = !!evaluacionObjetivos.objetivosCumplidos;
+
+  const tieneClasificacionPreliminar = tieneTexto(clasificacionPreliminar);
+
+  const tieneClasificacionSecundariaValida = esClasificacionSecundariaValida(
+    clasificacionSecundaria,
+  );
+
+  const clasificacionFinal = tieneClasificacionSecundariaValida
+    ? clasificacionSecundaria
+    : tieneClasificacionPreliminar
+      ? clasificacionPreliminar
+      : null;
+
+  let flujo = "NUEVO_PROCESO";
+  let estadoPreclasificacion = "Paciente nuevo";
+  let mensajePreclasificacion =
+    "Paciente sin registro previo en la cohorte 2025. Debe iniciar proceso mediante anamnesis global.";
+  let tipoAnamnesis = "Anamnesis global";
+  let ruta = "ruta_global";
+  let preclasifica = false;
+
+  let ocultarDeteccionDolor = false;
+  let mostrarOpcionZonaSecundaria = false;
+  let mostrarOpcionPreliminarFuncional = false;
+
+  let zonaDestino = null;
+  let zonaPrincipal = tieneClasificacionPreliminar
+    ? clasificacionPreliminar
+    : null;
+  let zonaSecundaria = tieneClasificacionSecundariaValida
+    ? clasificacionSecundaria
     : null;
 
-  const cumpleRequisitosMinimos =
-    hizoParteMmb2025 &&
-    evaluacionObjetivos.objetivosCumplidos &&
-    cumpleAsistencia;
+  let destinoSugerido = "anamnesis_global";
+  let mensajeFlujoGlobal = "";
 
-  const preclasifica =
-    cumpleRequisitosMinimos && tieneClasificacionSecundariaValida;
+  if (esPacienteAntiguo) {
+    // CASO 1:
+    // No cumple asistencia o no cumple objetivos -> vuelve a su zona preliminar
+    if (
+      tieneClasificacionPreliminar &&
+      (!cumpleAsistencia || !objetivosCumplidos)
+    ) {
+      flujo = "ANTIGUO_REINICIA_ZONA";
+      estadoPreclasificacion = "Activa";
+      mensajePreclasificacion = `Usuario preclasificado para continuar en la fase correspondiente a ${clasificacionPreliminar}.`;
+      ocultarDeteccionDolor = true;
+      zonaDestino = clasificacionPreliminar;
+      destinoSugerido = "anamnesis_zona";
+      mensajeFlujoGlobal =
+        "El paciente presenta un proceso previo no culminado y debe continuar la intervención correspondiente a su zona preliminar.";
+    }
 
-  let estadoPreclasificacion = "No cumple requisitos";
-  let mensajePreclasificacion =
-    "Este paciente no cumple los requisitos de preclasificación.";
+    // CASO 2:
+    // Cumple todo y sí tiene secundaria -> elegir entre preliminar o segundo diagnóstico
+    else if (
+      tieneClasificacionPreliminar &&
+      cumpleAsistencia &&
+      objetivosCumplidos &&
+      tieneClasificacionSecundariaValida
+    ) {
+      flujo = "ANTIGUO_ELIGE_PRELIMINAR_O_SECUNDARIA";
+      estadoPreclasificacion = "Activa";
+      mensajePreclasificacion = `Usuario preclasificado con opción de continuidad en ${clasificacionPreliminar} o activación de segundo diagnóstico en ${clasificacionSecundaria}.`;
+      ocultarDeteccionDolor = true;
+      mostrarOpcionZonaSecundaria = true;
+      zonaDestino = clasificacionPreliminar;
+      destinoSugerido = "decision_preliminar_o_secundaria";
+      mensajeFlujoGlobal =
+        "El paciente cumple criterios para progresión terapéutica y puede definir continuidad en su zona preliminar o activar la fase correspondiente a su segundo diagnóstico.";
+    }
 
-  if (preclasifica) {
-    estadoPreclasificacion = "Activa";
-    mensajePreclasificacion =
-      "Este paciente cumple los requisitos de preclasificación.";
-  } else if (cumpleRequisitosMinimos && !tieneClasificacionSecundariaValida) {
-    estadoPreclasificacion = "Se sugiere nuevo análisis";
-    mensajePreclasificacion =
-      "El usuario tuvo un excelente desempeño y puede iniciar una nueva fase mediante anamnesis global.";
+    // CASO 3:
+    // Cumple todo y no tiene secundaria -> elegir entre preliminar o funcional
+    else if (
+      tieneClasificacionPreliminar &&
+      cumpleAsistencia &&
+      objetivosCumplidos &&
+      !tieneClasificacionSecundariaValida
+    ) {
+      flujo = "ANTIGUO_ELIGE_PRELIMINAR_O_FUNCIONAL";
+      estadoPreclasificacion = "Activa";
+      mensajePreclasificacion =
+        "Usuario preclasificado con opción de continuidad en su zona actual o progresión a fase funcional.";
+      ocultarDeteccionDolor = true;
+      mostrarOpcionPreliminarFuncional = true;
+      zonaDestino = clasificacionPreliminar;
+      destinoSugerido = "decision_preliminar_o_funcional";
+      mensajeFlujoGlobal =
+        "El paciente cumple criterios para progresión terapéutica y puede definir continuidad en su zona preliminar o avanzar a la fase funcional.";
+    }
+
+    // Antiguo sin clasificación preliminar clara
+    else {
+      flujo = "ANTIGUO_SIN_PRECLASIFICACION_CLARA";
+      estadoPreclasificacion = "Sin dato suficiente";
+      mensajePreclasificacion =
+        "Paciente con antecedente en la cohorte 2025, sin información suficiente para definir ruta abreviada. Debe iniciar anamnesis global.";
+      ocultarDeteccionDolor = false;
+      destinoSugerido = "anamnesis_global";
+      mensajeFlujoGlobal =
+        "Paciente con antecedente previo sin ruta terapéutica claramente definida. Requiere anamnesis global con evaluación completa.";
+    }
   }
-
-  const soloAnamnesisPorZona = preclasifica;
-
-  const tipoAnamnesis = preclasifica
-    ? "Anamnesis por zona"
-    : "Anamnesis global";
-
-  const ruta = preclasifica ? "ruta_abreviada" : "ruta_completa";
 
   return {
     hizoParteMmb2025,
-    valoracionEncontrada: !!valoracion,
+    esPacienteNuevo,
+    esPacienteAntiguo,
 
+    valoracionEncontrada,
+    asistenciaEncontrada,
     encuestaLogrosRealizada,
+
     encuestaLogrosEstado: evaluacionObjetivos.encuestaLogrosEstado,
-    objetivosCumplidos: evaluacionObjetivos.objetivosCumplidos,
+    objetivosCumplidos,
     cantidadObjetivos: evaluacionObjetivos.cantidadObjetivos,
     cantidadObjetivosCumplidos: evaluacionObjetivos.cantidadObjetivosCumplidos,
 
-    asistenciaEncontrada: !!asistencia,
     porcentajeAsistencia,
     cumpleAsistencia,
 
-    clasificacionPreliminar: valoracion?.clasificacion_preliminar || null,
-    clasificacionSecundaria: valoracion?.clasificacion_secundaria || null,
+    clasificacionPreliminar: tieneClasificacionPreliminar
+      ? clasificacionPreliminar
+      : null,
+    clasificacionSecundaria: tieneClasificacionSecundariaValida
+      ? clasificacionSecundaria
+      : null,
     tieneClasificacionSecundariaValida,
     clasificacionFinal,
-    clasificacionZonaDetectada,
 
-    cumpleRequisitosMinimos,
-    preclasifica,
+    flujo,
     estadoPreclasificacion,
     mensajePreclasificacion,
 
-    soloAnamnesisPorZona,
+    ocultarDeteccionDolor,
+    mostrarOpcionZonaSecundaria,
+    mostrarOpcionPreliminarFuncional,
+
+    zonaPrincipal,
+    zonaSecundaria,
+    zonaDestino,
+    destinoSugerido,
+    mensajeFlujoGlobal,
+
+    preclasifica,
     tipoAnamnesis,
     ruta,
   };

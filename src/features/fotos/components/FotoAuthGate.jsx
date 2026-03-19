@@ -1,14 +1,43 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
 import { supabase } from "../../../shared/lib/supabaseClient";
 import "./FotoAuthGate.css";
 
+function getZonaLabel(zona) {
+  const value = String(zona || "")
+    .trim()
+    .toLowerCase();
+
+  if (!value) return "No definida";
+  if (value.includes("hombro")) return "Hombro";
+  if (value.includes("rodilla")) return "Rodilla";
+  if (value.includes("cadera")) return "Cadera";
+  if (value.includes("lumbar") || value.includes("espalda")) return "Lumbalgia";
+  if (value.includes("funcional")) return "Funcional";
+
+  return zona;
+}
+
 export default function FotoAuthGate({ children }) {
+  const location = useLocation();
+
   const [loading, setLoading] = useState(true);
   const [session, setSession] = useState(null);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  const zonaActiva = useMemo(() => {
+    return (
+      location.state?.zonaSeleccionadaFinal ||
+      location.state?.zonaProtocoloFotos ||
+      location.state?.resultado?.zonasDetectadas?.[0] ||
+      location.state?.clasificacionPaciente?.zonaSecundaria ||
+      location.state?.clasificacionPaciente?.zonaDestino ||
+      "funcional"
+    );
+  }, [location.state]);
 
   useEffect(() => {
     let mounted = true;
@@ -75,9 +104,14 @@ export default function FotoAuthGate({ children }) {
       <>
         <div className="fotoAuthTopbar">
           <div className="fotoAuthTopbar__content">
-            <p className="fotoAuthUser">
-              Sesión activa: <strong>{session.user.email}</strong>
-            </p>
+            <div>
+              <p className="fotoAuthUser">
+                Sesión activa: <strong>{session.user.email}</strong>
+              </p>
+              <p className="fotoAuthUser">
+                Protocolo activo: <strong>{getZonaLabel(zonaActiva)}</strong>
+              </p>
+            </div>
 
             <button
               type="button"
@@ -99,7 +133,8 @@ export default function FotoAuthGate({ children }) {
       <div className="fotoAuthCard">
         <h2 className="fotoAuthTitle">Acceso al módulo de fotos</h2>
         <p className="fotoAuthText">
-          Inicia sesión para subir fotos de forma segura.
+          Inicia sesión para cargar de forma segura el protocolo fotográfico
+          correspondiente a <strong>{getZonaLabel(zonaActiva)}</strong>.
         </p>
 
         <form className="fotoAuthForm" onSubmit={handleLogin}>
