@@ -11,7 +11,10 @@ import {
   evaluarAnamnesisGlobal,
 } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
-import { guardarAnamnesisGlobalDraft } from "../utils/anamnesisGlobalDraft";
+import {
+  guardarAnamnesisGlobalDraft,
+  limpiarAnamnesisGlobalDraft,
+} from "../utils/anamnesisGlobalDraft";
 import { obtenerValoracionActiva } from "../utils/valoracionSession";
 import { useAnamnesisGlobalForm } from "../hooks/useAnamnesisGlobalForm";
 import AnamnesisSectionRenderer from "../components/AnamnesisSectionRenderer";
@@ -290,6 +293,49 @@ export default function AnamnesisGlobal() {
     console.log("formData normalizado", formDataNormalizado);
     console.log("evaluacionAnamnesisGlobal", evaluacionFinal);
   }
+  async function handleLimpiarTodaLaAnamnesis() {
+    const hayInformacion = Object.values(formData).some((value) => {
+      if (value === null || value === undefined) return false;
+      return String(value).trim() !== "";
+    });
+
+    if (!hayInformacion && !resultado) {
+      await alertError(
+        "Nada para limpiar",
+        "La anamnesis global ya está vacía.",
+      );
+      return;
+    }
+
+    const ok = await alertConfirm({
+      title: "Limpiar anamnesis global",
+      text: "Se borrarán todas las respuestas del formulario. ¿Deseas continuar?",
+      confirmText: "Sí, limpiar",
+      cancelText: "Cancelar",
+    });
+
+    if (!ok) return;
+
+    // 🔥 reset manual sin tocar tu hook
+    const keys = Object.keys(formData);
+    const limpio = {};
+
+    keys.forEach((k) => {
+      limpio[k] = "";
+    });
+
+    // como tu hook no expone setFormData directamente,
+    // usamos handleChange indirecto (hack seguro)
+    Object.entries(limpio).forEach(([name, value]) => {
+      handleChange({
+        target: { name, value },
+      });
+    });
+
+    setErrores({});
+    setResultado(null);
+    limpiarAnamnesisGlobalDraft();
+  }
 
   async function handleContinuar() {
     if (!resultado) return;
@@ -312,6 +358,7 @@ export default function AnamnesisGlobal() {
     if (!ok) return;
 
     guardarAnamnesisGlobalDraft(formDataNormalizado);
+    limpiarAnamnesisGlobalDraft();
 
     if (resultado.siguientePaso === "funcional") {
       irAFotos("funcional");
@@ -609,9 +656,23 @@ export default function AnamnesisGlobal() {
             ))}
 
             <div className="valoracionActions">
-              <button className="valoracionPrimaryBtn" type="submit">
-                Evaluar anamnesis global
-              </button>
+              <div className="valoracionActions">
+                <button className="valoracionPrimaryBtn" type="submit">
+                  Evaluar anamnesis global
+                </button>
+
+                <button
+                  type="button"
+                  className="valoracionPrimaryBtn"
+                  onClick={handleLimpiarTodaLaAnamnesis}
+                  style={{
+                    background: "linear-gradient(135deg, #163e8f, #1d4ed8)",
+                    marginLeft: "10px",
+                  }}
+                >
+                  Limpiar anamnesis
+                </button>
+              </div>
             </div>
           </form>
 

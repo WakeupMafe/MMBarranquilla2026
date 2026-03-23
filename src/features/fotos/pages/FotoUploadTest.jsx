@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import "./FotoUploadTest.css";
 import { compressImage } from "../utils/imageCompression";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
@@ -36,6 +36,7 @@ function getZonaTitle(zona) {
 
 export default function FotoUploadTest() {
   const location = useLocation();
+  const navigate = useNavigate();
 
   const zonasProtocoloFotos = useMemo(() => {
     const zonasDesdeState = location.state?.zonasProtocoloFotos;
@@ -135,7 +136,7 @@ export default function FotoUploadTest() {
 
     alertOk(
       "Primera fase completada",
-      "Excelente. Has completado la primera fase de valoración. Puedes continuar con la encuesta de logros. Por favor digita tu cédula para crear un seguimiento de los profesionales.",
+      "Excelente. Ya completaste todas las fotos requeridas para esta fase clínica.",
     );
   }, [todasCompletas, faseCompletada]);
 
@@ -266,6 +267,14 @@ export default function FotoUploadTest() {
     );
   };
 
+  const handleVolver = () => {
+    navigate("/herramientas/anamnesis-zona", {
+      state: {
+        ...location.state,
+      },
+    });
+  };
+
   const handleUpload = async () => {
     const readyPhotos = photos.filter((photo) => photo.status === "ready");
 
@@ -310,8 +319,8 @@ export default function FotoUploadTest() {
       }
 
       await alertOk(
-        "Fotos subidas",
-        `${readyPhotos.length} fotos se guardaron correctamente.`,
+        "📸 Fotos subidas con éxito",
+        `Se guardaron correctamente ${readyPhotos.length} foto(s). Ya puedes continuar con el proceso.`,
       );
 
       photos.forEach((photo) => {
@@ -336,7 +345,19 @@ export default function FotoUploadTest() {
     <div className="photoTestPage">
       <div className="photoTestWrapper">
         <section className="photoCard">
+          <div className="photoHeaderTop">
+            <button
+              type="button"
+              className="btnBack"
+              onClick={handleVolver}
+              disabled={uploading || processingId !== ""}
+            >
+              ← Volver
+            </button>
+          </div>
+
           <h1 className="photoTitle">Protocolo de captura fotográfica</h1>
+
           <p className="photoSubtitle">
             Protocolo activo para las zonas{" "}
             <strong>{zonasProtocoloFotos.map(getZonaTitle).join(", ")}</strong>.

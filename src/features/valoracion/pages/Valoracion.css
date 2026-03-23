@@ -374,3 +374,16 @@
   align-items: center;
   gap: 8px;
 }
+.valoracionActions--wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.75rem, 1.8vw, 1rem);
+  margin-top: clamp(0.8rem, 1.5vw, 1rem);
+  margin-bottom: clamp(1rem, 2vw, 1.2rem);
+}
+
+@media (max-width: 768px) {
+  .valoracionActions--wrap {
+    flex-direction: column;
+  }
+}

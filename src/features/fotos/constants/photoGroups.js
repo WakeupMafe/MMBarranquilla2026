@@ -108,6 +108,14 @@ export const PHOTO_GROUPS = [
         id: "unipodal_frente_izquierda",
         title: "Unipodal frente izquierda",
       },
+      {
+        id: "unipodal_lado_derecha",
+        title: "Derecha",
+      },
+      {
+        id: "unipodal_lado_izquierda",
+        title: "Izquierda",
+      },
     ],
   },
 
