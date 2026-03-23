@@ -29,6 +29,16 @@ export function evaluarRodilla(formData) {
     );
   }
 
+  if (formData.parar_por_dolor_distancia === "MENOS_50") {
+    motivosRevisionProfesional.push(
+      "Debe detener la marcha antes de 50 metros por dolor.",
+    );
+  }
+
+  if (formData.parar_por_dolor_distancia === "ENTRE_50_200") {
+    alertas.push("Debe detener la marcha entre 50 y 200 metros por dolor.");
+  }
+
   if (formData.trastorna_descanso === "MUCHO") {
     alertas.push("El dolor altera de forma importante el descanso.");
   }
@@ -86,6 +96,7 @@ export function evaluarRodilla(formData) {
       bloqueos: formData.bloqueos === "SI",
       fallas: formData.fallas === "SI",
       usaBaston: formData.usa_baston === "SI",
+      pararPorDolor: formData.parar_por_dolor_distancia || "NO_REPORTA",
     },
   };
 }

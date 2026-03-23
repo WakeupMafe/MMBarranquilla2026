@@ -270,9 +270,7 @@ export default function RodillaForm({
 
           <div className="anamnesisGrid">
             <div className="valoracionField">
-              <label className="valoracionLabel">
-                Dolor inicial al mejorar (0 a 10)
-              </label>
+              <label className="valoracionLabel">Dolor inicial (0 a 10)</label>
               <input
                 className="valoracionInput"
                 type="number"
@@ -341,22 +339,6 @@ export default function RodillaForm({
               </option>
             </select>
             {renderError("al_caminar_sintoma")}
-          </div>
-
-          <div className="valoracionField">
-            <label className="valoracionLabel">
-              Dolor en otro segmento (0 a 10)
-            </label>
-            <input
-              className="valoracionInput"
-              type="number"
-              min="0"
-              max="10"
-              name="dolor_otro_segmento"
-              value={formData.dolor_otro_segmento}
-              onChange={handleChange}
-            />
-            {renderError("dolor_otro_segmento")}
           </div>
         </section>
 
@@ -506,6 +488,7 @@ export default function RodillaForm({
                     onChange={handleChange}
                   >
                     <option value="">Selecciona una opción</option>
+                    <option value="NO_DEBO_PARAR">No necesito parar</option>
                     <option value="MENOS_50">Menos de 50 mts</option>
                     <option value="ENTRE_50_200">50 a 200 mts</option>
                     <option value="MAS_200">Más de 200 mts</option>

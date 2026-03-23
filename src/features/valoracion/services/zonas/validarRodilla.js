@@ -75,15 +75,6 @@ export function validarRodilla(formData) {
     errores.al_caminar_sintoma = "Debes seleccionar el síntoma al caminar.";
   }
 
-  if (
-    !isEmpty(formData.dolor_otro_segmento) &&
-    (Number(formData.dolor_otro_segmento) < 0 ||
-      Number(formData.dolor_otro_segmento) > 10)
-  ) {
-    errores.dolor_otro_segmento =
-      "El dolor en otro segmento debe estar entre 0 y 10.";
-  }
-
   // Artrosis
   if (isEmpty(formData.tiene_artrosis_diagnostico)) {
     errores.tiene_artrosis_diagnostico =
