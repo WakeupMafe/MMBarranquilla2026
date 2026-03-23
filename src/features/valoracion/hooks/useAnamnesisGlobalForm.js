@@ -1,9 +1,6 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
-import {
-  guardarAnamnesisGlobalDraft,
-  obtenerAnamnesisGlobalDraft,
-} from "../utils/anamnesisGlobalDraft";
+import { obtenerAnamnesisGlobalDraft } from "../utils/anamnesisGlobalDraft";
 
 export function useAnamnesisGlobalForm() {
   const [formData, setFormData] = useState(() => {
@@ -11,10 +8,6 @@ export function useAnamnesisGlobalForm() {
   });
 
   const [errores, setErrores] = useState({});
-
-  useEffect(() => {
-    guardarAnamnesisGlobalDraft(formData);
-  }, [formData]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -26,10 +19,16 @@ export function useAnamnesisGlobalForm() {
 
     setErrores((prev) => {
       if (!prev[name]) return prev;
+
       const next = { ...prev };
       delete next[name];
       return next;
     });
+  }
+
+  function resetForm() {
+    setFormData(anamnesisGlobalInitialState);
+    setErrores({});
   }
 
   return {
@@ -37,5 +36,6 @@ export function useAnamnesisGlobalForm() {
     errores,
     setErrores,
     handleChange,
+    resetForm,
   };
 }

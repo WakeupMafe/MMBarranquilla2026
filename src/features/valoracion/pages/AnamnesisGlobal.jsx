@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
@@ -165,7 +165,7 @@ export default function AnamnesisGlobal() {
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
 
-  const { formData, errores, setErrores, handleChange } =
+  const { formData, errores, setErrores, handleChange, resetForm } =
     useAnamnesisGlobalForm();
 
   const { imc, obesidad } = useMemo(() => {
@@ -189,6 +189,24 @@ export default function AnamnesisGlobal() {
       return true;
     });
   }, [ocultarDeteccionDolor]);
+
+  useEffect(() => {
+    const hayInformacion = Object.values(formData).some((value) => {
+      if (value === null || value === undefined) return false;
+      return String(value).trim() !== "";
+    });
+
+    if (!hayInformacion) {
+      limpiarAnamnesisGlobalDraft();
+      return;
+    }
+
+    const timeout = setTimeout(() => {
+      guardarAnamnesisGlobalDraft(formData);
+    }, 400);
+
+    return () => clearTimeout(timeout);
+  }, [formData]);
 
   function irAFotos(zonaProtocoloFotos) {
     navigate("/herramientas/fotos-test", {
@@ -293,6 +311,7 @@ export default function AnamnesisGlobal() {
     console.log("formData normalizado", formDataNormalizado);
     console.log("evaluacionAnamnesisGlobal", evaluacionFinal);
   }
+
   async function handleLimpiarTodaLaAnamnesis() {
     const hayInformacion = Object.values(formData).some((value) => {
       if (value === null || value === undefined) return false;
@@ -316,23 +335,7 @@ export default function AnamnesisGlobal() {
 
     if (!ok) return;
 
-    // 🔥 reset manual sin tocar tu hook
-    const keys = Object.keys(formData);
-    const limpio = {};
-
-    keys.forEach((k) => {
-      limpio[k] = "";
-    });
-
-    // como tu hook no expone setFormData directamente,
-    // usamos handleChange indirecto (hack seguro)
-    Object.entries(limpio).forEach(([name, value]) => {
-      handleChange({
-        target: { name, value },
-      });
-    });
-
-    setErrores({});
+    resetForm();
     setResultado(null);
     limpiarAnamnesisGlobalDraft();
   }
@@ -357,7 +360,6 @@ export default function AnamnesisGlobal() {
 
     if (!ok) return;
 
-    guardarAnamnesisGlobalDraft(formDataNormalizado);
     limpiarAnamnesisGlobalDraft();
 
     if (resultado.siguientePaso === "funcional") {
@@ -656,23 +658,21 @@ export default function AnamnesisGlobal() {
             ))}
 
             <div className="valoracionActions">
-              <div className="valoracionActions">
-                <button className="valoracionPrimaryBtn" type="submit">
-                  Evaluar anamnesis global
-                </button>
+              <button className="valoracionPrimaryBtn" type="submit">
+                Evaluar anamnesis global
+              </button>
 
-                <button
-                  type="button"
-                  className="valoracionPrimaryBtn"
-                  onClick={handleLimpiarTodaLaAnamnesis}
-                  style={{
-                    background: "linear-gradient(135deg, #163e8f, #1d4ed8)",
-                    marginLeft: "10px",
-                  }}
-                >
-                  Limpiar anamnesis
-                </button>
-              </div>
+              <button
+                type="button"
+                className="valoracionPrimaryBtn"
+                onClick={handleLimpiarTodaLaAnamnesis}
+                style={{
+                  background: "linear-gradient(135deg, #163e8f, #1d4ed8)",
+                  marginLeft: "10px",
+                }}
+              >
+                Limpiar anamnesis
+              </button>
             </div>
           </form>
 
