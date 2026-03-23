@@ -1,0 +1,18 @@
+export const lumbarInitialState = {
+  tiempo_diagnostico: "",
+  radiografias_dano: "",
+  tiempo_sintomas: "",
+  debe_parar_por_dolor: "",
+  usa_medicamentos: "",
+  cirugias_previas_columna: "",
+  cirugia_antiguedad: "",
+  pendiente_lista_cirugia: "",
+  dolor_semana: "",
+  dolor_agudo_irradia_pierna: "",
+  parar_por_dolor_distancia: "",
+  hace_terapia_centro: "",
+  terapia_veces_semana: "",
+  hace_ejercicios_internet: "",
+  internet_veces_semana: "",
+  razon_no_hace_ejercicio: "",
+};

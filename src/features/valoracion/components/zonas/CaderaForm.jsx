@@ -128,18 +128,17 @@ export default function CaderaForm() {
             </div>
           )}
 
-          <div className="valoracionActions" style={{ marginTop: "16px" }}>
-            <button
-              type="button"
-              className="valoracionPrimaryBtn"
-              onClick={handleIrAFotos}
-              disabled={resultado.requiereRevisionProfesional}
-            >
-              {resultado.requiereRevisionProfesional
-                ? "Requiere aval profesional"
-                : "Continuar a protocolo fotográfico"}
-            </button>
-          </div>
+          {!resultado.requiereRevisionProfesional && (
+            <div className="valoracionActions" style={{ marginTop: "16px" }}>
+              <button
+                type="button"
+                className="valoracionPrimaryBtn"
+                onClick={handleIrAFotos}
+              >
+                Continuar a protocolo fotográfico
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

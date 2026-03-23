@@ -65,10 +65,10 @@ export default function RodillaForm() {
   async function handleIrAFotos() {
     if (!resultado) return;
 
-    if (resultado.descartado) {
+    if (resultado.requiereRevisionProfesional) {
       await alertError(
-        "Caso no apto para protocolo fotográfico",
-        "El resultado actual presenta criterios de descarte y no permite continuar al protocolo de fotos.",
+        "Revisión clínica requerida",
+        "Este caso presenta criterios de posible descarte y requiere validación final por parte del profesional antes de autorizar su continuidad en el protocolo fotográfico.",
       );
       return;
     }
@@ -630,8 +630,8 @@ export default function RodillaForm() {
             {renderError("dolor_al_caminar")}
           </div>
 
-          {renderSiNo("cojera_por_rodilla", "¿La rodilla lo hace cojear?")}
-          {renderSiNo("usa_baston", "¿Lo obliga a usar bastón?")}
+          {renderSiNo("cojera_por_rodilla", "¿La rodilla le genera cojera?")}
+          {renderSiNo("usa_baston", "¿Requiere el uso de bastón?")}
           {renderSiNo("bloqueos", "¿Presenta bloqueos?")}
           {renderSiNo("fallas", "¿Presenta fallas?")}
         </section>
@@ -652,7 +652,7 @@ export default function RodillaForm() {
                   onChange={handleChange}
                 >
                   <option value="">Selecciona una opción</option>
-                  <option value="SOLO">Solo / por su cuenta</option>
+                  <option value="SOLO">Por su cuenta</option>
                   <option value="DIRIGIDOS">Dirigidos</option>
                 </select>
                 {renderError("tipo_ejercicio")}
@@ -675,7 +675,7 @@ export default function RodillaForm() {
                 Number(formData.veces_ejercicio_semana) < 3 && (
                   <div className="valoracionField">
                     <label className="valoracionLabel">
-                      Razón por la que hace menos de 3 veces por semana
+                      Motivo por el cual realiza menos de 3 sesiones por semana
                     </label>
                     <select
                       className="valoracionInput"
@@ -733,7 +733,7 @@ export default function RodillaForm() {
 
               <div className="valoracionField">
                 <label className="valoracionLabel">
-                  Veces cardio por semana
+                  Veces de cardio por semana
                 </label>
                 <input
                   className="valoracionInput"
@@ -773,7 +773,7 @@ export default function RodillaForm() {
             "diagnostico_confirmado",
             "¿Tiene diagnóstico confirmado?",
           )}
-          {renderSiNo("pendiente_examen", "¿Está pendiente examen?")}
+          {renderSiNo("pendiente_examen", "¿Está pendiente de examen?")}
           {renderSiNo("en_tratamiento", "¿Está en tratamiento?")}
           {renderSiNo("espera_cita_manejo", "¿Espera cita para manejo?")}
           {renderSiNo("espera_cirugia", "¿Espera cirugía?")}
@@ -792,28 +792,29 @@ export default function RodillaForm() {
 
           <ul className="valoracionPacienteList">
             <li>
-              <strong>Clasificación:</strong> {resultado.clasificacion}
+              <strong>Clasificación clínica:</strong> {resultado.clasificacion}
             </li>
             <li>
-              <strong>Descartado:</strong> {resultado.descartado ? "Sí" : "No"}
+              <strong>Requiere revisión profesional:</strong>{" "}
+              {resultado.requiereRevisionProfesional ? "Sí" : "No"}
             </li>
             <li>
-              <strong>Mensaje:</strong> {resultado.mensaje}
+              <strong>Concepto:</strong> {resultado.mensaje}
             </li>
           </ul>
 
-          {resultado.motivosDescarte.length > 0 && (
+          {resultado.motivosRevisionProfesional?.length > 0 && (
             <div className="valoracionStatusAlert valoracionStatusAlert--warn">
-              <strong>Motivos de descarte</strong>
+              <strong>Criterios de posible descarte</strong>
               <ul className="anamnesisInlineList">
-                {resultado.motivosDescarte.map((item) => (
+                {resultado.motivosRevisionProfesional.map((item) => (
                   <li key={item}>{item}</li>
                 ))}
               </ul>
             </div>
           )}
 
-          {resultado.alertas.length > 0 && (
+          {resultado.alertas?.length > 0 && (
             <div className="valoracionStatusAlert valoracionStatusAlert--info">
               <strong>Alertas clínicas</strong>
               <ul className="anamnesisInlineList">
@@ -824,18 +825,17 @@ export default function RodillaForm() {
             </div>
           )}
 
-          <div className="valoracionActions" style={{ marginTop: "16px" }}>
-            <button
-              type="button"
-              className="valoracionPrimaryBtn"
-              onClick={handleIrAFotos}
-              disabled={resultado.descartado}
-            >
-              {resultado.descartado
-                ? "Caso no apto para fotos"
-                : "Continuar a protocolo fotográfico"}
-            </button>
-          </div>
+          {!resultado.requiereRevisionProfesional && (
+            <div className="valoracionActions" style={{ marginTop: "16px" }}>
+              <button
+                type="button"
+                className="valoracionPrimaryBtn"
+                onClick={handleIrAFotos}
+              >
+                Continuar a protocolo fotográfico
+              </button>
+            </div>
+          )}
         </div>
       )}
     </section>

@@ -1,73 +1,84 @@
 export function evaluarRodilla(formData) {
   const alertas = [];
-  const motivosDescarte = [];
+  const motivosRevisionProfesional = [];
 
   const intensidadDolorActual = Number(formData.intensidad_dolor_actual || 0);
   const dolorUltimaSemana = Number(formData.dolor_ultima_semana || 0);
 
   if (intensidadDolorActual >= 8) {
-    motivosDescarte.push("Dolor actual en rodilla mayor o igual a 8/10.");
+    motivosRevisionProfesional.push(
+      "Dolor actual en rodilla con intensidad mayor o igual a 8/10.",
+    );
   }
 
   if (dolorUltimaSemana >= 8) {
-    motivosDescarte.push("Dolor en la última semana mayor o igual a 8/10.");
+    motivosRevisionProfesional.push(
+      "Dolor en rodilla durante la última semana con intensidad mayor o igual a 8/10.",
+    );
   }
 
   if (formData.bloqueos === "SI") {
-    motivosDescarte.push("Presenta bloqueos en la rodilla.");
+    motivosRevisionProfesional.push(
+      "Presencia de bloqueos articulares en la rodilla.",
+    );
   }
 
   if (formData.fallas === "SI") {
-    motivosDescarte.push("Presenta fallas en la rodilla.");
+    motivosRevisionProfesional.push(
+      "Presencia de fallas o inestabilidad en la rodilla.",
+    );
   }
 
   if (formData.trastorna_descanso === "MUCHO") {
-    alertas.push("El dolor trastorna mucho el descanso.");
+    alertas.push("El dolor altera de forma importante el descanso.");
   }
 
   if (formData.artrosis_mejora_con === "NADA") {
-    alertas.push("El dolor por artrosis no mejora con ninguna medida.");
+    alertas.push(
+      "El dolor asociado a artrosis no presenta mejoría con las medidas reportadas.",
+    );
   }
 
   if (formData.usa_baston === "SI") {
-    alertas.push("Usa bastón para la marcha.");
+    alertas.push("Requiere bastón para la marcha.");
   }
 
   if (formData.cojera_por_rodilla === "SI") {
-    alertas.push("Presenta cojera al caminar.");
+    alertas.push("Presenta cojera durante la marcha.");
   }
 
   if (formData.derrame_al_caminar === "MUCHO") {
-    alertas.push("Presenta mucho derrame al caminar.");
+    alertas.push("Presenta derrame importante al caminar.");
   }
 
   if (formData.espera_cirugia === "SI") {
     alertas.push("Se encuentra en espera de cirugía.");
   }
 
-  const descartado = motivosDescarte.length > 0;
+  const requiereRevisionProfesional = motivosRevisionProfesional.length > 0;
 
-  let clasificacion = "SEGUIMIENTO_CLINICO";
-  let mensaje =
-    "Paciente apto para continuar con anamnesis específica de rodilla.";
+  let clasificacion = "Apto para protocolo de rodilla";
+  let mensaje = "El caso puede continuar al protocolo fotográfico de rodilla.";
 
-  if (descartado) {
-    clasificacion = "DESCARTAR";
+  if (requiereRevisionProfesional) {
+    clasificacion =
+      "Paciente con criterios de posible descarte — requiere revisión profesional";
     mensaje =
-      "Paciente no apto para manejo inicial en este flujo por criterios de descarte.";
+      "El caso presenta hallazgos clínicos de alto riesgo y requiere validación final por parte del profesional antes de autorizar su continuidad en el protocolo fotográfico.";
   } else if (alertas.length > 0) {
-    clasificacion = "REQUIERE_REVISION";
+    clasificacion = "Apto para protocolo con alertas clínicas";
     mensaje =
-      "Paciente con alertas clínicas. Requiere revisión antes de definir conducta.";
+      "El caso puede continuar, pero presenta hallazgos clínicos que deben ser tenidos en cuenta durante la revisión profesional.";
   }
 
   return {
     zona: "rodilla",
-    descartado,
+    descartado: false,
+    requiereRevisionProfesional,
     clasificacion,
     mensaje,
     alertas,
-    motivosDescarte,
+    motivosRevisionProfesional,
     resumen: {
       dolorActual: intensidadDolorActual,
       dolorUltimaSemana,
