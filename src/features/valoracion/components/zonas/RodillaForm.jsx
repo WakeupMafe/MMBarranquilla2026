@@ -823,13 +823,17 @@ export default function RodillaForm() {
               </ul>
             </div>
           )}
+
           <div className="valoracionActions" style={{ marginTop: "16px" }}>
             <button
               type="button"
               className="valoracionPrimaryBtn"
               onClick={handleIrAFotos}
+              disabled={resultado.descartado}
             >
-              Continuar a protocolo fotográfico
+              {resultado.descartado
+                ? "Caso no apto para fotos"
+                : "Continuar a protocolo fotográfico"}
             </button>
           </div>
         </div>

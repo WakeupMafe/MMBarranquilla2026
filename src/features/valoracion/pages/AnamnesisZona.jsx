@@ -7,11 +7,18 @@ import ZonaRenderer from "../components/zonas/ZonaRenderer";
 
 import "./Valoracion.css";
 
+function normalizarZona(zona) {
+  return String(zona || "")
+    .trim()
+    .toLowerCase();
+}
+
 export default function AnamnesisZona() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const zonasDetectadas = location.state?.zonasDetectadas || [];
+  const zonasDetectadasRaw = location.state?.zonasDetectadas || [];
+  const zonasDetectadas = zonasDetectadasRaw.map(normalizarZona);
 
   return (
     <div className="valoracionShell">

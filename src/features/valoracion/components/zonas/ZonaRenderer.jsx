@@ -3,20 +3,28 @@ import CaderaForm from "./CaderaForm";
 import LumbarForm from "./LumbarForm";
 import HombroForm from "./HombroForm";
 
+function normalizarZona(zona) {
+  return String(zona || "")
+    .trim()
+    .toLowerCase();
+}
+
 export default function ZonaRenderer({ zona }) {
-  if (zona === "rodilla") {
+  const zonaNormalizada = normalizarZona(zona);
+
+  if (zonaNormalizada === "rodilla") {
     return <RodillaForm />;
   }
 
-  if (zona === "cadera") {
+  if (zonaNormalizada === "cadera") {
     return <CaderaForm />;
   }
 
-  if (zona === "lumbar") {
+  if (zonaNormalizada === "lumbar" || zonaNormalizada === "espalda") {
     return <LumbarForm />;
   }
 
-  if (zona === "hombro") {
+  if (zonaNormalizada === "hombro") {
     return <HombroForm />;
   }
 
