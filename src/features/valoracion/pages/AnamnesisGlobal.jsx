@@ -16,6 +16,7 @@ import { obtenerValoracionActiva } from "../utils/valoracionSession";
 import { useAnamnesisGlobalForm } from "../hooks/useAnamnesisGlobalForm";
 import AnamnesisSectionRenderer from "../components/AnamnesisSectionRenderer";
 import AnamnesisResultCard from "../components/AnamnesisResultCard";
+import ValoracionStepper from "../components/ValoracionStepper";
 
 import "./AnamnesisGlobal.css";
 
@@ -89,7 +90,7 @@ function construirResultadoPorFlujo(evaluacionBase, clasificacionPaciente) {
       zonasDetectadas: zonaDestinoNormalizada ? [zonaDestinoNormalizada] : [],
       cantidadZonasDolor: zonaDestinoNormalizada ? 1 : 0,
       pendienteAprobacion: false,
-      siguientePaso: "fotos_zona_antiguo",
+      siguientePaso: "decision_reinicia_zona_o_cambio",
       mensajeResultado: "",
     };
   }
@@ -142,6 +143,18 @@ function construirResultadoPorFlujo(evaluacionBase, clasificacionPaciente) {
   return evaluacionBase;
 }
 
+function limpiarCamposDolorSiOculto(formData, ocultarDeteccionDolor) {
+  if (!ocultarDeteccionDolor) return formData;
+
+  return {
+    ...formData,
+    dolor_rodilla: "NO",
+    dolor_cadera: "NO",
+    dolor_lumbar: "NO",
+    dolor_hombro: "NO",
+  };
+}
+
 export default function AnamnesisGlobal() {
   const navigate = useNavigate();
   const [resultado, setResultado] = useState(null);
@@ -157,6 +170,10 @@ export default function AnamnesisGlobal() {
   }, [formData.peso, formData.talla]);
 
   const ocultarDeteccionDolor = !!clasificacionPaciente?.ocultarDeteccionDolor;
+
+  const formDataNormalizado = useMemo(() => {
+    return limpiarCamposDolorSiOculto(formData, ocultarDeteccionDolor);
+  }, [formData, ocultarDeteccionDolor]);
 
   const seccionesVisibles = useMemo(() => {
     return anamnesisSections.filter((section) => {
@@ -174,7 +191,7 @@ export default function AnamnesisGlobal() {
     navigate("/herramientas/fotos-test", {
       state: {
         resultado,
-        formData,
+        formData: formDataNormalizado,
         clasificacionPaciente,
         zonaProtocoloFotos,
         zonaSeleccionadaFinal: zonaProtocoloFotos,
@@ -187,7 +204,7 @@ export default function AnamnesisGlobal() {
       state: {
         zonasDetectadas: [zonaElegida],
         resultado,
-        formData,
+        formData: formDataNormalizado,
         clasificacionPaciente,
         esCambioDiagnostico: true,
         zonasDisponiblesCambio,
@@ -244,9 +261,13 @@ export default function AnamnesisGlobal() {
   function handleSubmit(e) {
     e.preventDefault();
 
-    const nuevosErrores = validarAnamnesisGlobal(formData);
+    const nuevosErrores = validarAnamnesisGlobal(formDataNormalizado);
 
     if (Object.keys(nuevosErrores).length > 0) {
+      console.log("ocultarDeteccionDolor", ocultarDeteccionDolor);
+      console.log("formDataNormalizado", formDataNormalizado);
+      console.log("Errores anamnesis global:", nuevosErrores);
+
       setErrores(nuevosErrores);
       setResultado(null);
 
@@ -257,7 +278,7 @@ export default function AnamnesisGlobal() {
       return;
     }
 
-    const evaluacionBase = evaluarAnamnesisGlobal(formData);
+    const evaluacionBase = evaluarAnamnesisGlobal(formDataNormalizado);
     const evaluacionFinal = construirResultadoPorFlujo(
       evaluacionBase,
       clasificacionPaciente,
@@ -266,7 +287,7 @@ export default function AnamnesisGlobal() {
     setErrores({});
     setResultado(evaluacionFinal);
 
-    console.log("formData", formData);
+    console.log("formData normalizado", formDataNormalizado);
     console.log("evaluacionAnamnesisGlobal", evaluacionFinal);
   }
 
@@ -290,19 +311,60 @@ export default function AnamnesisGlobal() {
 
     if (!ok) return;
 
-    guardarAnamnesisGlobalDraft(formData);
+    guardarAnamnesisGlobalDraft(formDataNormalizado);
 
     if (resultado.siguientePaso === "funcional") {
       irAFotos("funcional");
       return;
     }
 
-    if (resultado.siguientePaso === "fotos_zona_antiguo") {
-      const zonaPreliminar = normalizarZonaParaNavegacion(
-        clasificacionPaciente?.zonaDestino,
+    if (resultado.siguientePaso === "decision_reinicia_zona_o_cambio") {
+      const deseaCambiar = await alertConfirm({
+        title: "Cambio de zona",
+        text: "¿Desea cambiar de zona diagnóstica por un dolor nuevo?",
+        confirmText: "Sí, cambiar zona",
+        cancelText: "No, continuar actual",
+      });
+
+      if (!deseaCambiar) {
+        const zonaActual = normalizarZonaParaNavegacion(
+          clasificacionPaciente?.zonaDestino,
+        );
+
+        irAFotos(zonaActual || "funcional");
+        return;
+      }
+
+      const zonasDisponibles = obtenerZonasCambioDisponibles(
+        clasificacionPaciente,
       );
 
-      irAFotos(zonaPreliminar || "funcional");
+      if (zonasDisponibles.length === 0) {
+        await alertError(
+          "Sin zonas disponibles",
+          "No hay otras zonas disponibles para cambio de diagnóstico.",
+        );
+
+        const zonaActual = normalizarZonaParaNavegacion(
+          clasificacionPaciente?.zonaDestino,
+        );
+
+        irAFotos(zonaActual || "funcional");
+        return;
+      }
+
+      const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+
+      if (!zonaElegida) {
+        const zonaActual = normalizarZonaParaNavegacion(
+          clasificacionPaciente?.zonaDestino,
+        );
+
+        irAFotos(zonaActual || "funcional");
+        return;
+      }
+
+      irAAnamnesisZona(zonaElegida, zonasDisponibles);
       return;
     }
 
@@ -311,7 +373,7 @@ export default function AnamnesisGlobal() {
         state: {
           zonasDetectadas: resultado.zonasDetectadas,
           resultado,
-          formData,
+          formData: formDataNormalizado,
           clasificacionPaciente,
         },
       });
@@ -479,7 +541,7 @@ export default function AnamnesisGlobal() {
         state: {
           zonasDetectadas: resultado.zonasDetectadas,
           resultado,
-          formData,
+          formData: formDataNormalizado,
           clasificacionPaciente,
         },
       });
@@ -508,31 +570,11 @@ export default function AnamnesisGlobal() {
         <section className="valoracionHero">
           <h1 className="valoracionTitle">Anamnesis Global</h1>
           <p className="valoracionSubtitle">
-            Paso 2. Evaluación clínica general del paciente
+            Paso 3. Evaluación clínica general del paciente
           </p>
         </section>
 
-        <section className="valoracionStepper" aria-label="Progreso">
-          <div className="stepItem">
-            <span className="stepNumber">1</span>
-            <span className="stepText">Datos generales</span>
-          </div>
-
-          <div className="stepItem stepItem--active">
-            <span className="stepNumber">2</span>
-            <span className="stepText">Anamnesis global</span>
-          </div>
-
-          <div className="stepItem">
-            <span className="stepNumber">3</span>
-            <span className="stepText">Detección de dolor</span>
-          </div>
-
-          <div className="stepItem">
-            <span className="stepNumber">4</span>
-            <span className="stepText">Clasificación preliminar</span>
-          </div>
-        </section>
+        <ValoracionStepper currentStep={3} />
 
         <section className="valoracionCard">
           <div className="valoracionCardHeader">
