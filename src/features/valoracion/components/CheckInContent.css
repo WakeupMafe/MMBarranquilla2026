@@ -1,0 +1,209 @@
+.checkinShell {
+  min-height: 100vh;
+  background: #f7f7f3;
+  padding: clamp(0.4rem, 1vw, 0.8rem);
+}
+
+.checkinPage {
+  width: min(100%, 1100px);
+  margin: 0 auto;
+  padding: clamp(16px, 4vw, 32px) clamp(14px, 4vw, 24px) clamp(30px, 8vw, 60px);
+}
+
+.checkinTopActions {
+  margin-bottom: clamp(10px, 2vw, 16px);
+}
+
+.checkinBackBtn {
+  border: none;
+  background: transparent;
+  font-size: clamp(14px, 2vw, 18px);
+  font-weight: 600;
+  color: #4b5563;
+  cursor: pointer;
+}
+
+.checkinHero {
+  text-align: center;
+  margin-bottom: clamp(18px, 4vw, 28px);
+}
+
+.checkinTitle {
+  font-size: clamp(28px, 6vw, 46px);
+  font-weight: 700;
+  color: #4a4a4a;
+}
+
+.checkinSubtitle {
+  color: #6b7280;
+  font-size: clamp(14px, 2vw, 20px);
+}
+
+.checkinStepItem--active {
+  background: #92bd4a;
+  color: #fff;
+  font-weight: 700;
+}
+
+.checkinStepNumber {
+  background: #fff;
+  color: #92bd4a;
+  border-radius: 999px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.checkinCard {
+  background: #fff;
+  border-radius: clamp(18px, 3vw, 26px);
+  padding: clamp(18px, 4vw, 32px);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.05);
+}
+
+.checkinCardHeader {
+  margin-bottom: clamp(18px, 3vw, 26px);
+}
+
+.checkinCardTitle {
+  font-size: clamp(22px, 4vw, 30px);
+  font-weight: 700;
+  color: #404040;
+}
+
+.checkinCardDescription {
+  color: #6f7680;
+  font-size: clamp(14px, 2vw, 18px);
+}
+
+.checkinForm {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(20px, 3vw, 28px);
+}
+
+.checkinSection {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px, 2vw, 18px);
+}
+
+.checkinSectionTitle {
+  font-size: clamp(16px, 2.5vw, 20px);
+  font-weight: 700;
+  color: #404040;
+}
+
+.checkinGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: clamp(12px, 2vw, 16px);
+}
+
+.checkinField--full {
+  grid-column: span 2;
+}
+
+.checkinInput {
+  width: 100%;
+  height: clamp(48px, 6vw, 60px);
+  border-radius: 14px;
+  border: 1px solid #ddd;
+  padding: 0 16px;
+  font-size: clamp(14px, 2vw, 18px);
+}
+
+.checkinLabel {
+  font-weight: 600;
+  font-size: clamp(14px, 2vw, 16px);
+}
+
+.checkinPrimaryButton {
+  align-items: center;
+  text-align: center;
+  padding: 15px;
+  margin-top: 10px;
+  height: 52px;
+  border-radius: 40px;
+  border: none;
+  background: #92bd4a;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.checkinSecondaryButton {
+  height: 52px;
+  border-radius: 999px;
+  border: 1px solid #ccc;
+  background: transparent;
+  font-weight: 600;
+}
+
+.checkinInfoBox {
+  background: #f7f7f1;
+  padding: 16px;
+  border-radius: 14px;
+  line-height: 1.6;
+  font-size: clamp(13px, 1.8vw, 15px);
+}
+
+.checkinRadioGroup {
+  display: flex;
+  gap: 20px;
+}
+
+.checkinPatientStatus {
+  padding: 14px;
+  border-radius: 14px;
+  font-size: clamp(13px, 1.6vw, 14px);
+}
+
+.checkinPatientStatus--ok {
+  background: #ecfdf3;
+  border: 1px solid #a7f3d0;
+}
+
+.checkinPatientStatus--warning {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+}
+
+.checkinPatientGrid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.checkinPatientItem {
+  background: #f7f7f1;
+  padding: 10px;
+  border-radius: 10px;
+}
+
+.checkinError {
+  color: red;
+  font-size: 12px;
+}
+
+.checkinFooterActions {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* 🔥 solo un media query pequeño para móvil */
+@media (max-width: 600px) {
+  .checkinStepper {
+    grid-template-columns: 1fr;
+    border-radius: 16px;
+  }
+
+  .checkinGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .checkinFooterActions {
+    flex-direction: column;
+  }
+}

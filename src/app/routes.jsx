@@ -10,6 +10,7 @@ import Logros1 from "../features/logros1/pages/Logros1";
 
 import Logros2 from "../features/logros2/pages/Logros2";
 
+import CheckIn from "../features/valoracion/pages/CheckIn";
 import Valoracion from "../features/valoracion/pages/Valoracion";
 import AnamnesisGlobal from "../features/valoracion/pages/AnamnesisGlobal";
 import AnamnesisZona from "../features/valoracion/pages/AnamnesisZona";
@@ -47,7 +48,13 @@ export const router = createBrowserRouter([
     element: <FotosTestPage />,
   },
 
-  // VALORACION
+  // VALORACION - PASO 1
+  {
+    path: "/herramientas/valoracion/check-in",
+    element: <CheckIn />,
+  },
+
+  // VALORACION - PASO 2
   {
     path: "/herramientas/valoracion",
     element: <Valoracion />,

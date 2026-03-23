@@ -9,23 +9,47 @@ function normalizarZona(zona) {
     .toLowerCase();
 }
 
-export default function ZonaRenderer({ zona }) {
+export default function ZonaRenderer({
+  zona,
+  onZonaEvaluada,
+  resultadoPersistido,
+}) {
   const zonaNormalizada = normalizarZona(zona);
 
   if (zonaNormalizada === "rodilla") {
-    return <RodillaForm />;
+    return (
+      <RodillaForm
+        onZonaEvaluada={onZonaEvaluada}
+        resultadoPersistido={resultadoPersistido}
+      />
+    );
   }
 
   if (zonaNormalizada === "cadera") {
-    return <CaderaForm />;
+    return (
+      <CaderaForm
+        onZonaEvaluada={onZonaEvaluada}
+        resultadoPersistido={resultadoPersistido}
+      />
+    );
   }
 
   if (zonaNormalizada === "lumbar" || zonaNormalizada === "espalda") {
-    return <LumbarForm />;
+    return (
+      <LumbarForm
+        onZonaEvaluada={onZonaEvaluada}
+        resultadoPersistido={resultadoPersistido}
+      />
+    );
   }
 
   if (zonaNormalizada === "hombro") {
-    return <HombroForm />;
+    return (
+      <HombroForm
+        onZonaEvaluada={onZonaEvaluada}
+        resultadoPersistido={resultadoPersistido}
+      />
+    );
   }
 
   return (

@@ -1,18 +1,33 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { lumbarInitialState } from "../../config/zonas/lumbarInitialState";
 import { validarLumbar } from "../../services/zonas/validarLumbar";
 import { evaluarLumbar } from "../../services/zonas/evaluarLumbar";
-import { alertError } from "../../../../shared/lib/alerts";
 import LumbarFields from "./LumbarFields";
 
-export default function LumbarForm() {
-  const navigate = useNavigate();
-
-  const [formData, setFormData] = useState(lumbarInitialState);
+export default function LumbarForm({
+  onZonaEvaluada,
+  resultadoPersistido = null,
+}) {
+  const [formData, setFormData] = useState(
+    resultadoPersistido?.formData || lumbarInitialState,
+  );
   const [errores, setErrores] = useState({});
-  const [resultado, setResultado] = useState(null);
+  const [resultado, setResultado] = useState(
+    resultadoPersistido?.resultado || null,
+  );
+
+  useEffect(() => {
+    if (!resultadoPersistido) return;
+
+    if (resultadoPersistido.formData) {
+      setFormData(resultadoPersistido.formData);
+    }
+
+    if (resultadoPersistido.resultado) {
+      setResultado(resultadoPersistido.resultado);
+    }
+  }, [resultadoPersistido]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -38,6 +53,13 @@ export default function LumbarForm() {
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       setResultado(null);
+
+      onZonaEvaluada?.("lumbar", {
+        zona: "lumbar",
+        resultado: null,
+        formData,
+      });
+
       return;
     }
 
@@ -46,29 +68,14 @@ export default function LumbarForm() {
     setErrores({});
     setResultado(evaluacion);
 
+    onZonaEvaluada?.("lumbar", {
+      zona: "lumbar",
+      resultado: evaluacion,
+      formData,
+    });
+
     console.log("Lumbar formData", formData);
     console.log("Lumbar evaluación", evaluacion);
-  }
-
-  async function handleIrAFotos() {
-    if (!resultado) return;
-
-    if (resultado.requiereRevisionProfesional) {
-      await alertError(
-        "Revisión clínica requerida",
-        "Este caso presenta criterios de posible descarte y requiere validación final por parte del profesional antes de autorizar su continuidad en el protocolo fotográfico.",
-      );
-      return;
-    }
-
-    navigate("/herramientas/fotos-test", {
-      state: {
-        resultado,
-        formData,
-        zonaProtocoloFotos: "lumbar",
-        zonaSeleccionadaFinal: "lumbar",
-      },
-    });
   }
 
   return (
@@ -125,18 +132,6 @@ export default function LumbarForm() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {!resultado.requiereRevisionProfesional && (
-            <div className="valoracionActions" style={{ marginTop: "16px" }}>
-              <button
-                type="button"
-                className="valoracionPrimaryBtn"
-                onClick={handleIrAFotos}
-              >
-                Continuar a protocolo fotográfico
-              </button>
             </div>
           )}
         </div>

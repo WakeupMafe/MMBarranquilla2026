@@ -1,17 +1,32 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { rodillaInitialState } from "../../config/zonas/rodillaInitialState";
 import { validarRodilla } from "../../services/zonas/validarRodilla";
 import { evaluarRodilla } from "../../services/zonas/evaluarRodilla";
-import { alertError } from "../../../../shared/lib/alerts";
 
-export default function RodillaForm() {
-  const navigate = useNavigate();
-
-  const [formData, setFormData] = useState(rodillaInitialState);
+export default function RodillaForm({
+  onZonaEvaluada,
+  resultadoPersistido = null,
+}) {
+  const [formData, setFormData] = useState(
+    resultadoPersistido?.formData || rodillaInitialState,
+  );
   const [errores, setErrores] = useState({});
-  const [resultado, setResultado] = useState(null);
+  const [resultado, setResultado] = useState(
+    resultadoPersistido?.resultado || null,
+  );
+
+  useEffect(() => {
+    if (!resultadoPersistido) return;
+
+    if (resultadoPersistido.formData) {
+      setFormData(resultadoPersistido.formData);
+    }
+
+    if (resultadoPersistido.resultado) {
+      setResultado(resultadoPersistido.resultado);
+    }
+  }, [resultadoPersistido]);
 
   function handleChange(e) {
     const { name, value, type, checked } = e.target;
@@ -50,6 +65,13 @@ export default function RodillaForm() {
     if (Object.keys(nuevosErrores).length > 0) {
       setErrores(nuevosErrores);
       setResultado(null);
+
+      onZonaEvaluada?.("rodilla", {
+        zona: "rodilla",
+        resultado: null,
+        formData,
+      });
+
       return;
     }
 
@@ -58,29 +80,14 @@ export default function RodillaForm() {
     setErrores({});
     setResultado(evaluacion);
 
+    onZonaEvaluada?.("rodilla", {
+      zona: "rodilla",
+      resultado: evaluacion,
+      formData,
+    });
+
     console.log("Rodilla formData", formData);
     console.log("Rodilla evaluación", evaluacion);
-  }
-
-  async function handleIrAFotos() {
-    if (!resultado) return;
-
-    if (resultado.requiereRevisionProfesional) {
-      await alertError(
-        "Revisión clínica requerida",
-        "Este caso presenta criterios de posible descarte y requiere validación final por parte del profesional antes de autorizar su continuidad en el protocolo fotográfico.",
-      );
-      return;
-    }
-
-    navigate("/herramientas/fotos-test", {
-      state: {
-        resultado,
-        formData,
-        zonaProtocoloFotos: "rodilla",
-        zonaSeleccionadaFinal: "rodilla",
-      },
-    });
   }
 
   function renderError(name) {
@@ -822,18 +829,6 @@ export default function RodillaForm() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {!resultado.requiereRevisionProfesional && (
-            <div className="valoracionActions" style={{ marginTop: "16px" }}>
-              <button
-                type="button"
-                className="valoracionPrimaryBtn"
-                onClick={handleIrAFotos}
-              >
-                Continuar a protocolo fotográfico
-              </button>
             </div>
           )}
         </div>

@@ -94,7 +94,7 @@ export default function ToolsHome() {
             chipRight="Obligatoria"
             buttonText="Abrir"
             iconSrc={iconValoracion}
-            onOpen={() => navigate("/herramientas/valoracion")}
+            onOpen={() => navigate("/herramientas/valoracion/check-in")}
           />
         </div>
 

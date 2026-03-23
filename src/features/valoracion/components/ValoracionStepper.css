@@ -1,0 +1,102 @@
+.valoracionStepper {
+  max-width: 980px;
+  margin: 0 auto clamp(20px, 3vw, 28px);
+  background: #ffffff;
+  border: 1px solid #e6e6e0;
+  border-radius: 999px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  padding: clamp(6px, 1vw, 5px);
+  display: grid;
+  grid-template-columns: repeat(5, 1fr); /* 🔥 ahora son 5 pasos */
+  gap: clamp(6px, 1vw, 8px);
+}
+
+.stepItem {
+  min-height: clamp(48px, 6vw, 50px);
+  border-radius: 999px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(6px, 1vw, 10px);
+  color: #8a8f98;
+  background: #f4f4f1;
+  padding: clamp(8px, 1vw, 5px);
+  text-align: center;
+}
+
+.stepItem--active {
+  background: #92bd4a;
+  color: #ffffff;
+  font-weight: 700;
+  position: relative;
+}
+
+.stepItem--active::after {
+  content: "";
+  position: absolute;
+  bottom: -11px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 18px;
+  height: 18px;
+  background: #92bd4a;
+  clip-path: polygon(50% 100%, 0 0, 100% 0);
+}
+
+.stepItem--completed {
+  background: #eaf4d3;
+  color: #6f8f2f;
+  font-weight: 700;
+}
+
+.stepNumber {
+  width: clamp(24px, 3vw, 28px);
+  height: clamp(24px, 3vw, 28px);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.9);
+  color: #7fa63c;
+  font-size: clamp(13px, 1.6vw, 15px);
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.stepItem:not(.stepItem--active):not(.stepItem--completed) .stepNumber {
+  background: #d9d9d4;
+  color: #7b7f87;
+}
+
+.stepItem--completed .stepNumber {
+  background: #92bd4a;
+  color: #ffffff;
+}
+
+.stepText {
+  font-size: clamp(13px, 1.6vw, 15px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+/* responsive mínimo (no tocamos más de lo necesario) */
+@media (max-width: 900px) {
+  .valoracionStepper {
+    grid-template-columns: repeat(2, 1fr);
+    border-radius: 24px;
+  }
+
+  .stepItem {
+    border-radius: 18px;
+  }
+
+  .stepItem--active::after {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .valoracionStepper {
+    grid-template-columns: 1fr;
+  }
+}

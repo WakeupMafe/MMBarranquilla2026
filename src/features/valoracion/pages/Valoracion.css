@@ -58,14 +58,14 @@
   border: 1px solid #e6e6e0;
   border-radius: 999px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  padding: clamp(6px, 1vw, 8px);
+  padding: clamp(6px, 1vw, 7px);
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: clamp(6px, 1vw, 8px);
 }
 
 .stepItem {
-  min-height: clamp(48px, 6vw, 54px);
+  min-height: clamp(48px, 6vw, 50px);
   border-radius: 999px;
   display: flex;
   align-items: center;
@@ -73,7 +73,7 @@
   gap: clamp(6px, 1vw, 10px);
   color: #8a8f98;
   background: #f4f4f1;
-  padding: clamp(8px, 1vw, 12px);
+  padding: clamp(8px, 1vw, 5px);
   text-align: center;
 }
 
@@ -90,7 +90,7 @@
   bottom: -11px;
   left: 50%;
   transform: translateX(-50%);
-  width: 18px;
+  width: 16px;
   height: 18px;
   background: #92bd4a;
   clip-path: polygon(50% 100%, 0 0, 100% 0);
@@ -329,4 +329,48 @@
   .valoracionStepper {
     grid-template-columns: 1fr;
   }
+}
+.valoracionInfoBox {
+  background: #f7f7f1;
+  border: 1px solid #dfe6d1;
+  border-radius: 14px;
+  padding: 16px;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  line-height: 1.6;
+}
+
+.valoracionEstadoBox {
+  margin-top: 16px;
+  padding: 16px;
+  border-radius: 14px;
+  border: 1px solid transparent;
+}
+
+.valoracionEstadoBox--ok {
+  background: #f3f9ec;
+  border-color: #b9d7a8;
+}
+
+.valoracionEstadoBox--warning {
+  background: #fff8e8;
+  border-color: #ead28b;
+}
+
+.valoracionActionsRow {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+
+.valoracionActionsRow--end {
+  justify-content: flex-end;
+}
+
+.valoracionRadioOption {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

@@ -1,18 +1,33 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 
 import { hombroInitialState } from "../../config/zonas/hombroInitialState";
 import { validarHombro } from "../../services/zonas/validarHombro";
 import { evaluarHombro } from "../../services/zonas/evaluarHombro";
-import { alertError } from "../../../../shared/lib/alerts";
 import HombroFields from "./HombroFields";
 
-export default function HombroForm() {
-  const navigate = useNavigate();
-
-  const [formData, setFormData] = useState(hombroInitialState);
+export default function HombroForm({
+  onZonaEvaluada,
+  resultadoPersistido = null,
+}) {
+  const [formData, setFormData] = useState(
+    resultadoPersistido?.formData || hombroInitialState,
+  );
   const [errores, setErrores] = useState({});
-  const [resultado, setResultado] = useState(null);
+  const [resultado, setResultado] = useState(
+    resultadoPersistido?.resultado || null,
+  );
+
+  useEffect(() => {
+    if (!resultadoPersistido) return;
+
+    if (resultadoPersistido.formData) {
+      setFormData(resultadoPersistido.formData);
+    }
+
+    if (resultadoPersistido.resultado) {
+      setResultado(resultadoPersistido.resultado);
+    }
+  }, [resultadoPersistido]);
 
   function handleChange(e) {
     const { name, value } = e.target;
@@ -46,29 +61,14 @@ export default function HombroForm() {
     setErrores({});
     setResultado(evaluacion);
 
+    onZonaEvaluada?.("hombro", {
+      zona: "hombro",
+      resultado: evaluacion,
+      formData,
+    });
+
     console.log("Hombro formData", formData);
     console.log("Hombro evaluación", evaluacion);
-  }
-
-  async function handleIrAFotos() {
-    if (!resultado) return;
-
-    if (resultado.requiereRevisionProfesional) {
-      await alertError(
-        "Revisión profesional requerida",
-        "Este paciente presenta criterios de posible descarte. El profesional debe definir si autoriza o no la continuación al protocolo fotográfico.",
-      );
-      return;
-    }
-
-    navigate("/herramientas/fotos-test", {
-      state: {
-        resultado,
-        formData,
-        zonaProtocoloFotos: "hombro",
-        zonaSeleccionadaFinal: "hombro",
-      },
-    });
   }
 
   return (
@@ -95,14 +95,14 @@ export default function HombroForm() {
 
           <ul className="valoracionPacienteList">
             <li>
-              <strong>Clasificación:</strong> {resultado.clasificacion}
+              <strong>Clasificación clínica:</strong> {resultado.clasificacion}
             </li>
             <li>
               <strong>Requiere revisión profesional:</strong>{" "}
               {resultado.requiereRevisionProfesional ? "Sí" : "No"}
             </li>
             <li>
-              <strong>Mensaje:</strong> {resultado.mensaje}
+              <strong>Concepto:</strong> {resultado.mensaje}
             </li>
           </ul>
 
@@ -125,18 +125,6 @@ export default function HombroForm() {
                   <li key={item}>{item}</li>
                 ))}
               </ul>
-            </div>
-          )}
-
-          {!resultado.requiereRevisionProfesional && (
-            <div className="valoracionActions" style={{ marginTop: "16px" }}>
-              <button
-                type="button"
-                className="valoracionPrimaryBtn"
-                onClick={handleIrAFotos}
-              >
-                Continuar a protocolo fotográfico
-              </button>
             </div>
           )}
         </div>

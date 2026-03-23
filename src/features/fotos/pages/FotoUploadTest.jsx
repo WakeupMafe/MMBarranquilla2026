@@ -37,8 +37,14 @@ function getZonaTitle(zona) {
 export default function FotoUploadTest() {
   const location = useLocation();
 
-  const zonaProtocoloFotos = useMemo(() => {
-    return normalizarZonaProtocolo(
+  const zonasProtocoloFotos = useMemo(() => {
+    const zonasDesdeState = location.state?.zonasProtocoloFotos;
+
+    if (Array.isArray(zonasDesdeState) && zonasDesdeState.length > 0) {
+      return [...new Set(zonasDesdeState.map(normalizarZonaProtocolo))];
+    }
+
+    const zonaUnica = normalizarZonaProtocolo(
       location.state?.zonaSeleccionadaFinal ||
         location.state?.zonaProtocoloFotos ||
         location.state?.resultado?.zonasDetectadas?.[0] ||
@@ -46,32 +52,44 @@ export default function FotoUploadTest() {
         location.state?.clasificacionPaciente?.zonaDestino ||
         "funcional",
     );
+
+    return [zonaUnica];
   }, [location.state]);
 
   const gruposActivos = useMemo(() => {
-    if (zonaProtocoloFotos === "funcional") {
+    if (!zonasProtocoloFotos.length) return [];
+
+    if (zonasProtocoloFotos.includes("funcional")) {
       return PHOTO_GROUPS;
     }
 
     return PHOTO_GROUPS.filter((group) =>
-      group.zonas?.includes(zonaProtocoloFotos),
+      group.zonas?.some((zona) => zonasProtocoloFotos.includes(zona)),
     );
-  }, [zonaProtocoloFotos]);
+  }, [zonasProtocoloFotos]);
 
   const createEmptyPhotos = () =>
     gruposActivos.flatMap((group) =>
-      group.items.map((item) => ({
-        ...item,
-        groupId: group.id,
-        groupTitle: group.title,
-        file: null,
-        preview: "",
-        fileName: "",
-        fileSize: 0,
-        width: 0,
-        height: 0,
-        status: "empty",
-      })),
+      group.items.map((item) => {
+        const zonaDeItem =
+          group.zonas?.find((zona) => zonasProtocoloFotos.includes(zona)) ||
+          group.zonas?.[0] ||
+          "funcional";
+
+        return {
+          ...item,
+          zona: zonaDeItem,
+          groupId: group.id,
+          groupTitle: group.title,
+          file: null,
+          preview: "",
+          fileName: "",
+          fileSize: 0,
+          width: 0,
+          height: 0,
+          status: "empty",
+        };
+      }),
     );
 
   const [photos, setPhotos] = useState([]);
@@ -83,7 +101,7 @@ export default function FotoUploadTest() {
     setPhotos(createEmptyPhotos());
     setProcessingId("");
     setFaseCompletada(false);
-  }, [zonaProtocoloFotos]);
+  }, [gruposActivos]);
 
   useEffect(() => {
     return () => {
@@ -271,10 +289,14 @@ export default function FotoUploadTest() {
       setUploading(true);
 
       const pacienteDocumento =
-        location.state?.paciente?.numero_documento_fisico || "test123";
+        location.state?.cedula ||
+        location.state?.paciente?.numero_documento_fisico ||
+        "test123";
+
       const profesionalCedula =
         location.state?.profesional?.cedula || "1037670182";
-      const sesionTipo = `evaluacion_${zonaProtocoloFotos}`;
+
+      const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
 
       for (const photo of readyPhotos) {
         await uploadFotoPaciente({
@@ -283,6 +305,7 @@ export default function FotoUploadTest() {
           tipoFoto: photo.id,
           sesionTipo,
           profesionalCedula,
+          zona: photo.zona,
         });
       }
 
@@ -315,9 +338,9 @@ export default function FotoUploadTest() {
         <section className="photoCard">
           <h1 className="photoTitle">Protocolo de captura fotográfica</h1>
           <p className="photoSubtitle">
-            Protocolo activo para la zona{" "}
-            <strong>{getZonaTitle(zonaProtocoloFotos)}</strong>. Registra
-            únicamente las tomas requeridas para esta fase clínica.
+            Protocolo activo para las zonas{" "}
+            <strong>{zonasProtocoloFotos.map(getZonaTitle).join(", ")}</strong>.
+            Registra únicamente las tomas requeridas para esta fase clínica.
           </p>
         </section>
 

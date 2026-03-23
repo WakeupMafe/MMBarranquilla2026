@@ -16,6 +16,7 @@ export async function uploadFotoPaciente({
   tipoFoto,
   sesionTipo,
   profesionalCedula,
+  zona = "",
   observacion = "",
 }) {
   if (!file) {
@@ -46,10 +47,11 @@ export async function uploadFotoPaciente({
   const pacienteSafe = sanitizeSegment(pacienteDocumento);
   const tipoSafe = sanitizeSegment(tipoFoto);
   const sesionSafe = sanitizeSegment(sesionTipo || "general");
+  const zonaSafe = sanitizeSegment(zona || "general");
   const extension = "jpg";
   const fileName = `${crypto.randomUUID()}.${extension}`;
 
-  const storagePath = `${user.id}/${pacienteSafe}/${sesionSafe}/${tipoSafe}/${fileName}`;
+  const storagePath = `${user.id}/${pacienteSafe}/${sesionSafe}/${zonaSafe}/${tipoSafe}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET_NAME)
@@ -66,6 +68,7 @@ export async function uploadFotoPaciente({
   const payload = {
     paciente_documento: String(pacienteDocumento),
     tipo_foto: String(tipoFoto),
+    zona: zona ? String(zona) : null,
     nombre_archivo: fileName,
     storage_path: storagePath,
     profesional_cedula: String(profesionalCedula),

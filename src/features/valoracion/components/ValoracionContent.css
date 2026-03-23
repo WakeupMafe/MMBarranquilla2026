@@ -1,0 +1,299 @@
+.valoracionShell {
+  min-height: 100vh;
+  background: #f7f7f3;
+  padding: clamp(0.4rem, 1vw, 0.8rem);
+}
+
+.valoracionPage {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  padding: clamp(16px, 3vw, 28px) clamp(14px, 3vw, 24px) clamp(28px, 6vw, 64px);
+  box-sizing: border-box;
+}
+
+.valoracionTopActions {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: clamp(8px, 1.6vw, 14px);
+}
+
+.valoracionBackBtn {
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-size: clamp(14px, 1.8vw, 19px);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 6px 0;
+  transition: color 0.2s ease;
+}
+
+.valoracionBackBtn:hover {
+  color: #92bd4a;
+}
+
+.valoracionHero {
+  text-align: center;
+  margin-bottom: clamp(18px, 3vw, 28px);
+}
+
+.valoracionTitle {
+  margin: 0;
+  color: #4a4a4a;
+  font-size: clamp(2rem, 5vw, 46px);
+  line-height: 1.05;
+  font-weight: 700;
+}
+
+.valoracionSubtitle {
+  margin: clamp(8px, 1.2vw, 10px) 0 0;
+  color: #6b7280;
+  font-size: clamp(15px, 2.2vw, 20px);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.valoracionCard {
+  width: min(100%, 980px);
+  margin: 0 auto;
+  background: #ffffff;
+  border: 1px solid #e8e8e2;
+  border-radius: clamp(20px, 3vw, 28px);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, 0.07);
+  padding: clamp(18px, 4vw, 34px) clamp(16px, 4vw, 36px) clamp(20px, 4vw, 30px);
+  box-sizing: border-box;
+}
+
+.valoracionCardHeader {
+  margin-bottom: clamp(18px, 3vw, 26px);
+}
+
+.valoracionCardTitle {
+  margin: 0 0 8px;
+  color: #404040;
+  font-size: clamp(26px, 4vw, 35px);
+  line-height: 1.1;
+  font-weight: 700;
+}
+
+.valoracionCardDescription {
+  margin: 0;
+  color: #6f7680;
+  font-size: clamp(14px, 2vw, 18px);
+  line-height: 1.5;
+}
+
+.valoracionForm {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 20px);
+}
+
+.valoracionLabel {
+  display: block;
+  color: #4b5563;
+  font-size: clamp(15px, 2vw, 18px);
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.valoracionInput {
+  width: 100%;
+  min-height: clamp(54px, 7vw, 64px);
+  border: 1.5px solid #d9ddd2;
+  border-radius: clamp(14px, 2vw, 18px);
+  padding: 0 clamp(14px, 2vw, 18px);
+  box-sizing: border-box;
+  background: #fcfcfa;
+  color: #404040;
+  font-size: clamp(16px, 2.2vw, 20px);
+  outline: none;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease;
+}
+
+.valoracionInput::placeholder {
+  color: #a0a6af;
+}
+
+.valoracionInput:focus {
+  border-color: #92bd4a;
+  box-shadow: 0 0 0 4px rgba(146, 189, 74, 0.14);
+}
+
+.valoracionInput:disabled {
+  background: #f3f4f1;
+  color: #8b9199;
+  cursor: not-allowed;
+}
+
+.valoracionPrimaryButton {
+  align-self: center;
+  width: min(100%, 360px);
+  min-height: clamp(52px, 7vw, 60px);
+  border: none;
+  border-radius: 999px;
+  padding: 0 clamp(18px, 3vw, 24px);
+  background: linear-gradient(90deg, #8eb944 0%, #a3c857 100%);
+  color: #ffffff;
+  font-size: clamp(14px, 2vw, 20px);
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 10px 22px rgba(146, 189, 74, 0.28);
+  transition:
+    transform 0.15s ease,
+    box-shadow 0.15s ease,
+    opacity 0.15s ease;
+}
+
+.valoracionPrimaryButton:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 14px 26px rgba(146, 189, 74, 0.32);
+}
+
+.valoracionPrimaryButton:active {
+  transform: translateY(0);
+}
+
+.valoracionPrimaryButton:disabled {
+  opacity: 0.68;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: 0 8px 16px rgba(146, 189, 74, 0.18);
+}
+
+.valoracionDivider {
+  margin-top: clamp(18px, 3vw, 28px);
+  padding-top: clamp(16px, 2.5vw, 22px);
+  border-top: 1px solid #ecece6;
+}
+
+.valoracionEmptyState {
+  margin: 0;
+  color: #8b9199;
+  font-size: clamp(14px, 1.9vw, 17px);
+  line-height: 1.55;
+}
+
+.valoracionResultBlock {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(14px, 2vw, 18px);
+}
+
+.valoracionPatientCard {
+  width: 100%;
+  background: #fdfdfb;
+  border: 1px solid #ecece6;
+  border-radius: clamp(14px, 2vw, 18px);
+  padding: clamp(14px, 2vw, 18px);
+  box-sizing: border-box;
+}
+
+.valoracionPatientTitle {
+  margin: 0 0 clamp(10px, 1.8vw, 14px);
+  color: #404040;
+  font-size: clamp(18px, 2vw, 22px);
+  line-height: 1.2;
+  font-weight: 700;
+}
+
+.valoracionPatientGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: clamp(10px, 2vw, 14px);
+}
+
+.valoracionPatientItem {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: clamp(10px, 1.8vw, 12px);
+  border-radius: clamp(12px, 2vw, 14px);
+  background: #f7f7f1;
+  min-width: 0;
+}
+
+.valoracionPatientLabel {
+  color: #7a8089;
+  font-size: clamp(12px, 1.5vw, 14px);
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+.valoracionPatientValue {
+  color: #374151;
+  font-size: clamp(14px, 1.8vw, 16px);
+  font-weight: 700;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+
+.valoracionStatusAlert {
+  width: 100%;
+  border-radius: clamp(12px, 2vw, 16px);
+  padding: clamp(12px, 2vw, 16px) clamp(12px, 2vw, 16px);
+  box-sizing: border-box;
+}
+
+.valoracionStatusAlert--ok {
+  background: #ecfdf3;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+}
+
+.valoracionStatusAlert--warn {
+  background: #fff7ed;
+  border: 1px solid #fdba74;
+  color: #9a3412;
+}
+
+.valoracionStatusAlert--info {
+  background: #eff6ff;
+  border: 1px solid #93c5fd;
+  color: #1d4ed8;
+}
+
+.valoracionStatusTitle {
+  margin: 0 0 8px;
+  font-size: clamp(15px, 1.8vw, 18px);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+.valoracionStatusText {
+  margin: 0;
+  font-size: clamp(14px, 1.7vw, 15px);
+  line-height: 1.55;
+  font-weight: 600;
+}
+
+.valoracionStatusMeta {
+  margin: 8px 0 0;
+  font-size: clamp(13px, 1.6vw, 14px);
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+.valoracionActions {
+  display: flex;
+  justify-content: center;
+  margin-top: clamp(2px, 1vw, 6px);
+}
+
+@media (max-width: 560px) {
+  .valoracionPage {
+    padding: clamp(14px, 4vw, 18px) clamp(12px, 4vw, 14px)
+      clamp(24px, 8vw, 34px);
+  }
+
+  .valoracionPatientGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .valoracionPrimaryButton {
+    width: 100%;
+  }
+}
