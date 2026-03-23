@@ -6,10 +6,7 @@ import logoWakeup from "../../../assets/LogoWakeup.png";
 import { alertConfirm, alertError } from "../../../shared/lib/alerts";
 
 import { anamnesisSections } from "../config/anamnesisSections";
-import {
-  calcularImc,
-  evaluarAnamnesisGlobal,
-} from "../services/anamnesisGlobalRules";
+import { evaluarAnamnesisGlobal } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
 import {
   guardarAnamnesisGlobalDraft,
@@ -168,10 +165,6 @@ export default function AnamnesisGlobal() {
   const { formData, errores, setErrores, handleChange, resetForm } =
     useAnamnesisGlobalForm();
 
-  const { imc, obesidad } = useMemo(() => {
-    return calcularImc(formData.peso, formData.talla);
-  }, [formData.peso, formData.talla]);
-
   const ocultarDeteccionDolor = !!clasificacionPaciente?.ocultarDeteccionDolor;
 
   const formDataNormalizado = useMemo(() => {
@@ -180,12 +173,17 @@ export default function AnamnesisGlobal() {
 
   const seccionesVisibles = useMemo(() => {
     return anamnesisSections.filter((section) => {
+      if (section.title === "4.3 Obesidad") {
+        return false;
+      }
+
       if (
         ocultarDeteccionDolor &&
         section.title === "5. Identificación de dolor"
       ) {
         return false;
       }
+
       return true;
     });
   }, [ocultarDeteccionDolor]);
@@ -642,18 +640,7 @@ export default function AnamnesisGlobal() {
                 formData={formData}
                 errores={errores}
                 handleChange={handleChange}
-                extraContent={
-                  section.title === "4.3 Obesidad" ? (
-                    <div className="anamnesisInfoBox">
-                      <p>
-                        <strong>IMC:</strong> {imc ?? "Sin calcular"}
-                      </p>
-                      <p>
-                        <strong>Obesidad:</strong> {obesidad ? "Sí" : "No"}
-                      </p>
-                    </div>
-                  ) : null
-                }
+                extraContent={null}
               />
             ))}
 

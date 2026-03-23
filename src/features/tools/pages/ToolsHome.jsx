@@ -19,7 +19,6 @@ export default function ToolsHome() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // 1) Traer profesional: primero state, si no sessionStorage
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
     if (fromState) return fromState;
@@ -32,7 +31,6 @@ export default function ToolsHome() {
     }
   }, [location.state]);
 
-  // 2) Si llegó por state, guardarlo en sessionStorage
   useEffect(() => {
     if (location.state?.profesional) {
       sessionStorage.setItem(
@@ -42,7 +40,6 @@ export default function ToolsHome() {
     }
   }, [location.state]);
 
-  // 3) Proteger acceso (si entran directo sin login)
   useEffect(() => {
     if (!profesional) {
       alertError(
@@ -95,6 +92,18 @@ export default function ToolsHome() {
             buttonText="Abrir"
             iconSrc={iconValoracion}
             onOpen={() => navigate("/herramientas/valoracion/check-in")}
+          />
+        </div>
+
+        <div className="cards">
+          <ToolCard
+            title="Módulo Obesidad"
+            subtitle="Peso, talla e IMC del paciente"
+            chipLeft="3–5 min"
+            chipRight="Complementario"
+            buttonText="Abrir"
+            iconSrc={iconValoracion}
+            onOpen={() => navigate("/herramientas/modulo-obesidad")}
           />
         </div>
 

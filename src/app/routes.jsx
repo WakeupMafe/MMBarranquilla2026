@@ -14,6 +14,7 @@ import CheckIn from "../features/valoracion/pages/CheckIn";
 import Valoracion from "../features/valoracion/pages/Valoracion";
 import AnamnesisGlobal from "../features/valoracion/pages/AnamnesisGlobal";
 import AnamnesisZona from "../features/valoracion/pages/AnamnesisZona";
+import ModuloObesidad from "../features/valoracion/components/ModuloObesidad";
 
 export const router = createBrowserRouter([
   {
@@ -68,5 +69,10 @@ export const router = createBrowserRouter([
   {
     path: "/herramientas/anamnesis-zona",
     element: <AnamnesisZona />,
+  },
+
+  {
+    path: "/herramientas/modulo-obesidad",
+    element: <ModuloObesidad />,
   },
 ]);
