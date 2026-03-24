@@ -1,5 +1,6 @@
 import "./TopHeader.css";
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import iconLogout from "../../../assets/out.png";
 import iconLogoutRed from "../../../assets/outred.png";
@@ -7,6 +8,8 @@ import iconLogoutRed from "../../../assets/outred.png";
 export default function TopHeader({ userName = "usuario", onLogout, logoSrc }) {
   const [hoverLogout, setHoverLogout] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  const navigate = useNavigate();
 
   // Cierra con ESC
   useEffect(() => {
@@ -17,9 +20,19 @@ export default function TopHeader({ userName = "usuario", onLogout, logoSrc }) {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
+  // 👉 IR A HERRAMIENTAS
+  function irAHerramientas() {
+    navigate("/herramientas");
+  }
+
   return (
     <header className="topHeader">
-      <div className="topHeader__left">
+      {/* 🔥 LOGO CLICKABLE */}
+      <div
+        className="topHeader__left"
+        onClick={irAHerramientas}
+        style={{ cursor: "pointer" }}
+      >
         {logoSrc ? (
           <img className="topHeader__logoImg" src={logoSrc} alt="Wakeup" />
         ) : (
@@ -28,7 +41,7 @@ export default function TopHeader({ userName = "usuario", onLogout, logoSrc }) {
         <span className="topHeader__brand">Wakeup</span>
       </div>
 
-      {/* Desktop actions */}
+      {/* Desktop */}
       <div className="topHeader__right">
         <div className="topHeader__userPill">
           <div className="topHeader__avatar" aria-hidden="true" />
@@ -51,7 +64,7 @@ export default function TopHeader({ userName = "usuario", onLogout, logoSrc }) {
         </button>
       </div>
 
-      {/* Mobile hamburger */}
+      {/* Mobile burger */}
       <button
         className="topHeader__burger"
         type="button"
@@ -64,24 +77,23 @@ export default function TopHeader({ userName = "usuario", onLogout, logoSrc }) {
         <span className="topHeader__burgerLine" />
       </button>
 
-      {/* Mobile overlay + menu */}
+      {/* Overlay */}
       <div
         className={`topHeader__overlay ${menuOpen ? "isOpen" : ""}`}
         onClick={() => setMenuOpen(false)}
-        aria-hidden={!menuOpen}
       />
 
+      {/* Menu mobile */}
       <div className={`topHeader__menu ${menuOpen ? "isOpen" : ""}`}>
         <div className="topHeader__menuHeader">
           <div className="topHeader__userPill topHeader__userPill--menu">
-            <div className="topHeader__avatar" aria-hidden="true" />
+            <div className="topHeader__avatar" />
             <span className="topHeader__userName">{userName}</span>
           </div>
 
           <button
             className="topHeader__close"
             type="button"
-            aria-label="Cerrar menú"
             onClick={() => setMenuOpen(false)}
           >
             ✕

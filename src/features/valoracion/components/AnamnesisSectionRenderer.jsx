@@ -4,7 +4,6 @@ function renderField(field, formData, errores, handleChange) {
   if (field.showWhen && !field.showWhen(formData)) return null;
 
   const commonProps = {
-    key: field.name,
     label: field.label,
     name: field.name,
     value: formData[field.name],
@@ -13,15 +12,22 @@ function renderField(field, formData, errores, handleChange) {
   };
 
   if (field.type === "yesno") {
-    return <YesNoField {...commonProps} />;
+    return <YesNoField key={field.name} {...commonProps} />;
   }
 
   if (field.type === "select") {
-    return <SelectField {...commonProps} options={field.options || []} />;
+    return (
+      <SelectField
+        key={field.name}
+        {...commonProps}
+        options={field.options || []}
+      />
+    );
   }
 
   return (
     <TextField
+      key={field.name}
       {...commonProps}
       type={field.inputType || "text"}
       placeholder={field.placeholder}

@@ -2,6 +2,7 @@ import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import ValoracionStepper from "./ValoracionStepper";
 import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
+import { obtenerProfesionalesCheckin } from "../services/profesionalesCheckin";
 
 import "./CheckInContent.css";
 
@@ -12,6 +13,7 @@ export default function CheckInContent({
   paciente,
   pacienteEncontrado,
   loadingBusqueda,
+  profesionales = [],
   onChange,
   onBuscarPaciente,
   onContinuar,
@@ -78,15 +80,36 @@ export default function CheckInContent({
                   <label className="checkinLabel" htmlFor="instructor">
                     Profesional o instructor responsable
                   </label>
-                  <input
+
+                  <select
                     id="instructor"
                     className="checkinInput"
-                    type="text"
                     name="instructor"
                     value={formData.instructor}
                     onChange={onChange}
-                    placeholder="Nombre del responsable"
-                  />
+                  >
+                    <option value="">Selecciona un profesional</option>
+
+                    {profesionales.map((profesional) => {
+                      const nombreCompleto = [
+                        profesional.nombre,
+                        profesional.apellido,
+                      ]
+                        .filter(Boolean)
+                        .join(" ")
+                        .trim();
+
+                      const cedula = String(profesional.cedula || "").trim();
+                      const label = `${nombreCompleto} - ${cedula}`;
+
+                      return (
+                        <option key={cedula} value={label}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
+
                   {errores.instructor ? (
                     <span className="checkinError">{errores.instructor}</span>
                   ) : null}
@@ -142,6 +165,7 @@ export default function CheckInContent({
                         <span className="checkinPatientLabel">Nombre : </span>
                         <strong className="checkinPatientValue">
                           {paciente?.nombre_apellido_documento ||
+                            paciente?.nombres_apellidos ||
                             "Sin registro"}
                         </strong>
                       </div>
@@ -328,19 +352,13 @@ export default function CheckInContent({
             </section>
 
             <div className="checkinFooterActions">
-              <div className="checkinFooterActions">
-                <BotonImportante
-                  type="button"
-                  onClick={onVolver}
-                  variant="ghost"
-                >
-                  Volver
-                </BotonImportante>
+              <BotonImportante type="button" onClick={onVolver} variant="ghost">
+                Volver
+              </BotonImportante>
 
-                <BotonImportante type="submit" variant="solid">
-                  Continuar a datos generales
-                </BotonImportante>
-              </div>
+              <BotonImportante type="submit" variant="solid">
+                Continuar a datos generales
+              </BotonImportante>
             </div>
           </form>
         </section>

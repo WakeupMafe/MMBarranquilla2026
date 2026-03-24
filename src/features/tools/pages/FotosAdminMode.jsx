@@ -16,6 +16,11 @@ import {
   getCheckinUploadMode,
   setCheckinUploadMode,
 } from "../../../shared/lib/checkinUploadMode";
+import {
+  ANAMNESIS_GLOBAL_UPLOAD_MODES,
+  getAnamnesisGlobalUploadMode,
+  setAnamnesisGlobalUploadMode,
+} from "../../../shared/lib/anamnesisGlobalUploadMode";
 
 const CEDULA_ADMIN_FOTOS = "1037670182";
 
@@ -27,6 +32,9 @@ export default function FotosAdminMode() {
   const [checkinMode, setCheckinMode] = useState(
     CHECKIN_UPLOAD_MODES.SIMULACION,
   );
+  const [anamnesisGlobalMode, setAnamnesisGlobalMode] = useState(
+    ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION,
+  );
 
   const cedulaProfesional = useMemo(() => {
     return String(profesional?.cedula || "").trim();
@@ -37,6 +45,7 @@ export default function FotosAdminMode() {
   useEffect(() => {
     setFotoMode(getFotosUploadMode());
     setCheckinMode(getCheckinUploadMode());
+    setAnamnesisGlobalMode(getAnamnesisGlobalUploadMode());
   }, []);
 
   useEffect(() => {
@@ -73,6 +82,18 @@ export default function FotosAdminMode() {
       newMode === CHECKIN_UPLOAD_MODES.REAL
         ? "El envío real de check-in a base de datos quedó ACTIVADO."
         : "La simulación de check-in quedó ACTIVADA. No se enviará información a base de datos.",
+    );
+  }
+
+  async function handleSetAnamnesisGlobalMode(newMode) {
+    setAnamnesisGlobalUploadMode(newMode);
+    setAnamnesisGlobalMode(newMode);
+
+    await alertOk(
+      "Modo de anamnesis global actualizado",
+      newMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
+        ? "El envío real de anamnesis global a base de datos quedó ACTIVADO."
+        : "La simulación de anamnesis global quedó ACTIVADA. No se enviará información a base de datos.",
     );
   }
 
@@ -122,6 +143,12 @@ export default function FotosAdminMode() {
               <li>
                 <strong>Modo check-in:</strong>{" "}
                 {checkinMode === CHECKIN_UPLOAD_MODES.REAL
+                  ? "ENVÍO REAL A BASE DE DATOS"
+                  : "SIMULACIÓN"}
+              </li>
+              <li>
+                <strong>Modo anamnesis global:</strong>{" "}
+                {anamnesisGlobalMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
                   ? "ENVÍO REAL A BASE DE DATOS"
                   : "SIMULACIÓN"}
               </li>
@@ -198,6 +225,52 @@ export default function FotosAdminMode() {
                 }
               >
                 Activar simulación check-in
+              </BotonImportante>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <h3
+              className="valoracionCardTitle"
+              style={{ fontSize: "1rem", marginBottom: 12 }}
+            >
+              Control de anamnesis global
+            </h3>
+
+            <div className="valoracionActionsResponsive">
+              <BotonImportante
+                type="button"
+                variant={
+                  anamnesisGlobalMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() =>
+                  handleSetAnamnesisGlobalMode(
+                    ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL,
+                  )
+                }
+              >
+                Activar envío real anamnesis global
+              </BotonImportante>
+
+              <BotonImportante
+                type="button"
+                variant={
+                  anamnesisGlobalMode ===
+                  ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() =>
+                  handleSetAnamnesisGlobalMode(
+                    ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION,
+                  )
+                }
+              >
+                Activar simulación anamnesis global
               </BotonImportante>
             </div>
           </div>

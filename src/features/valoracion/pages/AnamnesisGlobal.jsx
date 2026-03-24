@@ -3,12 +3,17 @@ import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
-import { alertConfirm, alertError } from "../../../shared/lib/alerts";
+import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import useProfesionalSession from "../../../shared/hooks/useProfesionalSession";
 
 import { anamnesisSections } from "../config/anamnesisSections";
 import { evaluarAnamnesisGlobal } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
+import {
+  ANAMNESIS_GLOBAL_UPLOAD_MODES,
+  getAnamnesisGlobalUploadMode,
+} from "../../../shared/lib/anamnesisGlobalUploadMode";
+import { guardarAnamnesisGlobal } from "../services/guardarAnamnesisGlobal";
 import {
   guardarAnamnesisGlobalDraft,
   limpiarAnamnesisGlobalDraft,
@@ -181,6 +186,15 @@ export default function AnamnesisGlobal() {
 
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
+
+  const cedulaPaciente = useMemo(() => {
+    return String(
+      valoracionActiva?.paciente?.numero_documento_fisico ||
+        valoracionActiva?.paciente?.num_documento ||
+        valoracionActiva?.paciente?.cedula ||
+        "",
+    ).trim();
+  }, [valoracionActiva]);
 
   const { formData, errores, setErrores, handleChange, resetForm } =
     useAnamnesisGlobalForm();
@@ -395,307 +409,423 @@ export default function AnamnesisGlobal() {
 
     if (!ok) return;
 
-    limpiarAnamnesisGlobalDraft();
+    try {
+      const mode = getAnamnesisGlobalUploadMode();
 
-    if (resultado.siguientePaso === "funcional") {
-      irAFotos("funcional");
-      return;
-    }
+      const cedulaPaciente = String(
+        valoracionActiva?.paciente?.numero_documento_fisico ||
+          valoracionActiva?.paciente?.num_documento ||
+          valoracionActiva?.paciente?.cedula ||
+          "",
+      ).trim();
 
-    if (resultado.siguientePaso === "decision_reinicia_zona_o_cambio") {
-      const deseaCambiar = await alertConfirm({
-        title: "Cambio de zona",
-        text: "¿Desea cambiar de zona diagnóstica por un dolor nuevo?",
-        confirmText: "Sí, cambiar zona",
-        cancelText: "No, continuar actual",
-      });
-
-      if (!deseaCambiar) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
-
-      const zonasDisponibles = obtenerZonasCambioDisponibles(
-        clasificacionPaciente,
-      );
-
-      if (zonasDisponibles.length === 0) {
+      if (!cedulaPaciente) {
         await alertError(
-          "Sin zonas disponibles",
-          "No hay otras zonas disponibles para cambio de diagnóstico.",
+          "Paciente no identificado",
+          "No fue posible identificar la cédula del paciente para guardar la anamnesis global.",
         );
-
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
         return;
       }
 
-      const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+      const payload = {
+        numero_documento_fisico: cedulaPaciente,
 
-      if (!zonaElegida) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
+        horas_sueno: formDataNormalizado.horas_sueno || null,
+        horas_sentado: formDataNormalizado.horas_sentado || null,
+        horas_movimiento: formDataNormalizado.horas_movimiento || null,
+
+        diabetes: formDataNormalizado.diabetes || null,
+        diabetes_tratamiento: formDataNormalizado.diabetes_tratamiento || null,
+        hipertension: formDataNormalizado.hipertension || null,
+        hipertension_tratamiento:
+          formDataNormalizado.hipertension_tratamiento || null,
+        colesterol_alto: formDataNormalizado.colesterol_alto || null,
+        colesterol_tratamiento:
+          formDataNormalizado.colesterol_tratamiento || null,
+
+        infarto: formDataNormalizado.infarto || null,
+        infarto_menos_3_meses:
+          formDataNormalizado.infarto_menos_3_meses || null,
+        evento_cerebrovascular:
+          formDataNormalizado.evento_cerebrovascular || null,
+        ecv_menos_6_meses: formDataNormalizado.ecv_menos_6_meses || null,
+
+        enfermedad_higado: formDataNormalizado.enfermedad_higado || null,
+        enfermedad_rinon: formDataNormalizado.enfermedad_rinon || null,
+        anemia: formDataNormalizado.anemia || null,
+        anemia_controlada: formDataNormalizado.anemia_controlada || null,
+        enfermedad_autoinmune:
+          formDataNormalizado.enfermedad_autoinmune || null,
+        enfermedad_psiquiatrica:
+          formDataNormalizado.enfermedad_psiquiatrica || null,
+        cancer_ultimos_5_anos:
+          formDataNormalizado.cancer_ultimos_5_anos || null,
+
+        cirugia_rodilla: formDataNormalizado.cirugia_rodilla || null,
+        cirugia_cadera: formDataNormalizado.cirugia_cadera || null,
+        cirugia_hombro: formDataNormalizado.cirugia_hombro || null,
+        cirugia_columna: formDataNormalizado.cirugia_columna || null,
+        cirugia_pelvis: formDataNormalizado.cirugia_pelvis || null,
+        cirugia_otra: formDataNormalizado.cirugia_otra || null,
+        cirugia_otra_cual: formDataNormalizado.cirugia_otra_cual || null,
+        cirugia_menos_3_meses:
+          formDataNormalizado.cirugia_menos_3_meses || null,
+
+        golpe_pelvis: formDataNormalizado.golpe_pelvis || null,
+        dolor_pelvis_nivel: formDataNormalizado.dolor_pelvis_nivel || null,
+
+        paso_uci: formDataNormalizado.paso_uci || null,
+        uci_menos_1_ano: formDataNormalizado.uci_menos_1_ano || null,
+        razon_uci: formDataNormalizado.razon_uci || null,
+
+        quimioterapia: formDataNormalizado.quimioterapia || null,
+        radioterapia: formDataNormalizado.radioterapia || null,
+
+        fuma: formDataNormalizado.fuma || null,
+        cigarrillos_dia: formDataNormalizado.cigarrillos_dia || null,
+        toma_licor: formDataNormalizado.toma_licor || null,
+        frecuencia_licor: formDataNormalizado.frecuencia_licor || null,
+
+        dolor_rodilla: formDataNormalizado.dolor_rodilla || null,
+        dolor_cadera: formDataNormalizado.dolor_cadera || null,
+        dolor_lumbar: formDataNormalizado.dolor_lumbar || null,
+        dolor_hombro: formDataNormalizado.dolor_hombro || null,
+
+        dx_artrosis_rodilla: formDataNormalizado.dx_artrosis_rodilla || null,
+        dx_artrosis_cadera: formDataNormalizado.dx_artrosis_cadera || null,
+        dx_lumbalgia_cronica: formDataNormalizado.dx_lumbalgia_cronica || null,
+        dx_manguito_rotador: formDataNormalizado.dx_manguito_rotador || null,
+
+        alertas: resultado.alertas || [],
+        descartado: Boolean(resultado.descartado),
+        motivos_descarte: resultado.motivosDescarte || [],
+        zonas_detectadas: resultado.zonasDetectadas || [],
+        cantidad_zonas_dolor: Number(resultado.cantidadZonasDolor || 0),
+        pendiente_aprobacion: Boolean(resultado.pendienteAprobacion),
+        siguiente_paso: resultado.siguientePaso || null,
+        mensaje_resultado: resultado.mensajeResultado || null,
+      };
+
+      if (mode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
+        await guardarAnamnesisGlobal(payload);
+
+        await alertOk(
+          "Anamnesis global guardada",
+          "La anamnesis global fue guardada correctamente en base de datos.",
         );
+      } else {
+        await alertOk(
+          "Modo simulación",
+          "La anamnesis global no se guardó en base de datos porque el módulo está en simulación.",
+        );
+      }
 
-        irAFotos(zonaActual || "funcional");
+      limpiarAnamnesisGlobalDraft();
+
+      if (resultado.siguientePaso === "funcional") {
+        irAFotos("funcional");
         return;
       }
 
-      irAAnamnesisZona(zonaElegida, zonasDisponibles);
-      return;
-    }
+      if (resultado.siguientePaso === "decision_reinicia_zona_o_cambio") {
+        const deseaCambiar = await alertConfirm({
+          title: "Cambio de zona",
+          text: "¿Desea cambiar de zona diagnóstica por un dolor nuevo?",
+          confirmText: "Sí, cambiar zona",
+          cancelText: "No, continuar actual",
+        });
 
-    if (resultado.siguientePaso === "anamnesis_especifica_zona") {
-      navigate("/herramientas/anamnesis-zona", {
-        state: {
-          zonasDetectadas: resultado.zonasDetectadas,
-          resultado,
-          formData: formDataNormalizado,
+        if (!deseaCambiar) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const zonasDisponibles = obtenerZonasCambioDisponibles(
           clasificacionPaciente,
-        },
-      });
-      return;
-    }
-
-    if (resultado.siguientePaso === "decision_fotos_preliminar_o_secundaria") {
-      const activarSecundaria = await alertConfirm({
-        title: "Definir continuidad terapéutica",
-        text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o activar el protocolo de su segundo diagnóstico?",
-        confirmText: "Activar segundo diagnóstico",
-        cancelText: "Continuar zona preliminar",
-      });
-
-      if (activarSecundaria) {
-        const zonaSecundaria = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaSecundaria,
         );
 
-        irAFotos(zonaSecundaria || "funcional");
+        if (zonasDisponibles.length === 0) {
+          await alertError(
+            "Sin zonas disponibles",
+            "No hay otras zonas disponibles para cambio de diagnóstico.",
+          );
+
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+
+        if (!zonaElegida) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        irAAnamnesisZona(zonaElegida, zonasDisponibles);
         return;
       }
 
-      const zonaPreliminar = normalizarZonaParaNavegacion(
-        clasificacionPaciente?.zonaDestino,
-      );
-
-      irAFotos(zonaPreliminar || "funcional");
-      return;
-    }
-
-    if (resultado.siguientePaso === "decision_fotos_preliminar_o_funcional") {
-      const zonaEsFuncional =
-        normalizarZonaParaNavegacion(clasificacionPaciente?.zonaDestino) ===
-        "funcional";
-
-      if (zonaEsFuncional) {
-        irAFotos("funcional");
+      if (resultado.siguientePaso === "anamnesis_especifica_zona") {
+        navigate("/herramientas/anamnesis-zona", {
+          state: {
+            zonasDetectadas: resultado.zonasDetectadas,
+            resultado,
+            formData: formDataNormalizado,
+            clasificacionPaciente,
+          },
+        });
         return;
       }
 
-      const avanzarAFuncional = await alertConfirm({
-        title: "Definir continuidad terapéutica",
-        text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o avanzar al protocolo funcional?",
-        confirmText: "Avanzar a funcional",
-        cancelText: "Continuar zona preliminar",
-      });
+      if (
+        resultado.siguientePaso === "decision_fotos_preliminar_o_secundaria"
+      ) {
+        const activarSecundaria = await alertConfirm({
+          title: "Definir continuidad terapéutica",
+          text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o activar el protocolo de su segundo diagnóstico?",
+          confirmText: "Activar segundo diagnóstico",
+          cancelText: "Continuar zona preliminar",
+        });
 
-      if (avanzarAFuncional) {
-        irAFotos("funcional");
-        return;
-      }
+        if (activarSecundaria) {
+          const zonaSecundaria = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaSecundaria,
+          );
 
-      const zonaPreliminar = normalizarZonaParaNavegacion(
-        clasificacionPaciente?.zonaDestino,
-      );
+          irAFotos(zonaSecundaria || "funcional");
+          return;
+        }
 
-      irAFotos(zonaPreliminar || "funcional");
-      return;
-    }
-
-    // NUEVO:
-    // Para el caso donde cumplió todo, no tiene segundo diagnóstico y puede:
-    // 1. avanzar a funcional
-    // 2. quedarse en la zona actual
-    // 3. cambiar a otra zona
-    if (resultado.siguientePaso === "decision_funcional_actual_o_cambio") {
-      const avanzarAFuncional = await alertConfirm({
-        title: "Definir continuidad terapéutica",
-        text: "El paciente cumplió asistencia y objetivos, y no tiene segundo diagnóstico. ¿Desea avanzar a la fase funcional?",
-        confirmText: "Sí, pasar a funcional",
-        cancelText: "No",
-      });
-
-      if (avanzarAFuncional) {
-        irAFotos("funcional");
-        return;
-      }
-
-      const continuarActual = await alertConfirm({
-        title: "Mantener zona actual",
-        text: "¿Desea permanecer en su zona actual?",
-        confirmText: "Sí, continuar actual",
-        cancelText: "No, cambiar zona",
-      });
-
-      if (continuarActual) {
-        const zonaActual = normalizarZonaParaNavegacion(
+        const zonaPreliminar = normalizarZonaParaNavegacion(
           clasificacionPaciente?.zonaDestino,
         );
 
-        irAFotos(zonaActual || "funcional");
+        irAFotos(zonaPreliminar || "funcional");
         return;
       }
 
-      const zonasDisponibles = obtenerZonasCambioDisponibles(
-        clasificacionPaciente,
-      );
+      if (resultado.siguientePaso === "decision_fotos_preliminar_o_funcional") {
+        const zonaEsFuncional =
+          normalizarZonaParaNavegacion(clasificacionPaciente?.zonaDestino) ===
+          "funcional";
 
-      if (zonasDisponibles.length === 0) {
-        await alertError(
-          "Sin zonas disponibles",
-          "No hay otras zonas disponibles para cambio de diagnóstico.",
-        );
+        if (zonaEsFuncional) {
+          irAFotos("funcional");
+          return;
+        }
 
-        const zonaActual = normalizarZonaParaNavegacion(
+        const avanzarAFuncional = await alertConfirm({
+          title: "Definir continuidad terapéutica",
+          text: "¿Desea continuar con el protocolo correspondiente a su zona preliminar o avanzar al protocolo funcional?",
+          confirmText: "Avanzar a funcional",
+          cancelText: "Continuar zona preliminar",
+        });
+
+        if (avanzarAFuncional) {
+          irAFotos("funcional");
+          return;
+        }
+
+        const zonaPreliminar = normalizarZonaParaNavegacion(
           clasificacionPaciente?.zonaDestino,
         );
 
-        irAFotos(zonaActual || "funcional");
+        irAFotos(zonaPreliminar || "funcional");
         return;
       }
 
-      const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+      if (resultado.siguientePaso === "decision_funcional_actual_o_cambio") {
+        const avanzarAFuncional = await alertConfirm({
+          title: "Definir continuidad terapéutica",
+          text: "El paciente cumplió asistencia y objetivos, y no tiene segundo diagnóstico. ¿Desea avanzar a la fase funcional?",
+          confirmText: "Sí, pasar a funcional",
+          cancelText: "No",
+        });
 
-      if (!zonaElegida) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
+        if (avanzarAFuncional) {
+          irAFotos("funcional");
+          return;
+        }
 
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
+        const continuarActual = await alertConfirm({
+          title: "Mantener zona actual",
+          text: "¿Desea permanecer en su zona actual?",
+          confirmText: "Sí, continuar actual",
+          cancelText: "No, cambiar zona",
+        });
 
-      irAAnamnesisZona(zonaElegida, zonasDisponibles);
-      return;
-    }
+        if (continuarActual) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
 
-    if (
-      resultado.siguientePaso === "decision_antiguo_funcional_actual_o_cambio"
-    ) {
-      const avanzarAFuncional = await alertConfirm({
-        title: "Definir continuidad terapéutica",
-        text: "¿Desea avanzar al protocolo funcional?",
-        confirmText: "Sí, pasar a funcional",
-        cancelText: "No",
-      });
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
 
-      if (avanzarAFuncional) {
-        irAFotos("funcional");
-        return;
-      }
-
-      const continuarActual = await alertConfirm({
-        title: "Mantener diagnóstico actual",
-        text: "¿Desea continuar con su diagnóstico actual?",
-        confirmText: "Sí, continuar actual",
-        cancelText: "No, evaluar cambio",
-      });
-
-      if (continuarActual) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
-
-      const deseaCambiar = await alertConfirm({
-        title: "Cambio por dolor nuevo",
-        text: "¿Desea cambiar de diagnóstico debido a un dolor nuevo?",
-        confirmText: "Sí, cambiar",
-        cancelText: "No",
-      });
-
-      if (!deseaCambiar) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
-
-      const zonasDisponibles = obtenerZonasCambioDisponibles(
-        clasificacionPaciente,
-      );
-
-      if (zonasDisponibles.length === 0) {
-        await alertError(
-          "Sin zonas disponibles",
-          "No hay otras zonas disponibles para cambio de diagnóstico.",
-        );
-
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
-
-      const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
-
-      if (!zonaElegida) {
-        const zonaActual = normalizarZonaParaNavegacion(
-          clasificacionPaciente?.zonaDestino,
-        );
-
-        irAFotos(zonaActual || "funcional");
-        return;
-      }
-
-      irAAnamnesisZona(zonaElegida, zonasDisponibles);
-      return;
-    }
-
-    if (resultado.siguientePaso === "decision_zona_o_funcional") {
-      const tieneZonas = Array.isArray(resultado.zonasDetectadas)
-        ? resultado.zonasDetectadas.length > 0
-        : false;
-
-      if (!tieneZonas) {
-        irAFotos("funcional");
-        return;
-      }
-
-      const avanzarAFuncional = await alertConfirm({
-        title: "Definir continuidad terapéutica",
-        text: "¿Desea continuar con la intervención en la zona identificada o avanzar a la fase funcional?",
-        confirmText: "Avanzar a funcional",
-        cancelText: "Continuar intervención específica",
-      });
-
-      if (avanzarAFuncional) {
-        irAFotos("funcional");
-        return;
-      }
-
-      navigate("/herramientas/anamnesis-zona", {
-        state: {
-          zonasDetectadas: resultado.zonasDetectadas,
-          resultado,
-          formData: formDataNormalizado,
+        const zonasDisponibles = obtenerZonasCambioDisponibles(
           clasificacionPaciente,
-        },
-      });
+        );
+
+        if (zonasDisponibles.length === 0) {
+          await alertError(
+            "Sin zonas disponibles",
+            "No hay otras zonas disponibles para cambio de diagnóstico.",
+          );
+
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+
+        if (!zonaElegida) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        irAAnamnesisZona(zonaElegida, zonasDisponibles);
+        return;
+      }
+
+      if (
+        resultado.siguientePaso === "decision_antiguo_funcional_actual_o_cambio"
+      ) {
+        const avanzarAFuncional = await alertConfirm({
+          title: "Definir continuidad terapéutica",
+          text: "¿Desea avanzar al protocolo funcional?",
+          confirmText: "Sí, pasar a funcional",
+          cancelText: "No",
+        });
+
+        if (avanzarAFuncional) {
+          irAFotos("funcional");
+          return;
+        }
+
+        const continuarActual = await alertConfirm({
+          title: "Mantener diagnóstico actual",
+          text: "¿Desea continuar con su diagnóstico actual?",
+          confirmText: "Sí, continuar actual",
+          cancelText: "No, evaluar cambio",
+        });
+
+        if (continuarActual) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const deseaCambiar = await alertConfirm({
+          title: "Cambio por dolor nuevo",
+          text: "¿Desea cambiar de diagnóstico debido a un dolor nuevo?",
+          confirmText: "Sí, cambiar",
+          cancelText: "No",
+        });
+
+        if (!deseaCambiar) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const zonasDisponibles = obtenerZonasCambioDisponibles(
+          clasificacionPaciente,
+        );
+
+        if (zonasDisponibles.length === 0) {
+          await alertError(
+            "Sin zonas disponibles",
+            "No hay otras zonas disponibles para cambio de diagnóstico.",
+          );
+
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        const zonaElegida = await seleccionarZonaCambio(zonasDisponibles);
+
+        if (!zonaElegida) {
+          const zonaActual = normalizarZonaParaNavegacion(
+            clasificacionPaciente?.zonaDestino,
+          );
+
+          irAFotos(zonaActual || "funcional");
+          return;
+        }
+
+        irAAnamnesisZona(zonaElegida, zonasDisponibles);
+        return;
+      }
+
+      if (resultado.siguientePaso === "decision_zona_o_funcional") {
+        const tieneZonas = Array.isArray(resultado.zonasDetectadas)
+          ? resultado.zonasDetectadas.length > 0
+          : false;
+
+        if (!tieneZonas) {
+          irAFotos("funcional");
+          return;
+        }
+
+        const avanzarAFuncional = await alertConfirm({
+          title: "Definir continuidad terapéutica",
+          text: "¿Desea continuar con la intervención en la zona identificada o avanzar a la fase funcional?",
+          confirmText: "Avanzar a funcional",
+          cancelText: "Continuar intervención específica",
+        });
+
+        if (avanzarAFuncional) {
+          irAFotos("funcional");
+          return;
+        }
+
+        navigate("/herramientas/anamnesis-zona", {
+          state: {
+            zonasDetectadas: resultado.zonasDetectadas,
+            resultado,
+            formData: formDataNormalizado,
+            clasificacionPaciente,
+          },
+        });
+      }
+    } catch (error) {
+      console.error("Error guardando anamnesis global:", error);
+
+      await alertError(
+        "Error al guardar anamnesis global",
+        error?.message || "No fue posible guardar la anamnesis global.",
+      );
     }
   }
 

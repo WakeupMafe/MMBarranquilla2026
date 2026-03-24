@@ -160,9 +160,6 @@ export default function FotoUploadTest() {
     console.log("STATE FOTOS:", location.state);
     console.log("VALORACION ACTIVA EN FOTOS:", valoracionActiva);
     console.log("PACIENTE EN FOTOS:", paciente);
-    console.log("PACIENTE DOCUMENTO EN FOTOS:", pacienteDocumento);
-    console.log("PROFESIONAL EN FOTOS:", profesional);
-    console.log("PROFESIONAL CÉDULA EN FOTOS:", profesionalCedula);
   }, [
     location.state,
     valoracionActiva,

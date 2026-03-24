@@ -10,6 +10,7 @@ import {
   getCheckinUploadMode,
 } from "../../../shared/lib/checkinUploadMode";
 import { guardarCheckIn } from "../services/guardarCheckIn";
+import { obtenerProfesionalesCheckin } from "../services/profesionalesCheckin";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -32,6 +33,7 @@ export default function CheckIn() {
   const [errores, setErrores] = useState({});
   const [advertenciaImagenMostrada, setAdvertenciaImagenMostrada] =
     useState(false);
+  const [profesionales, setProfesionales] = useState([]);
 
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
@@ -63,6 +65,20 @@ export default function CheckIn() {
       navigate("/", { replace: true });
     }
   }, [profesional, navigate]);
+
+  useEffect(() => {
+    async function cargarProfesionales() {
+      try {
+        const data = await obtenerProfesionalesCheckin();
+        console.log("Profesionales cargados en check-in:", data);
+        setProfesionales(data);
+      } catch (error) {
+        console.error("Error cargando profesionales en check-in:", error);
+      }
+    }
+
+    cargarProfesionales();
+  }, []);
 
   function limpiarProcesoPorNoAutorizacion() {
     setFormData(initialForm);
@@ -340,6 +356,7 @@ export default function CheckIn() {
       paciente={paciente}
       pacienteEncontrado={pacienteEncontrado}
       loadingBusqueda={loadingBusqueda}
+      profesionales={profesionales}
       onChange={handleChange}
       onBuscarPaciente={handleBuscarPaciente}
       onContinuar={handleContinuar}

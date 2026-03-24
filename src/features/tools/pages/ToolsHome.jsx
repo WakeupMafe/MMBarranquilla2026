@@ -140,7 +140,7 @@ export default function ToolsHome() {
         {puedeVerAdminFotos && (
           <div className="cards">
             <ToolCard
-              title="Admin Fotos"
+              title="Admin BD"
               subtitle="Activar o desactivar envío a base de datos"
               chipLeft="Privado"
               chipRight="Restringido"
