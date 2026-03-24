@@ -69,6 +69,32 @@ export default function FotoUploadTest() {
     );
   }, [zonasProtocoloFotos]);
 
+  // 🔵 AQUÍ centralizamos lo que llega del paciente
+  // Soporta varias rutas posibles para no depender de una sola estructura
+  const paciente = useMemo(() => {
+    return location.state?.paciente || location.state?.valoracionActiva || null;
+  }, [location.state]);
+
+  // 🔵 AQUÍ sacamos la cédula del paciente desde distintos caminos posibles
+  const pacienteDocumento = useMemo(() => {
+    return (
+      location.state?.cedula ||
+      paciente?.numero_documento_fisico ||
+      paciente?.num_documento ||
+      paciente?.cedula ||
+      ""
+    );
+  }, [location.state, paciente]);
+
+  // 🔵 AQUÍ centralizamos el profesional
+  const profesional = useMemo(() => {
+    return location.state?.profesional || null;
+  }, [location.state]);
+
+  const profesionalCedula = useMemo(() => {
+    return profesional?.cedula || "";
+  }, [profesional]);
+
   const createEmptyPhotos = () =>
     gruposActivos.flatMap((group) =>
       group.items.map((item) => {
@@ -113,6 +139,21 @@ export default function FotoUploadTest() {
       });
     };
   }, [photos]);
+
+  // 🔵 DEBUG útil para revisar qué llega realmente a esta pantalla
+  useEffect(() => {
+    console.log("STATE FOTOS:", location.state);
+    console.log("PACIENTE EN FOTOS:", paciente);
+    console.log("PACIENTE DOCUMENTO EN FOTOS:", pacienteDocumento);
+    console.log("PROFESIONAL EN FOTOS:", profesional);
+    console.log("PROFESIONAL CÉDULA EN FOTOS:", profesionalCedula);
+  }, [
+    location.state,
+    paciente,
+    pacienteDocumento,
+    profesional,
+    profesionalCedula,
+  ]);
 
   const groupedPhotos = useMemo(() => {
     return gruposActivos.map((group) => ({
@@ -294,18 +335,32 @@ export default function FotoUploadTest() {
       return;
     }
 
+    // 🔵 Validamos primero que sí haya llegado el paciente
+    if (!pacienteDocumento) {
+      await alertError(
+        "Paciente no identificado",
+        "No se encontró la cédula del paciente para guardar las fotos.",
+      );
+      return;
+    }
+
+    // 🔵 Validamos también el profesional
+    if (!profesionalCedula) {
+      await alertError(
+        "Profesional no identificado",
+        "No se encontró la cédula del profesional para guardar las fotos.",
+      );
+      return;
+    }
+
     try {
       setUploading(true);
 
-      const pacienteDocumento =
-        location.state?.cedula ||
-        location.state?.paciente?.numero_documento_fisico ||
-        "test123";
-
-      const profesionalCedula =
-        location.state?.profesional?.cedula || "1037670182";
-
       const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
+
+      console.log("SUBIENDO FOTOS PARA PACIENTE:", pacienteDocumento);
+      console.log("SUBIENDO FOTOS CON PROFESIONAL:", profesionalCedula);
+      console.log("READY PHOTOS:", readyPhotos);
 
       for (const photo of readyPhotos) {
         await uploadFotoPaciente({

@@ -158,24 +158,29 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
 
     // CASO 3:
     // Cumple todo y no tiene secundaria -> elegir entre preliminar o funcional
+    // CASO 3:
+    // Cumple todo y no tiene secundaria -> sugerir funcional,
+    // pero permitir quedarse en su zona actual o cambiar a otra zona
     else if (
       tieneClasificacionPreliminar &&
       cumpleAsistencia &&
       objetivosCumplidos &&
       !tieneClasificacionSecundariaValida
     ) {
-      flujo = "ANTIGUO_ELIGE_PRELIMINAR_O_FUNCIONAL";
+      flujo = "ANTIGUO_FUNCIONAL_O_CAMBIO";
       estadoPreclasificacion = "Activa";
       mensajePreclasificacion =
-        "Usuario preclasificado con opción de continuidad en su zona actual o progresión a fase funcional.";
+        "Usuario preclasificado para progresión a fase funcional. También puede permanecer en su zona actual o solicitar cambio a otra zona.";
       ocultarDeteccionDolor = true;
-      mostrarOpcionPreliminarFuncional = true;
-      zonaDestino = clasificacionPreliminar;
-      destinoSugerido = "decision_preliminar_o_funcional";
-      mensajeFlujoGlobal =
-        "El paciente cumple criterios para progresión terapéutica y puede definir continuidad en su zona preliminar o avanzar a la fase funcional.";
-    }
 
+      // 🔵 ya no usaremos el flujo viejo de preliminar o funcional
+      mostrarOpcionPreliminarFuncional = false;
+
+      zonaDestino = clasificacionPreliminar;
+      destinoSugerido = "decision_funcional_o_cambio";
+      mensajeFlujoGlobal =
+        "El paciente cumplió asistencia y objetivos, no presenta segundo diagnóstico y puede avanzar a funcional. Si lo requiere, también puede permanecer en su zona actual o cambiar a otra zona diagnóstica.";
+    }
     // Antiguo sin clasificación preliminar clara
     else {
       flujo = "ANTIGUO_SIN_PRECLASIFICACION_CLARA";
