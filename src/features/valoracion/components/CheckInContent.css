@@ -200,7 +200,6 @@
   width: auto;
   font-size: clamp(15px, 10px, 12px);
   padding: 10px;
-  border-radius: 10px;
 }
 
 .checkinError {
@@ -229,6 +228,7 @@
     flex-direction: column;
   }
   .checkinPatientGrid {
+    line-height: 15px;
     display: grid;
     width: 100%;
     grid-template-columns: 1fr;
