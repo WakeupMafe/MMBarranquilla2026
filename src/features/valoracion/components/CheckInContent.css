@@ -29,8 +29,8 @@
 }
 
 .checkinTitle {
-  font-size: clamp(28px, 6vw, 46px);
-  font-weight: 700;
+  font-size: clamp(18px, 6vw, 46px);
+  font-weight: 500;
   color: #4a4a4a;
 }
 
