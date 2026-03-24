@@ -11,6 +11,11 @@ import {
   getFotosUploadMode,
   setFotosUploadMode,
 } from "../../../shared/lib/fotosUploadMode";
+import {
+  CHECKIN_UPLOAD_MODES,
+  getCheckinUploadMode,
+  setCheckinUploadMode,
+} from "../../../shared/lib/checkinUploadMode";
 
 const CEDULA_ADMIN_FOTOS = "1037670182";
 
@@ -18,7 +23,10 @@ export default function FotosAdminMode() {
   const navigate = useNavigate();
   const { profesional } = useProfesionalSession();
 
-  const [mode, setMode] = useState(FOTO_UPLOAD_MODES.SIMULACION);
+  const [fotoMode, setFotoMode] = useState(FOTO_UPLOAD_MODES.SIMULACION);
+  const [checkinMode, setCheckinMode] = useState(
+    CHECKIN_UPLOAD_MODES.SIMULACION,
+  );
 
   const cedulaProfesional = useMemo(() => {
     return String(profesional?.cedula || "").trim();
@@ -27,7 +35,8 @@ export default function FotosAdminMode() {
   const isAuthorized = cedulaProfesional === CEDULA_ADMIN_FOTOS;
 
   useEffect(() => {
-    setMode(getFotosUploadMode());
+    setFotoMode(getFotosUploadMode());
+    setCheckinMode(getCheckinUploadMode());
   }, []);
 
   useEffect(() => {
@@ -43,15 +52,27 @@ export default function FotosAdminMode() {
     }
   }, [profesional, isAuthorized, navigate]);
 
-  async function handleSetMode(newMode) {
+  async function handleSetFotoMode(newMode) {
     setFotosUploadMode(newMode);
-    setMode(newMode);
+    setFotoMode(newMode);
 
     await alertOk(
-      "Modo actualizado",
+      "Modo de fotos actualizado",
       newMode === FOTO_UPLOAD_MODES.REAL
-        ? "El envío real a base de datos quedó ACTIVADO."
-        : "La simulación quedó ACTIVADA. No se enviarán fotos a base de datos.",
+        ? "El envío real de fotos a base de datos quedó ACTIVADO."
+        : "La simulación de fotos quedó ACTIVADA. No se enviarán fotos a base de datos.",
+    );
+  }
+
+  async function handleSetCheckinMode(newMode) {
+    setCheckinUploadMode(newMode);
+    setCheckinMode(newMode);
+
+    await alertOk(
+      "Modo de check-in actualizado",
+      newMode === CHECKIN_UPLOAD_MODES.REAL
+        ? "El envío real de check-in a base de datos quedó ACTIVADO."
+        : "La simulación de check-in quedó ACTIVADA. No se enviará información a base de datos.",
     );
   }
 
@@ -69,7 +90,7 @@ export default function FotosAdminMode() {
 
       <main className="valoracionPage">
         <section className="valoracionHero">
-          <h1 className="valoracionTitle">Control de envío </h1>
+          <h1 className="valoracionTitle">Control de envío</h1>
           <p className="valoracionSubtitle">
             Módulo privado para activar o desactivar el envío a base de datos.
           </p>
@@ -93,34 +114,92 @@ export default function FotosAdminMode() {
                 <strong>Cédula:</strong> {cedulaProfesional}
               </li>
               <li>
-                <strong>Modo activo:</strong>{" "}
-                {mode === FOTO_UPLOAD_MODES.REAL
+                <strong>Modo fotos:</strong>{" "}
+                {fotoMode === FOTO_UPLOAD_MODES.REAL
+                  ? "ENVÍO REAL A BASE DE DATOS"
+                  : "SIMULACIÓN"}
+              </li>
+              <li>
+                <strong>Modo check-in:</strong>{" "}
+                {checkinMode === CHECKIN_UPLOAD_MODES.REAL
                   ? "ENVÍO REAL A BASE DE DATOS"
                   : "SIMULACIÓN"}
               </li>
             </ul>
           </div>
 
-          <div className="valoracionActionsResponsive">
-            <BotonImportante
-              type="button"
-              variant={mode === FOTO_UPLOAD_MODES.REAL ? "solid" : "outline"}
-              fullWidth
-              onClick={() => handleSetMode(FOTO_UPLOAD_MODES.REAL)}
+          <div style={{ marginBottom: 20 }}>
+            <h3
+              className="valoracionCardTitle"
+              style={{ fontSize: "1rem", marginBottom: 12 }}
             >
-              Activar envío real
-            </BotonImportante>
+              Control de fotos
+            </h3>
 
-            <BotonImportante
-              type="button"
-              variant={
-                mode === FOTO_UPLOAD_MODES.SIMULACION ? "solid" : "outline"
-              }
-              fullWidth
-              onClick={() => handleSetMode(FOTO_UPLOAD_MODES.SIMULACION)}
+            <div className="valoracionActionsResponsive">
+              <BotonImportante
+                type="button"
+                variant={
+                  fotoMode === FOTO_UPLOAD_MODES.REAL ? "solid" : "outline"
+                }
+                fullWidth
+                onClick={() => handleSetFotoMode(FOTO_UPLOAD_MODES.REAL)}
+              >
+                Activar envío real fotos
+              </BotonImportante>
+
+              <BotonImportante
+                type="button"
+                variant={
+                  fotoMode === FOTO_UPLOAD_MODES.SIMULACION
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() => handleSetFotoMode(FOTO_UPLOAD_MODES.SIMULACION)}
+              >
+                Activar simulación fotos
+              </BotonImportante>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <h3
+              className="valoracionCardTitle"
+              style={{ fontSize: "1rem", marginBottom: 12 }}
             >
-              Activar simulación
-            </BotonImportante>
+              Control de check-in
+            </h3>
+
+            <div className="valoracionActionsResponsive">
+              <BotonImportante
+                type="button"
+                variant={
+                  checkinMode === CHECKIN_UPLOAD_MODES.REAL
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() => handleSetCheckinMode(CHECKIN_UPLOAD_MODES.REAL)}
+              >
+                Activar envío real check-in
+              </BotonImportante>
+
+              <BotonImportante
+                type="button"
+                variant={
+                  checkinMode === CHECKIN_UPLOAD_MODES.SIMULACION
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() =>
+                  handleSetCheckinMode(CHECKIN_UPLOAD_MODES.SIMULACION)
+                }
+              >
+                Activar simulación check-in
+              </BotonImportante>
+            </div>
           </div>
 
           <div style={{ marginTop: 16 }}>

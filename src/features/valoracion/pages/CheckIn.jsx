@@ -5,6 +5,11 @@ import CheckInContent from "../components/CheckInContent";
 
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertError, alertOk, alertConfirm } from "../../../shared/lib/alerts";
+import {
+  CHECKIN_UPLOAD_MODES,
+  getCheckinUploadMode,
+} from "../../../shared/lib/checkinUploadMode";
+import { guardarCheckIn } from "../services/guardarCheckIn";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -28,15 +33,11 @@ export default function CheckIn() {
   const [advertenciaImagenMostrada, setAdvertenciaImagenMostrada] =
     useState(false);
 
-  // 1) AQUÍ RECIBES el profesional activo desde la página anterior
-  //    cuando navegan con navigate(..., { state: { profesional } })
   const profesional = useMemo(() => {
-    const fromState = location.state?.profesional; // <- viene de otra página
+    const fromState = location.state?.profesional;
     if (fromState) return fromState;
 
     try {
-      // 2) SI NO VIENE por state, lo recuperas desde sessionStorage
-      //    para no perder la sesión al recargar o cambiar de ruta
       const raw = sessionStorage.getItem(SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch {
@@ -260,20 +261,51 @@ export default function CheckIn() {
 
     if (!confirmar) return;
 
-    navigate("/herramientas/valoracion", {
-      state: {
-        profesional,
-        paciente,
-        checkIn: {
-          cedula: formData.cedula.trim(),
-          instructor: formData.instructor.trim(),
-          lugarValoracion: formData.lugarValoracion.trim(),
-          habeasData: formData.habeasData === "si",
-          autorizacionImagen: formData.autorizacionImagen === "si",
-          seguridadSocial: formData.seguridadSocial,
+    try {
+      const mode = getCheckinUploadMode();
+
+      const checkInPayload = {
+        cedula: formData.cedula.trim(),
+        instructor: formData.instructor.trim(),
+        lugarValoracion: formData.lugarValoracion.trim(),
+        habeasData: formData.habeasData === "si",
+        autorizacionImagen: formData.autorizacionImagen === "si",
+        seguridadSocial: formData.seguridadSocial,
+      };
+
+      if (mode === CHECKIN_UPLOAD_MODES.REAL) {
+        await guardarCheckIn({
+          ...checkInPayload,
+          profesional,
+          paciente,
+        });
+
+        await alertOk(
+          "Check-in guardado",
+          "La información del check-in fue guardada correctamente en base de datos.",
+        );
+      } else {
+        await alertOk(
+          "Modo simulación",
+          "El check-in no se guardó en base de datos porque el módulo está en simulación.",
+        );
+      }
+
+      navigate("/herramientas/valoracion", {
+        state: {
+          profesional,
+          paciente,
+          checkIn: checkInPayload,
         },
-      },
-    });
+      });
+    } catch (error) {
+      console.error("Error guardando check-in:", error);
+
+      await alertError(
+        "Error al guardar check-in",
+        error?.message || "No fue posible guardar la información del check-in.",
+      );
+    }
   }
 
   async function handleLogout() {
