@@ -55,7 +55,9 @@
   font-weight: 700;
 }
 .checkinPatientStatusTitle {
-  line-height: clamp(8px, 1vw, 20px);
+  font-weight: 40px;
+  color: rgb(43, 46, 43);
+  line-height: 18px;
 }
 
 .checkinCard {

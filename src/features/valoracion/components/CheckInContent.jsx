@@ -128,7 +128,7 @@ export default function CheckInContent({
                 {pacienteEncontrado ? (
                   <>
                     <h4 className="checkinPatientStatusTitle">
-                      Paciente encontrado en base de datos
+                      Paciente encontrado
                     </h4>
 
                     <div className="checkinPatientGrid">
