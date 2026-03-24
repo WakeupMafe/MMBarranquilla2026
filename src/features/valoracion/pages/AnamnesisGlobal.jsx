@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import { alertConfirm, alertError } from "../../../shared/lib/alerts";
+import useProfesionalSession from "../../../shared/hooks/useProfesionalSession";
 
 import { anamnesisSections } from "../config/anamnesisSections";
 import { evaluarAnamnesisGlobal } from "../services/anamnesisGlobalRules";
@@ -158,6 +159,11 @@ function limpiarCamposDolorSiOculto(formData, ocultarDeteccionDolor) {
 export default function AnamnesisGlobal() {
   const navigate = useNavigate();
   const [resultado, setResultado] = useState(null);
+  // 🔵 AQUÍ obtenemos el profesional activo desde sesión
+  // Este hook:
+  // - lo toma de sessionStorage
+  // - o lo guarda si vino desde otra página
+  const { profesional } = useProfesionalSession();
 
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
@@ -598,7 +604,7 @@ export default function AnamnesisGlobal() {
   return (
     <div className="valoracionShell">
       <TopHeader
-        userName="Profesional"
+        userName={profesional?.nombre || "Profesional"}
         onLogout={() => navigate("/")}
         logoSrc={logoWakeup}
       />

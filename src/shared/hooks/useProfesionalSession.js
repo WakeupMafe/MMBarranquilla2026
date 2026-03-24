@@ -13,11 +13,19 @@ export default function useProfesionalSession() {
     remove,
   } = useSessionStorageState(SESSION_KEY, null);
 
-  // Si llega desde Inicio (navigate state), lo guardamos en sesión
   useEffect(() => {
     const fromState = location.state?.profesional;
-    if (fromState) setProfesional(fromState);
+
+    // Si el profesional llega por navegación desde otra página,
+    // lo guardamos en sessionStorage para reutilizarlo en todo el módulo.
+    if (fromState) {
+      setProfesional(fromState);
+    }
   }, [location.state, setProfesional]);
 
-  return { profesional, setProfesional, clearProfesional: remove };
+  return {
+    profesional,
+    setProfesional,
+    clearProfesional: remove,
+  };
 }
