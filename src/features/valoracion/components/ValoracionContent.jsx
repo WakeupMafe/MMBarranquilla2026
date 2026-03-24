@@ -203,14 +203,6 @@ export default function ValoracionContent({
                   </p>
 
                   <p>
-                    <strong>Asistencia:</strong>{" "}
-                    {typeof paciente?.clasificacionPaciente
-                      ?.porcentajeAsistencia === "number"
-                      ? `${paciente.clasificacionPaciente.porcentajeAsistencia}%`
-                      : "-"}
-                  </p>
-
-                  <p>
                     <strong>Logros:</strong>{" "}
                     {paciente?.clasificacionPaciente?.objetivosCumplidos
                       ? "Cumplió objetivos"

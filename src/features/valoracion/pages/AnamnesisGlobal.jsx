@@ -227,6 +227,14 @@ export default function AnamnesisGlobal() {
   }, [formData]);
 
   function irAFotos(zonaProtocoloFotos) {
+    const pacienteActivo = valoracionActiva?.paciente || null;
+
+    const cedulaPaciente =
+      valoracionActiva?.paciente?.numero_documento_fisico ||
+      valoracionActiva?.paciente?.num_documento ||
+      valoracionActiva?.paciente?.cedula ||
+      "";
+
     navigate("/herramientas/fotos-test", {
       state: {
         resultado,
@@ -235,11 +243,14 @@ export default function AnamnesisGlobal() {
         zonaProtocoloFotos,
         zonaSeleccionadaFinal: zonaProtocoloFotos,
 
-        // 🔵 IMPORTANTE: mandamos estos datos para que fotos
-        // no use valores quemados ni dependa de faltantes
+        // 🔵 profesional que está haciendo el proceso
         profesional,
-        paciente: valoracionActiva,
-        cedula: valoracionActiva?.numero_documento_fisico,
+
+        // 🔵 paciente guardado en la sesión activa
+        paciente: pacienteActivo,
+
+        // 🔵 cédula explícita del paciente
+        cedula: cedulaPaciente,
       },
     });
   }

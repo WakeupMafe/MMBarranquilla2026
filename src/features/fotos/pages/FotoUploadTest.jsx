@@ -5,7 +5,11 @@ import { compressImage } from "../utils/imageCompression";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import { PHOTO_GROUPS } from "../constants/photoGroups";
 import PhotoGroupCard from "../components/PhotoGroupCard";
-import { uploadFotoPaciente } from "../services/fotosService";
+import { obtenerValoracionActiva } from "../../valoracion/utils/valoracionSession";
+import {
+  FOTO_UPLOAD_MODES,
+  getFotosUploadMode,
+} from "../../../shared/lib/fotosUploadMode";
 
 function normalizarZonaProtocolo(zona) {
   const value = String(zona || "")
@@ -34,9 +38,14 @@ function getZonaTitle(zona) {
   return labels[zona] || "Funcional";
 }
 
+const SESSION_KEY = "wk_profesional";
+
 export default function FotoUploadTest() {
   const location = useLocation();
   const navigate = useNavigate();
+
+  // 🔵 La sesión activa de valoración será la fuente principal del paciente
+  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
 
   const zonasProtocoloFotos = useMemo(() => {
     const zonasDesdeState = location.state?.zonasProtocoloFotos;
@@ -51,11 +60,13 @@ export default function FotoUploadTest() {
         location.state?.resultado?.zonasDetectadas?.[0] ||
         location.state?.clasificacionPaciente?.zonaSecundaria ||
         location.state?.clasificacionPaciente?.zonaDestino ||
+        valoracionActiva?.clasificacionPaciente?.zonaSecundaria ||
+        valoracionActiva?.clasificacionPaciente?.zonaDestino ||
         "funcional",
     );
 
     return [zonaUnica];
-  }, [location.state]);
+  }, [location.state, valoracionActiva]);
 
   const gruposActivos = useMemo(() => {
     if (!zonasProtocoloFotos.length) return [];
@@ -69,26 +80,31 @@ export default function FotoUploadTest() {
     );
   }, [zonasProtocoloFotos]);
 
-  // 🔵 AQUÍ centralizamos lo que llega del paciente
-  // Soporta varias rutas posibles para no depender de una sola estructura
+  // 🔵 El paciente SIEMPRE se toma de la sesión activa de valoración
   const paciente = useMemo(() => {
-    return location.state?.paciente || location.state?.valoracionActiva || null;
-  }, [location.state]);
+    return valoracionActiva?.paciente || null;
+  }, [valoracionActiva]);
 
-  // 🔵 AQUÍ sacamos la cédula del paciente desde distintos caminos posibles
+  // 🔵 La cédula también sale de la sesión activa
   const pacienteDocumento = useMemo(() => {
     return (
-      location.state?.cedula ||
-      paciente?.numero_documento_fisico ||
-      paciente?.num_documento ||
-      paciente?.cedula ||
+      valoracionActiva?.paciente?.numero_documento_fisico ||
+      valoracionActiva?.paciente?.num_documento ||
+      valoracionActiva?.paciente?.cedula ||
       ""
     );
-  }, [location.state, paciente]);
+  }, [valoracionActiva]);
 
-  // 🔵 AQUÍ centralizamos el profesional
+  // 🔵 El profesional sí puede venir del state o de sessionStorage
   const profesional = useMemo(() => {
-    return location.state?.profesional || null;
+    if (location.state?.profesional) return location.state.profesional;
+
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
   }, [location.state]);
 
   const profesionalCedula = useMemo(() => {
@@ -140,15 +156,16 @@ export default function FotoUploadTest() {
     };
   }, [photos]);
 
-  // 🔵 DEBUG útil para revisar qué llega realmente a esta pantalla
   useEffect(() => {
     console.log("STATE FOTOS:", location.state);
+    console.log("VALORACION ACTIVA EN FOTOS:", valoracionActiva);
     console.log("PACIENTE EN FOTOS:", paciente);
     console.log("PACIENTE DOCUMENTO EN FOTOS:", pacienteDocumento);
     console.log("PROFESIONAL EN FOTOS:", profesional);
     console.log("PROFESIONAL CÉDULA EN FOTOS:", profesionalCedula);
   }, [
     location.state,
+    valoracionActiva,
     paciente,
     pacienteDocumento,
     profesional,
@@ -335,16 +352,14 @@ export default function FotoUploadTest() {
       return;
     }
 
-    // 🔵 Validamos primero que sí haya llegado el paciente
     if (!pacienteDocumento) {
       await alertError(
         "Paciente no identificado",
-        "No se encontró la cédula del paciente para guardar las fotos.",
+        "No se encontró la cédula del paciente en la sesión activa de valoración.",
       );
       return;
     }
 
-    // 🔵 Validamos también el profesional
     if (!profesionalCedula) {
       await alertError(
         "Profesional no identificado",
@@ -357,10 +372,30 @@ export default function FotoUploadTest() {
       setUploading(true);
 
       const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
+      const uploadMode = getFotosUploadMode();
 
-      console.log("SUBIENDO FOTOS PARA PACIENTE:", pacienteDocumento);
-      console.log("SUBIENDO FOTOS CON PROFESIONAL:", profesionalCedula);
+      console.log("UPLOAD MODE:", uploadMode);
+      console.log("PACIENTE:", pacienteDocumento);
+      console.log("PROFESIONAL:", profesionalCedula);
       console.log("READY PHOTOS:", readyPhotos);
+      console.log("SESIÓN TIPO:", sesionTipo);
+
+      if (uploadMode === FOTO_UPLOAD_MODES.SIMULACION) {
+        await alertOk(
+          "📸 Simulación completada",
+          `Se simuló correctamente el envío de ${readyPhotos.length} foto(s). No se guardó nada en base de datos.`,
+        );
+
+        photos.forEach((photo) => {
+          if (photo.preview) {
+            URL.revokeObjectURL(photo.preview);
+          }
+        });
+
+        setPhotos(createEmptyPhotos());
+        setFaseCompletada(false);
+        return;
+      }
 
       for (const photo of readyPhotos) {
         await uploadFotoPaciente({
@@ -388,8 +423,8 @@ export default function FotoUploadTest() {
       setFaseCompletada(false);
     } catch (error) {
       await alertError(
-        "Error subiendo fotos",
-        error.message || "No se pudieron subir las fotos.",
+        "Error en simulación",
+        error.message || "No se pudo completar la simulación de fotos.",
       );
     } finally {
       setUploading(false);
@@ -418,6 +453,17 @@ export default function FotoUploadTest() {
             <strong>{zonasProtocoloFotos.map(getZonaTitle).join(", ")}</strong>.
             Registra únicamente las tomas requeridas para esta fase clínica.
           </p>
+
+          {/* 🔵 Mostrar la sesión activa del paciente */}
+          <div className="photoSessionInfo">
+            <p>
+              <strong>Paciente activo:</strong>{" "}
+              {paciente?.nombre_apellido_documento || "No disponible"}
+            </p>
+            <p>
+              <strong>Cédula:</strong> {pacienteDocumento || "No disponible"}
+            </p>
+          </div>
         </section>
 
         <section className="photoCard">

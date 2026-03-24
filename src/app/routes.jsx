@@ -15,7 +15,7 @@ import Valoracion from "../features/valoracion/pages/Valoracion";
 import AnamnesisGlobal from "../features/valoracion/pages/AnamnesisGlobal";
 import AnamnesisZona from "../features/valoracion/pages/AnamnesisZona";
 import ModuloObesidad from "../features/valoracion/components/ModuloObesidad";
-
+import FotosAdminMode from "../features/tools/pages/FotosAdminMode";
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -74,5 +74,9 @@ export const router = createBrowserRouter([
   {
     path: "/herramientas/modulo-obesidad",
     element: <ModuloObesidad />,
+  },
+  {
+    path: "/herramientas/fotos-admin",
+    element: <FotosAdminMode />,
   },
 ]);

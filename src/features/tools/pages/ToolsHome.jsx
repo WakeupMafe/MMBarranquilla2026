@@ -14,6 +14,7 @@ import iconLogrosF2 from "../../../assets/LogroF2.png";
 import iconConsultaBD from "../../../assets/ConsultaBD.png";
 
 const SESSION_KEY = "wk_profesional";
+const CEDULA_ADMIN_FOTOS = "1037670182";
 
 export default function ToolsHome() {
   const navigate = useNavigate();
@@ -53,6 +54,10 @@ export default function ToolsHome() {
   if (!profesional) return null;
 
   const userName = profesional.nombre;
+
+  // 🔵 Solo esta cédula puede ver la card de administración de fotos
+  const puedeVerAdminFotos =
+    String(profesional?.cedula || "").trim() === CEDULA_ADMIN_FOTOS;
 
   const handleLogout = async () => {
     const ok = await alertConfirm({
@@ -131,17 +136,20 @@ export default function ToolsHome() {
           />
         </div>
 
-        <div className="cards">
-          <ToolCard
-            title="Prueba de Fotos"
-            subtitle="Selección, vista previa y compresión"
-            chipLeft="Prueba"
-            chipRight="Temporal"
-            buttonText="Abrir"
-            iconSrc={iconValoracion}
-            onOpen={() => navigate("/herramientas/fotos-test")}
-          />
-        </div>
+        {/* 🔵 Card restringida solo para la cédula autorizada */}
+        {puedeVerAdminFotos && (
+          <div className="cards">
+            <ToolCard
+              title="Admin Fotos"
+              subtitle="Activar o desactivar envío a base de datos"
+              chipLeft="Privado"
+              chipRight="Restringido"
+              buttonText="Abrir"
+              iconSrc={iconValoracion}
+              onOpen={() => navigate("/herramientas/fotos-admin")}
+            />
+          </div>
+        )}
 
         <div className="cards">
           <ToolCard

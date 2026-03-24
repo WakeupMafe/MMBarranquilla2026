@@ -8,6 +8,7 @@ import ValoracionStepper from "../components/ValoracionStepper";
 import ZonaRenderer from "../components/zonas/ZonaRenderer";
 
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+import { obtenerValoracionActiva } from "../utils/valoracionSession";
 
 import "./Valoracion.css";
 
@@ -30,15 +31,23 @@ export default function AnamnesisZona() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
+
   const zonasDetectadasRaw = location.state?.zonasDetectadas || [];
   const zonasDetectadas = zonasDetectadasRaw
     .map(normalizarZona)
     .filter(Boolean);
 
-  const paciente = location.state?.paciente || null;
+  // 🔵 Primero intenta tomar el paciente desde state.
+  // Si no viene, lo recupera desde la sesión activa de valoración.
+  const paciente =
+    location.state?.paciente || valoracionActiva?.paciente || null;
 
+  // 🔵 La cédula también se intenta recuperar desde varios caminos.
   const cedula =
     location.state?.cedula ||
+    location.state?.paciente?.numero_documento_fisico ||
+    valoracionActiva?.paciente?.numero_documento_fisico ||
     paciente?.numero_documento_fisico ||
     paciente?.cedula ||
     "";
@@ -135,9 +144,13 @@ export default function AnamnesisZona() {
     navigate("/herramientas/fotos-test", {
       state: {
         ...location.state,
+
+        // 🔵 Mandamos explícitamente estos datos para que
+        // FotoUploadTest no dependa de defaults ni pierda la cédula.
         paciente,
         cedula,
         profesional,
+
         zonasProtocoloFotos: resumenZonas.zonasAptasParaFotos,
         evaluacionesPorZona,
         zonasDetectadas,
