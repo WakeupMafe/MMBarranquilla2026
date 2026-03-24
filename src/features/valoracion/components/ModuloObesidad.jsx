@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
+import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertError, alertOk } from "../../../shared/lib/alerts";
+
 import "./ModuloObesidad.css";
 import "../pages/AnamnesisGlobal.css";
 
@@ -28,6 +30,7 @@ export default function ModuloObesidad() {
 
   const [busqueda, setBusqueda] = useState("");
   const [paciente, setPaciente] = useState(null);
+  const [coincidencias, setCoincidencias] = useState([]);
   const [loadingBusqueda, setLoadingBusqueda] = useState(false);
 
   const [peso, setPeso] = useState("");
@@ -37,6 +40,20 @@ export default function ModuloObesidad() {
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(peso, talla);
   }, [peso, talla]);
+
+  function limpiarSeleccionPaciente() {
+    setPaciente(null);
+    setCoincidencias([]);
+    setPeso("");
+    setTalla("");
+  }
+
+  function handleSeleccionarPaciente(item) {
+    setPaciente(item);
+    setCoincidencias([]);
+    setPeso("");
+    setTalla("");
+  }
 
   async function handleBuscarPaciente() {
     const valor = String(busqueda || "").trim();
@@ -51,23 +68,48 @@ export default function ModuloObesidad() {
 
     try {
       setLoadingBusqueda(true);
+      limpiarSeleccionPaciente();
 
-      // Búsqueda simulada temporal hasta definir integración real
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      const esCedula = /^\d+$/.test(valor);
 
-      if (/^\d+$/.test(valor)) {
-        setPaciente({
-          numero_documento_fisico: valor,
-          nombre_apellido_documento: "Paciente encontrado",
-          genero: "No registrado",
-        });
-      } else {
-        setPaciente({
-          numero_documento_fisico: "1037670182",
-          nombre_apellido_documento: valor,
-          genero: "No registrado",
-        });
+      if (esCedula) {
+        const { data, error } = await supabase
+          .from("participantes")
+          .select("numero_documento_fisico, nombre_apellido_documento, genero")
+          .eq("numero_documento_fisico", valor)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!data) {
+          await alertError(
+            "Paciente no encontrado",
+            "No existe un paciente con esa cédula. No puedes continuar hasta seleccionar un paciente válido.",
+          );
+          return;
+        }
+
+        setPaciente(data);
+        return;
       }
+
+      const { data, error } = await supabase
+        .from("participantes")
+        .select("numero_documento_fisico, nombre_apellido_documento, genero")
+        .ilike("nombre_apellido_documento", `%${valor}%`)
+        .limit(10);
+
+      if (error) throw error;
+
+      if (!data || data.length === 0) {
+        await alertError(
+          "Sin coincidencias",
+          "No se encontraron pacientes con ese nombre.",
+        );
+        return;
+      }
+
+      setCoincidencias(data);
     } catch (error) {
       await alertError(
         "Error al buscar",
@@ -82,7 +124,7 @@ export default function ModuloObesidad() {
     if (!paciente?.numero_documento_fisico) {
       await alertError(
         "Paciente requerido",
-        "Primero debes seleccionar un paciente.",
+        "Debes buscar y seleccionar un paciente existente antes de continuar.",
       );
       return;
     }
@@ -99,7 +141,7 @@ export default function ModuloObesidad() {
 
       await alertOk(
         "Medidas registradas",
-        `Se enviaron correctamente las medidas de ${paciente.nombre_apellido_documento}.`,
+        `Se enviaron correctamente las medidas de ${paciente.nombre_apellido_documento || "No registrado"}.`,
       );
 
       console.log("ENVÍO SIMULADO MÓDULO OBESIDAD", {
@@ -153,7 +195,7 @@ export default function ModuloObesidad() {
           <div className="valoracionCardHeader">
             <h2 className="valoracionCardTitle">Buscar paciente</h2>
             <p className="valoracionCardDescription">
-              Puedes buscar por cédula o nombre.
+              Puedes buscar por cédula o por nombre.
             </p>
           </div>
 
@@ -178,14 +220,55 @@ export default function ModuloObesidad() {
             </div>
           </div>
 
+          {coincidencias.length > 0 && (
+            <div className="moduloObesidadResultados">
+              <h3 className="moduloObesidadResultadosTitulo">
+                Las coincidencias son estas
+              </h3>
+
+              <div className="moduloObesidadResultadosLista">
+                {coincidencias.map((item) => (
+                  <div
+                    key={item.numero_documento_fisico}
+                    className="moduloObesidadResultadoItem"
+                  >
+                    <div className="moduloObesidadResultadoInfo">
+                      <p className="moduloObesidadResultadoNombre">
+                        {item.nombre_apellido_documento || "No registrado"}
+                      </p>
+                      <p className="moduloObesidadResultadoDato">
+                        <strong>Cédula:</strong>{" "}
+                        {item.numero_documento_fisico || "No registrado"}
+                      </p>
+                      <p className="moduloObesidadResultadoDato">
+                        <strong>Género:</strong>{" "}
+                        {item.genero || "No registrado"}
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="valoracionPrimaryBtn moduloObesidadSeleccionarBtn"
+                      onClick={() => handleSeleccionarPaciente(item)}
+                    >
+                      Seleccionar
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {paciente && (
             <div className="valoracionPacienteCard">
               <ul className="valoracionPacienteList">
                 <li>
-                  <strong>Cédula:</strong> {paciente.numero_documento_fisico}
+                  <strong>Cédula:</strong>{" "}
+                  {paciente.numero_documento_fisico || "No registrado"}
                 </li>
                 <li>
-                  <strong>Nombre:</strong> {paciente.nombre_apellido_documento}
+                  <strong>Nombre:</strong>{" "}
+                  {paciente.nombre_apellido_documento || "No registrado"}
                 </li>
                 <li>
                   <strong>Género:</strong> {paciente.genero || "No registrado"}
@@ -238,7 +321,7 @@ export default function ModuloObesidad() {
                     type="button"
                     className="valoracionPrimaryBtn"
                     onClick={handleGuardar}
-                    disabled={guardando}
+                    disabled={guardando || !paciente}
                   >
                     {guardando ? "Enviando..." : "Guardar medidas"}
                   </button>

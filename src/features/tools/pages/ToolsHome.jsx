@@ -100,7 +100,7 @@ export default function ToolsHome() {
             title="Módulo Obesidad"
             subtitle="Peso, talla e IMC del paciente"
             chipLeft="3–5 min"
-            chipRight="Complementario"
+            chipRight="Calculo"
             buttonText="Abrir"
             iconSrc={iconValoracion}
             onOpen={() => navigate("/herramientas/modulo-obesidad")}
