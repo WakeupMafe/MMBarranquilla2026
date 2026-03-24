@@ -32,7 +32,7 @@ export async function guardarCheckIn({
   }
 
   const { data: existente, error: errorBusqueda } = await supabase
-    .from("checkin")
+    .from("checkin_anamnesis")
     .select("numero_documento_fisico")
     .eq("numero_documento_fisico", numeroDocumento)
     .maybeSingle();
@@ -63,7 +63,7 @@ export async function guardarCheckIn({
   };
 
   const { data, error } = await supabase
-    .from("checkin")
+    .from("checkin_anamnesis")
     .insert(payload)
     .select()
     .single();
