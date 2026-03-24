@@ -1,6 +1,7 @@
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import ValoracionStepper from "./ValoracionStepper";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 
 import "./CheckInContent.css";
 
@@ -23,9 +24,14 @@ export default function CheckInContent({
 
       <main className="checkinPage">
         <div className="checkinTopActions">
-          <button className="checkinBackBtn" onClick={onVolver} type="button">
+          <BotonImportante
+            type="button"
+            onClick={onVolver}
+            variant="ghost"
+            className="checkinBackBtn"
+          >
             ← Volver
-          </button>
+          </BotonImportante>
         </div>
 
         <section className="checkinHero">
@@ -108,14 +114,14 @@ export default function CheckInContent({
               </div>
 
               <div className="checkinSearchActions">
-                <button
+                <BotonImportante
                   type="button"
-                  className="checkinPrimaryButton"
                   onClick={onBuscarPaciente}
                   disabled={loadingBusqueda}
+                  variant="solid"
                 >
                   {loadingBusqueda ? "Buscando..." : "Validar paciente"}
-                </button>
+                </BotonImportante>
               </div>
 
               <div
@@ -322,17 +328,19 @@ export default function CheckInContent({
             </section>
 
             <div className="checkinFooterActions">
-              <button
-                type="button"
-                className="checkinSecondaryButton"
-                onClick={onVolver}
-              >
-                Volver
-              </button>
+              <div className="checkinFooterActions">
+                <BotonImportante
+                  type="button"
+                  onClick={onVolver}
+                  variant="ghost"
+                >
+                  Volver
+                </BotonImportante>
 
-              <button type="submit" className="checkinPrimaryButton">
-                Continuar a datos generales
-              </button>
+                <BotonImportante type="submit" variant="solid">
+                  Continuar a datos generales
+                </BotonImportante>
+              </div>
             </div>
           </form>
         </section>

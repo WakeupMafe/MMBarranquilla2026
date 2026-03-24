@@ -1,6 +1,7 @@
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import ValoracionStepper from "./ValoracionStepper";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 
 import "./ValoracionContent.css";
 
@@ -15,20 +16,17 @@ export default function ValoracionContent({
   onContinuar,
   onLogout,
   onVolver,
+  onEditarDatos,
 }) {
   const estadoPreclasificacion =
     paciente?.clasificacionPaciente?.estadoPreclasificacion || "Sin dato";
 
-  const claseAlerta = paciente?.esSimulacro
-    ? "valoracionStatusAlert valoracionStatusAlert--info"
-    : paciente?.clasificacionPaciente?.preclasifica
-      ? "valoracionStatusAlert valoracionStatusAlert--ok"
-      : paciente?.clasificacionPaciente?.estadoPreclasificacion ===
-            "Se sugiere nuevo análisis" ||
-          paciente?.clasificacionPaciente?.estadoPreclasificacion ===
-            "Simulacro activo"
-        ? "valoracionStatusAlert valoracionStatusAlert--info"
-        : "valoracionStatusAlert valoracionStatusAlert--warn";
+  const claseAlerta = paciente?.clasificacionPaciente?.preclasifica
+    ? "valoracionStatusAlert valoracionStatusAlert--ok"
+    : paciente?.clasificacionPaciente?.estadoPreclasificacion ===
+        "Se sugiere nuevo análisis"
+      ? "valoracionStatusAlert valoracionStatusAlert--info"
+      : "valoracionStatusAlert valoracionStatusAlert--warn";
 
   const mensajeAlerta =
     paciente?.clasificacionPaciente?.mensajePreclasificacion ||
@@ -40,13 +38,9 @@ export default function ValoracionContent({
 
       <main className="valoracionPage">
         <div className="valoracionTopActions">
-          <button
-            className="valoracionBackBtn"
-            onClick={onVolver}
-            type="button"
-          >
+          <BotonImportante type="button" variant="ghost" onClick={onVolver}>
             ← Volver
-          </button>
+          </BotonImportante>
         </div>
 
         <section className="valoracionHero">
@@ -57,7 +51,6 @@ export default function ValoracionContent({
           </p>
         </section>
 
-        {/* 🔥 STEP PER CENTRALIZADO */}
         <ValoracionStepper currentStep={2} />
 
         <section className="valoracionCard">
@@ -75,7 +68,7 @@ export default function ValoracionContent({
             </p>
           </div>
 
-          {!vieneDesdeCheckIn ? (
+          {!vieneDesdeCheckIn && (
             <>
               <form className="valoracionForm" onSubmit={onBuscar}>
                 <label className="valoracionLabel" htmlFor="cedulaPaciente">
@@ -92,18 +85,14 @@ export default function ValoracionContent({
                   disabled={loading}
                 />
 
-                <button
-                  type="submit"
-                  className="valoracionPrimaryButton"
-                  disabled={loading}
-                >
+                <BotonImportante type="submit" disabled={loading}>
                   {loading ? "Buscando..." : "Buscar paciente"}
-                </button>
+                </BotonImportante>
               </form>
 
               <div className="valoracionDivider" />
             </>
-          ) : null}
+          )}
 
           {!paciente ? (
             <p className="valoracionEmptyState">
@@ -145,8 +134,41 @@ export default function ValoracionContent({
                       {paciente.genero || "-"}
                     </strong>
                   </div>
+
+                  <div className="valoracionPatientItem">
+                    <span className="valoracionPatientLabel">
+                      Fecha de nacimiento
+                    </span>
+                    <strong className="valoracionPatientValue">
+                      {paciente.fecha_nacimiento || "-"}
+                    </strong>
+                  </div>
                 </div>
               </div>
+
+              {paciente?.estadoCalidad?.requiereCorreccion && (
+                <div className="valoracionStatusAlert valoracionStatusAlert--warn">
+                  <h3 className="valoracionStatusTitle">
+                    Este paciente necesita corrección de datos
+                  </h3>
+
+                  <p className="valoracionStatusText">
+                    Se encontraron campos incompletos o inconsistentes.
+                  </p>
+
+                  <ul className="anamnesisInlineList">
+                    {paciente.estadoCalidad.problemas.map((problema) => (
+                      <li key={problema}>{problema}</li>
+                    ))}
+                  </ul>
+
+                  <div className="valoracionActions">
+                    <BotonImportante type="button" onClick={onEditarDatos}>
+                      ✏️ Editar datos
+                    </BotonImportante>
+                  </div>
+                </div>
+              )}
 
               <div className={claseAlerta}>
                 <h3 className="valoracionStatusTitle">
@@ -201,13 +223,6 @@ export default function ValoracionContent({
                   </p>
                 </div>
 
-                {paciente?.esSimulacro ? (
-                  <p className="valoracionStatusMeta">
-                    Este registro corresponde a un paciente de simulacro creado
-                    para fines de prueba del flujo.
-                  </p>
-                ) : null}
-
                 {paciente?.clasificacionPaciente?.clasificacionFinal ? (
                   <p className="valoracionStatusMeta">
                     <strong>Clasificación sugerida:</strong>{" "}
@@ -225,13 +240,9 @@ export default function ValoracionContent({
               </div>
 
               <div className="valoracionActions">
-                <button
-                  type="button"
-                  className="valoracionPrimaryButton"
-                  onClick={onContinuar}
-                >
+                <BotonImportante type="button" onClick={onContinuar}>
                   Continuar a anamnesis global
-                </button>
+                </BotonImportante>
               </div>
             </div>
           )}

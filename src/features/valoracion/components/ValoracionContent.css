@@ -282,7 +282,90 @@
   justify-content: center;
   margin-top: clamp(2px, 1vw, 6px);
 }
+.editorPacienteOverlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(16, 24, 40, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1rem, 2vw, 1.5rem);
+  z-index: 1200;
+  box-sizing: border-box;
+}
 
+.editorPacienteModal {
+  width: min(100%, 38rem);
+  background: #ffffff;
+  border-radius: clamp(1rem, 2vw, 1.25rem);
+  padding: clamp(1rem, 2vw, 1.35rem);
+  box-shadow: 0 1rem 2rem rgba(16, 24, 40, 0.18);
+  display: grid;
+  gap: clamp(0.9rem, 1.7vw, 1.1rem);
+}
+
+.editorPacienteHeader {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.editorPacienteTitle {
+  margin: 0;
+  font-size: clamp(1.05rem, 1.8vw, 1.2rem);
+  font-weight: 700;
+  color: #1f2a44;
+}
+
+.editorPacienteSubtitle {
+  margin: 0;
+  color: #667085;
+  font-size: clamp(0.88rem, 1.3vw, 0.96rem);
+  line-height: 1.5;
+}
+
+.editorPacienteForm {
+  display: grid;
+  gap: clamp(0.8rem, 1.6vw, 1rem);
+}
+
+.editorPacienteField {
+  display: grid;
+  gap: 0.4rem;
+}
+
+.editorPacienteLabel {
+  font-size: clamp(0.86rem, 1.2vw, 0.94rem);
+  font-weight: 600;
+  color: #344054;
+}
+
+.editorPacienteInput {
+  width: 100%;
+  min-height: clamp(2.7rem, 4vw, 3rem);
+  border: 1px solid #d0d5dd;
+  border-radius: clamp(0.8rem, 1.5vw, 1rem);
+  padding: 0 clamp(0.9rem, 1.8vw, 1rem);
+  font-size: clamp(0.92rem, 1.35vw, 1rem);
+  color: #101828;
+  background: #ffffff;
+  box-sizing: border-box;
+  outline: none;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.editorPacienteInput:focus {
+  border-color: #1d4ed8;
+  box-shadow: 0 0 0 0.2rem rgba(29, 78, 216, 0.12);
+}
+
+.editorPacienteActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: clamp(0.7rem, 1.4vw, 0.9rem);
+  justify-content: flex-end;
+}
 @media (max-width: 560px) {
   .valoracionPage {
     padding: clamp(14px, 4vw, 18px) clamp(12px, 4vw, 14px)

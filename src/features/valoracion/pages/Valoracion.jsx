@@ -10,55 +10,38 @@ import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 
 const SESSION_KEY = "wk_profesional";
 
-function crearPacienteSimulacro(documento) {
+function validarCedulaBasica(cedula) {
+  const valor = String(cedula || "").trim();
+  return /^\d{5,20}$/.test(valor);
+}
+
+function construirEstadoCalidadPaciente(paciente) {
+  const problemas = [];
+
+  if (!validarCedulaBasica(paciente?.numero_documento_fisico)) {
+    problemas.push("Cédula inválida o incompleta");
+  }
+
+  if (!String(paciente?.genero || "").trim()) {
+    problemas.push("Falta género");
+  }
+
+  if (!String(paciente?.fecha_nacimiento || "").trim()) {
+    problemas.push("Falta fecha de nacimiento");
+  }
+
   return {
-    numero_documento_fisico: documento,
-    nombre_apellido_documento: "Usuario Simulacro",
-    numero_telefono: "+573000000001",
-    genero: "Simulacro",
-    esSimulacro: true,
-    clasificacionPaciente: {
-      hizoParteMmb2025: false,
-      esPacienteNuevo: true,
-      esPacienteAntiguo: false,
+    requiereCorreccion: problemas.length > 0,
+    problemas,
+  };
+}
 
-      valoracionEncontrada: false,
-      asistenciaEncontrada: false,
-      encuestaLogrosRealizada: false,
-
-      encuestaLogrosEstado: "No aplica",
-      objetivosCumplidos: false,
-      cantidadObjetivos: 0,
-      cantidadObjetivosCumplidos: 0,
-
-      porcentajeAsistencia: 0,
-      cumpleAsistencia: false,
-
-      clasificacionPreliminar: null,
-      clasificacionSecundaria: null,
-      tieneClasificacionSecundariaValida: false,
-      clasificacionFinal: null,
-
-      flujo: "NUEVO_PROCESO",
-      estadoPreclasificacion: "Simulacro activo",
-      mensajePreclasificacion:
-        "Paciente en modo simulacro. Se habilita un flujo teórico equivalente al de un paciente nuevo.",
-
-      ocultarDeteccionDolor: false,
-      mostrarOpcionZonaSecundaria: false,
-      mostrarOpcionPreliminarFuncional: false,
-
-      zonaPrincipal: null,
-      zonaSecundaria: null,
-      zonaDestino: null,
-      destinoSugerido: "anamnesis_global",
-      mensajeFlujoGlobal:
-        "Paciente de simulacro habilitado para realizar el flujo teórico de valoración inicial.",
-
-      preclasifica: false,
-      tipoAnamnesis: "Anamnesis global",
-      ruta: "ruta_global",
-    },
+function crearFormularioEdicion(paciente) {
+  return {
+    nombre_apellido_documento: paciente?.nombre_apellido_documento || "",
+    genero: paciente?.genero || "",
+    numero_telefono: paciente?.numero_telefono || "",
+    fecha_nacimiento: paciente?.fecha_nacimiento || "",
   };
 }
 
@@ -74,6 +57,14 @@ export default function Valoracion() {
   );
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  const [mostrarEditor, setMostrarEditor] = useState(false);
+  const [formEdicion, setFormEdicion] = useState({
+    nombre_apellido_documento: "",
+    genero: "",
+    numero_telefono: "",
+    fecha_nacimiento: "",
+  });
 
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
@@ -118,10 +109,13 @@ export default function Valoracion() {
         const clasificacionPaciente =
           await buscarClasificacionPaciente(documento);
 
+        const estadoCalidad =
+          construirEstadoCalidadPaciente(pacienteDesdeCheckIn);
+
         setPaciente({
           ...pacienteDesdeCheckIn,
-          esSimulacro: false,
           clasificacionPaciente,
+          estadoCalidad,
         });
       } catch (error) {
         console.error("Error cargando clasificación desde check-in:", error);
@@ -148,13 +142,14 @@ export default function Valoracion() {
 
     try {
       setLoading(true);
+      setMostrarEditor(false);
 
       const documento = cedula.trim();
 
       const { data, error } = await supabase
         .from("participantes")
         .select(
-          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero",
+          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
         )
         .eq("numero_documento_fisico", documento)
         .single();
@@ -162,21 +157,9 @@ export default function Valoracion() {
       if (error || !data) {
         setPaciente(null);
 
-        const crearSimulacro = await alertConfirm({
-          title: "Paciente no encontrado",
-          text: "Este paciente no existe en la base de datos. ¿Deseas iniciar un proceso de simulacro?",
-          confirmText: "Sí, iniciar simulacro",
-          cancelText: "Cancelar",
-        });
-
-        if (!crearSimulacro) return;
-
-        const pacienteSimulacro = crearPacienteSimulacro(documento);
-        setPaciente(pacienteSimulacro);
-
-        await alertOk(
-          "Simulacro habilitado",
-          "Se creó un paciente de simulacro para continuar con el flujo teórico de valoración.",
+        await alertError(
+          "Paciente no encontrado",
+          "Este paciente no existe en la base de datos. Verifica la cédula antes de continuar.",
         );
 
         return;
@@ -185,10 +168,12 @@ export default function Valoracion() {
       const clasificacionPaciente =
         await buscarClasificacionPaciente(documento);
 
+      const estadoCalidad = construirEstadoCalidadPaciente(data);
+
       setPaciente({
         ...data,
-        esSimulacro: false,
         clasificacionPaciente,
+        estadoCalidad,
       });
     } catch (error) {
       console.error("Error consultando paciente:", error);
@@ -242,23 +227,159 @@ export default function Valoracion() {
     );
   }
 
+  function handleAbrirEditor() {
+    if (!paciente) return;
+
+    setFormEdicion(crearFormularioEdicion(paciente));
+    setMostrarEditor(true);
+  }
+
+  function handleCerrarEditor() {
+    setMostrarEditor(false);
+  }
+
+  function handleChangeEdicion(e) {
+    const { name, value } = e.target;
+
+    setFormEdicion((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  async function handleGuardarEdicionTemporal() {
+    if (!paciente) return;
+
+    const pacienteActualizado = {
+      ...paciente,
+      nombre_apellido_documento: formEdicion.nombre_apellido_documento,
+      genero: formEdicion.genero,
+      numero_telefono: formEdicion.numero_telefono,
+      fecha_nacimiento: formEdicion.fecha_nacimiento,
+    };
+
+    const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
+
+    setPaciente({
+      ...pacienteActualizado,
+      estadoCalidad,
+    });
+
+    setMostrarEditor(false);
+
+    await alertOk(
+      "Edición aplicada",
+      "Los datos fueron actualizados en pantalla. En el siguiente paso los conectamos a credenciales y base de datos.",
+    );
+  }
+
   if (!profesional) return null;
 
   const userName = profesional.nombre || "Profesional";
   const vieneDesdeCheckIn = Boolean(pacienteDesdeCheckIn);
 
   return (
-    <ValoracionContent
-      userName={userName}
-      vieneDesdeCheckIn={vieneDesdeCheckIn}
-      cedula={cedula}
-      setCedula={setCedula}
-      loading={loading}
-      paciente={paciente}
-      onBuscar={handleBuscar}
-      onContinuar={handleContinuar}
-      onLogout={handleLogout}
-      onVolver={handleVolver}
-    />
+    <>
+      <ValoracionContent
+        userName={userName}
+        vieneDesdeCheckIn={vieneDesdeCheckIn}
+        cedula={cedula}
+        setCedula={setCedula}
+        loading={loading}
+        paciente={paciente}
+        onBuscar={handleBuscar}
+        onContinuar={handleContinuar}
+        onLogout={handleLogout}
+        onVolver={handleVolver}
+        onEditarDatos={handleAbrirEditor}
+      />
+
+      {mostrarEditor && (
+        <div className="editorPacienteOverlay">
+          <div className="editorPacienteModal">
+            <div className="editorPacienteHeader">
+              <h3 className="editorPacienteTitle">Editar datos del paciente</h3>
+              <p className="editorPacienteSubtitle">
+                Solo puedes modificar nombre, género, teléfono y fecha de
+                nacimiento.
+              </p>
+            </div>
+
+            <div className="editorPacienteForm">
+              <div className="editorPacienteField">
+                <label className="editorPacienteLabel">Nombre</label>
+                <input
+                  className="editorPacienteInput"
+                  type="text"
+                  name="nombre_apellido_documento"
+                  value={formEdicion.nombre_apellido_documento}
+                  onChange={handleChangeEdicion}
+                />
+              </div>
+
+              <div className="editorPacienteField">
+                <label className="editorPacienteLabel">Género</label>
+                <select
+                  className="editorPacienteInput"
+                  name="genero"
+                  value={formEdicion.genero}
+                  onChange={handleChangeEdicion}
+                >
+                  <option value="">Selecciona una opción</option>
+                  <option value="Femenino">Femenino</option>
+                  <option value="Masculino">Masculino</option>
+                  <option value="Indeterminado">Indeterminado</option>
+                  <option value="Prefiero no responder">
+                    Prefiero no responder
+                  </option>
+                </select>
+              </div>
+
+              <div className="editorPacienteField">
+                <label className="editorPacienteLabel">Teléfono</label>
+                <input
+                  className="editorPacienteInput"
+                  type="text"
+                  name="numero_telefono"
+                  value={formEdicion.numero_telefono}
+                  onChange={handleChangeEdicion}
+                />
+              </div>
+
+              <div className="editorPacienteField">
+                <label className="editorPacienteLabel">
+                  Fecha de nacimiento
+                </label>
+                <input
+                  className="editorPacienteInput"
+                  type="date"
+                  name="fecha_nacimiento"
+                  value={formEdicion.fecha_nacimiento || ""}
+                  onChange={handleChangeEdicion}
+                />
+              </div>
+            </div>
+
+            <div className="editorPacienteActions">
+              <button
+                type="button"
+                className="valoracionBackBtn"
+                onClick={handleCerrarEditor}
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                className="valoracionPrimaryButton"
+                onClick={handleGuardarEdicionTemporal}
+              >
+                Guardar cambios
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
