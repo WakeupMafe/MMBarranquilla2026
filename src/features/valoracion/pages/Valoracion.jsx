@@ -7,6 +7,7 @@ import ValoracionContent from "../components/ValoracionContent";
 
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -248,29 +249,71 @@ export default function Valoracion() {
   }
 
   async function handleGuardarEdicionTemporal() {
-    if (!paciente) return;
+    if (!paciente?.numero_documento_fisico) {
+      await alertError(
+        "Paciente no válido",
+        "No se encontró un paciente válido para actualizar.",
+      );
+      return;
+    }
 
-    const pacienteActualizado = {
-      ...paciente,
-      nombre_apellido_documento: formEdicion.nombre_apellido_documento,
-      genero: formEdicion.genero,
-      numero_telefono: formEdicion.numero_telefono,
-      fecha_nacimiento: formEdicion.fecha_nacimiento,
-    };
+    const nombre = String(formEdicion.nombre_apellido_documento || "").trim();
+    const genero = String(formEdicion.genero || "").trim();
+    const telefono = String(formEdicion.numero_telefono || "").trim();
+    const fechaNacimiento = String(formEdicion.fecha_nacimiento || "").trim();
 
-    const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
+    if (!nombre) {
+      await alertError("Dato requerido", "El nombre no puede quedar vacío.");
+      return;
+    }
 
-    setPaciente({
-      ...pacienteActualizado,
-      estadoCalidad,
-    });
+    try {
+      setLoading(true);
 
-    setMostrarEditor(false);
+      const payload = {
+        nombre_apellido_documento: nombre,
+        genero: genero || null,
+        numero_telefono: telefono || null,
+        fecha_nacimiento: fechaNacimiento || null,
+      };
 
-    await alertOk(
-      "Edición aplicada",
-      "Los datos fueron actualizados en pantalla. En el siguiente paso los conectamos a credenciales y base de datos.",
-    );
+      const { error } = await supabase
+        .from("participantes")
+        .update(payload)
+        .eq("numero_documento_fisico", paciente.numero_documento_fisico);
+
+      if (error) {
+        throw error;
+      }
+
+      const pacienteActualizado = {
+        ...paciente,
+        ...payload,
+      };
+
+      const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
+
+      setPaciente({
+        ...pacienteActualizado,
+        estadoCalidad,
+      });
+
+      setMostrarEditor(false);
+
+      await alertOk(
+        "Datos actualizados",
+        "Los datos del paciente fueron actualizados correctamente en la base de datos.",
+      );
+    } catch (error) {
+      console.error("Error actualizando paciente:", error);
+
+      await alertError(
+        "Error al guardar",
+        error.message || "No se pudieron actualizar los datos del paciente.",
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   if (!profesional) return null;
@@ -361,21 +404,21 @@ export default function Valoracion() {
             </div>
 
             <div className="editorPacienteActions">
-              <button
+              <BotonImportante
                 type="button"
-                className="valoracionBackBtn"
+                variant="ghost"
                 onClick={handleCerrarEditor}
               >
                 Cancelar
-              </button>
+              </BotonImportante>
 
-              <button
+              <BotonImportante
                 type="button"
-                className="valoracionPrimaryButton"
                 onClick={handleGuardarEdicionTemporal}
+                disabled={loading}
               >
-                Guardar cambios
-              </button>
+                {loading ? "Guardando..." : "Guardar cambios"}
+              </BotonImportante>
             </div>
           </div>
         </div>
