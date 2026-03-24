@@ -69,7 +69,7 @@ export default function FotosAdminMode() {
 
       <main className="valoracionPage">
         <section className="valoracionHero">
-          <h1 className="valoracionTitle">Control de envío de fotos</h1>
+          <h1 className="valoracionTitle">Control de envío </h1>
           <p className="valoracionSubtitle">
             Módulo privado para activar o desactivar el envío a base de datos.
           </p>
