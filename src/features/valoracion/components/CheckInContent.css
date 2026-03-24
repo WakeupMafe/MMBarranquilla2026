@@ -234,4 +234,7 @@
     grid-template-columns: 1fr;
     gap: 12px;
   }
+  .checkinPatientItem {
+    line-height: 15px;
+  }
 }
