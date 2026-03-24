@@ -18,6 +18,7 @@ import { useAnamnesisGlobalForm } from "../hooks/useAnamnesisGlobalForm";
 import AnamnesisSectionRenderer from "../components/AnamnesisSectionRenderer";
 import AnamnesisResultCard from "../components/AnamnesisResultCard";
 import ValoracionStepper from "../components/ValoracionStepper";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 
 import "./AnamnesisGlobal.css";
 
@@ -611,13 +612,14 @@ export default function AnamnesisGlobal() {
 
       <main className="valoracionPage">
         <div className="valoracionTopActions">
-          <button
-            type="button"
-            className="valoracionBackBtn"
+          <BotonImportante
+            variant="ghost"
+            className="valoracionBackBtnFix"
             onClick={() => navigate("/herramientas/valoracion")}
           >
-            ← Volver
-          </button>
+            <span style={{ fontSize: "16px" }}>←</span>
+            <span>Volver</span>
+          </BotonImportante>
         </div>
 
         <section className="valoracionHero">
