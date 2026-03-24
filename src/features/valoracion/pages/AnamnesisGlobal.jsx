@@ -652,22 +652,19 @@ export default function AnamnesisGlobal() {
               />
             ))}
 
-            <div className="valoracionActions">
-              <button className="valoracionPrimaryBtn" type="submit">
+            <div className="valoracionActionsResponsive">
+              <BotonImportante type="submit" variant="solid" fullWidth>
                 Evaluar anamnesis global
-              </button>
+              </BotonImportante>
 
-              <button
+              <BotonImportante
                 type="button"
-                className="valoracionPrimaryBtn"
+                variant="outline"
+                fullWidth
                 onClick={handleLimpiarTodaLaAnamnesis}
-                style={{
-                  background: "linear-gradient(135deg, #163e8f, #1d4ed8)",
-                  marginLeft: "10px",
-                }}
               >
                 Limpiar anamnesis
-              </button>
+              </BotonImportante>
             </div>
           </form>
 

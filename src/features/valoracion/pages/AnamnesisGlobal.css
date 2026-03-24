@@ -81,3 +81,22 @@
     grid-template-columns: 1fr;
   }
 }
+.valoracionActionsResponsive {
+  display: flex;
+  gap: 12px;
+  margin-top: 20px;
+}
+
+/* 🔵 En pantallas pequeñas: uno debajo del otro */
+@media (max-width: 768px) {
+  .valoracionActionsResponsive {
+    flex-direction: column;
+  }
+}
+
+/* 🔵 En pantallas grandes: uno al lado del otro */
+@media (min-width: 769px) {
+  .valoracionActionsResponsive {
+    flex-direction: row;
+  }
+}
