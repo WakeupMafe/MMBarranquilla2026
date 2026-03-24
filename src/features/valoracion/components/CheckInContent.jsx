@@ -133,7 +133,7 @@ export default function CheckInContent({
 
                     <div className="checkinPatientGrid">
                       <div className="checkinPatientItem">
-                        <span className="checkinPatientLabel">Nombre</span>
+                        <span className="checkinPatientLabel">Nombre : </span>
                         <strong className="checkinPatientValue">
                           {paciente?.nombre_apellido_documento ||
                             "Sin registro"}
@@ -141,7 +141,7 @@ export default function CheckInContent({
                       </div>
 
                       <div className="checkinPatientItem">
-                        <span className="checkinPatientLabel">Teléfono</span>
+                        <span className="checkinPatientLabel">Teléfono : </span>
                         <strong className="checkinPatientValue">
                           {paciente?.numero_telefono || "Sin registro"}
                         </strong>

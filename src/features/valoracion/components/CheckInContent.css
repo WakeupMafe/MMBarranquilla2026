@@ -154,29 +154,51 @@
 }
 
 .checkinPatientStatus {
-  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  justify-content: start;
+  align-content: center;
+  align-items: start;
+  text-align: start;
+  padding: 12px;
   border-radius: 14px;
-  font-size: clamp(13px, 1.6vw, 14px);
+  font-size: clamp(18px, 1.6vw, 15px);
 }
 
 .checkinPatientStatus--ok {
+  height: auto;
+  display: flex;
+  flex-direction: column;
+  text-align: start;
+  align-items: start;
+  justify-content: center;
+  line-height: 10px;
+  padding: 15px;
+  margin: 0 auto;
+  width: 100%;
+  border: #4a4a4a solid 4px;
   background: #ecfdf3;
   border: 1px solid #a7f3d0;
 }
 
 .checkinPatientStatus--warning {
-  background: #fff7ed;
-  border: 1px solid #fdba74;
+  background: #bdcfbd;
+  border: 1px solid #8bfd74;
 }
 
 .checkinPatientGrid {
   display: grid;
+  width: 100%;
   grid-template-columns: 1fr 1fr;
-  gap: 10px;
+  gap: 12px;
 }
 
 .checkinPatientItem {
-  background: #f7f7f1;
+  font-family: "Poppins", sans-serif;
+  font-weight: 400;
+  line-height: 10px;
+  width: auto;
+  font-size: clamp(15px, 10px, 12px);
   padding: 10px;
   border-radius: 10px;
 }
@@ -205,5 +227,11 @@
 
   .checkinFooterActions {
     flex-direction: column;
+  }
+  .checkinPatientGrid {
+    display: grid;
+    width: 100%;
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }
