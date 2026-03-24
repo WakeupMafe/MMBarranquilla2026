@@ -49,12 +49,6 @@ export default function AnamnesisResultCard({
 
         <ul className="valoracionPacienteList">
           <li>
-            <strong>IMC:</strong> {resultado.imc ?? "Sin calcular"}
-          </li>
-          <li>
-            <strong>Obesidad:</strong> {resultado.obesidad ? "Sí" : "No"}
-          </li>
-          <li>
             <strong>Criterios críticos:</strong>{" "}
             {resultado.descartado ? "Presentes" : "No identificados"}
           </li>

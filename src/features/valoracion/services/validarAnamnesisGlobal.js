@@ -7,6 +7,14 @@ export function validarAnamnesisGlobal(data) {
     }
   }
 
+  function esSi(valor) {
+    return (
+      String(valor ?? "")
+        .trim()
+        .toUpperCase() === "SI"
+    );
+  }
+
   // 4.1 Estilo de vida
   requerido("horas_sueno", "Debes indicar cuántas horas duerme");
   requerido("horas_sentado", "Debes seleccionar horas sentado");
@@ -14,7 +22,7 @@ export function validarAnamnesisGlobal(data) {
 
   // 4.2 Enfermedades metabólicas
   requerido("diabetes", "Debes indicar si tiene diabetes");
-  if (data.diabetes === "SI") {
+  if (esSi(data.diabetes)) {
     requerido(
       "diabetes_tratamiento",
       "Debes indicar si tiene tratamiento para diabetes",
@@ -22,7 +30,7 @@ export function validarAnamnesisGlobal(data) {
   }
 
   requerido("hipertension", "Debes indicar si sufre de hipertensión");
-  if (data.hipertension === "SI") {
+  if (esSi(data.hipertension)) {
     requerido(
       "hipertension_tratamiento",
       "Debes indicar si tiene tratamiento para hipertensión",
@@ -30,20 +38,16 @@ export function validarAnamnesisGlobal(data) {
   }
 
   requerido("colesterol_alto", "Debes indicar si sufre de colesterol alto");
-  if (data.colesterol_alto === "SI") {
+  if (esSi(data.colesterol_alto)) {
     requerido(
       "colesterol_tratamiento",
       "Debes indicar si tiene tratamiento para colesterol alto",
     );
   }
 
-  // 4.3 Obesidad
-  requerido("peso", "Debes ingresar el peso");
-  requerido("talla", "Debes ingresar la talla");
-
-  // 4.4 Riesgo cardiovascular
+  // 4.3 Riesgo cardiovascular
   requerido("infarto", "Debes indicar si ha tenido infarto");
-  if (data.infarto === "SI") {
+  if (esSi(data.infarto)) {
     requerido(
       "infarto_menos_3_meses",
       "Debes indicar si fue hace menos de 3 meses",
@@ -54,21 +58,21 @@ export function validarAnamnesisGlobal(data) {
     "evento_cerebrovascular",
     "Debes indicar si ha tenido evento cerebrovascular",
   );
-  if (data.evento_cerebrovascular === "SI") {
+  if (esSi(data.evento_cerebrovascular)) {
     requerido(
       "ecv_menos_6_meses",
       "Debes indicar si fue hace menos de 6 meses",
     );
   }
 
-  // 4.5 Enfermedades sistémicas
+  // 4.4 Enfermedades sistémicas
   requerido(
     "enfermedad_higado",
     "Debes indicar si sufre enfermedad del hígado",
   );
   requerido("enfermedad_rinon", "Debes indicar si sufre enfermedad del riñón");
   requerido("anemia", "Debes indicar si tiene anemia");
-  if (data.anemia === "SI") {
+  if (esSi(data.anemia)) {
     requerido(
       "anemia_controlada",
       "Debes indicar si la anemia está controlada",
@@ -88,7 +92,7 @@ export function validarAnamnesisGlobal(data) {
     "Debes indicar si ha tenido cáncer en los últimos 5 años",
   );
 
-  // 4.6 Procedimientos recientes
+  // 4.5 Procedimientos recientes
   requerido("cirugia_rodilla", "Debes indicar cirugía de rodilla");
   requerido("cirugia_cadera", "Debes indicar cirugía de cadera");
   requerido("cirugia_hombro", "Debes indicar cirugía de hombro");
@@ -96,17 +100,17 @@ export function validarAnamnesisGlobal(data) {
   requerido("cirugia_pelvis", "Debes indicar cirugía de pelvis");
   requerido("cirugia_otra", "Debes indicar si tuvo otra cirugía");
 
-  if (data.cirugia_otra === "SI") {
+  if (esSi(data.cirugia_otra)) {
     requerido("cirugia_otra_cual", "Debes indicar cuál cirugía");
   }
 
   if (
-    data.cirugia_rodilla === "SI" ||
-    data.cirugia_cadera === "SI" ||
-    data.cirugia_hombro === "SI" ||
-    data.cirugia_columna === "SI" ||
-    data.cirugia_pelvis === "SI" ||
-    data.cirugia_otra === "SI"
+    esSi(data.cirugia_rodilla) ||
+    esSi(data.cirugia_cadera) ||
+    esSi(data.cirugia_hombro) ||
+    esSi(data.cirugia_columna) ||
+    esSi(data.cirugia_pelvis) ||
+    esSi(data.cirugia_otra)
   ) {
     requerido(
       "cirugia_menos_3_meses",
@@ -114,32 +118,32 @@ export function validarAnamnesisGlobal(data) {
     );
   }
 
-  // 4.7 Trauma reciente
+  // 4.6 Trauma reciente
   requerido(
     "golpe_pelvis",
     "Debes indicar si ha tenido golpe fuerte en pelvis",
   );
-  if (data.golpe_pelvis === "SI") {
+  if (esSi(data.golpe_pelvis)) {
     requerido(
       "dolor_pelvis_nivel",
       "Debes indicar el nivel de dolor en pelvis",
     );
   }
 
-  // 4.8 UCI
+  // 4.7 UCI
   requerido("paso_uci", "Debes indicar si ha permanecido en UCI");
-  if (data.paso_uci === "SI") {
+  if (esSi(data.paso_uci)) {
     requerido("uci_menos_1_ano", "Debes indicar si fue hace menos de 1 año");
     requerido("razon_uci", "Debes indicar la razón de la UCI");
   }
 
-  // 4.9 Oncológicos
+  // 4.8 Oncológicos
   requerido("quimioterapia", "Debes indicar si ha recibido quimioterapia");
   requerido("radioterapia", "Debes indicar si ha recibido radioterapia");
 
-  // 4.10 Hábitos
+  // 4.9 Hábitos
   requerido("fuma", "Debes indicar si fuma");
-  if (data.fuma === "SI") {
+  if (esSi(data.fuma)) {
     requerido(
       "cigarrillos_dia",
       "Debes indicar cuántos cigarrillos fuma al día",
@@ -147,7 +151,7 @@ export function validarAnamnesisGlobal(data) {
   }
 
   requerido("toma_licor", "Debes indicar si toma licor");
-  if (data.toma_licor === "SI") {
+  if (esSi(data.toma_licor)) {
     requerido("frecuencia_licor", "Debes indicar la frecuencia de licor");
   }
 

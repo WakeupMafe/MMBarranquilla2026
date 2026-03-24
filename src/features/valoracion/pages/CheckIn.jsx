@@ -28,11 +28,15 @@ export default function CheckIn() {
   const [advertenciaImagenMostrada, setAdvertenciaImagenMostrada] =
     useState(false);
 
+  // 1) AQUÍ RECIBES el profesional activo desde la página anterior
+  //    cuando navegan con navigate(..., { state: { profesional } })
   const profesional = useMemo(() => {
-    const fromState = location.state?.profesional;
+    const fromState = location.state?.profesional; // <- viene de otra página
     if (fromState) return fromState;
 
     try {
+      // 2) SI NO VIENE por state, lo recuperas desde sessionStorage
+      //    para no perder la sesión al recargar o cambiar de ruta
       const raw = sessionStorage.getItem(SESSION_KEY);
       return raw ? JSON.parse(raw) : null;
     } catch {
