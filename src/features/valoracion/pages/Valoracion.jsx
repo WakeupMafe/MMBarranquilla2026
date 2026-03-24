@@ -221,11 +221,7 @@ export default function Valoracion() {
   }
 
   function handleVolver() {
-    navigate(
-      pacienteDesdeCheckIn
-        ? "/herramientas/valoracion/check-in"
-        : "/herramientas",
-    );
+    navigate("/herramientas/valoracion/check-in");
   }
 
   function handleAbrirEditor() {
