@@ -293,3 +293,8 @@
     width: 100%;
   }
 }
+.valoracionActions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
