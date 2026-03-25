@@ -30,5 +30,42 @@ export const alertConfirm = async ({
     confirmButtonText: confirmText,
     cancelButtonText: cancelText,
   });
+
   return result.isConfirmed;
+};
+
+export const alertSelect = async ({
+  title,
+  text = "",
+  inputOptions = {},
+  inputPlaceholder = "Selecciona una opción",
+  confirmButtonText = "Continuar",
+  cancelButtonText = "Cancelar",
+}) => {
+  const result = await Swal.fire({
+    icon: "question",
+    title,
+    text,
+    input: "select",
+    inputOptions,
+    inputPlaceholder,
+    inputAttributes: {
+      "aria-label": inputPlaceholder,
+    },
+    showCancelButton: true,
+    confirmButtonText,
+    cancelButtonText,
+    inputValidator: (value) => {
+      if (!value) {
+        return "Debes seleccionar una opción";
+      }
+      return undefined;
+    },
+  });
+
+  if (!result.isConfirmed) {
+    return null;
+  }
+
+  return result.value;
 };
