@@ -1,4 +1,5 @@
 import { supabase } from "../../../shared/lib/supabaseClient";
+import { isFotosUploadSimulacionMode } from "../../../shared/lib/fotosUploadMode";
 
 const BUCKET_NAME = "fotos_pacientes";
 
@@ -16,7 +17,7 @@ export async function uploadFotoPaciente({
   tipoFoto,
   sesionTipo,
   profesionalCedula,
-  zona = "",
+  zonasEvaluadas = [],
   observacion = "",
 }) {
   if (!file) {
@@ -35,6 +36,34 @@ export async function uploadFotoPaciente({
     throw new Error("Falta la cédula del profesional.");
   }
 
+  const zonasNormalizadas = Array.isArray(zonasEvaluadas)
+    ? zonasEvaluadas.filter(Boolean).map((z) => String(z).trim())
+    : [];
+
+  // 🔥 En simulación no sube ni guarda nada real
+  if (isFotosUploadSimulacionMode()) {
+    const fileName = `${crypto.randomUUID()}.jpg`;
+
+    const payloadSimulado = {
+      paciente_documento: String(pacienteDocumento),
+      tipo_foto: String(tipoFoto),
+      zonas_evaluadas: zonasNormalizadas,
+      nombre_archivo: fileName,
+      storage_path: `simulacion/${String(pacienteDocumento)}/${String(tipoFoto)}/${fileName}`,
+      profesional_cedula: String(profesionalCedula),
+      sesion_tipo: sesionTipo ? String(sesionTipo) : null,
+      observacion: observacion ? String(observacion) : null,
+    };
+
+    console.log("SIMULACIÓN FOTO", payloadSimulado);
+
+    return {
+      ...payloadSimulado,
+      id: crypto.randomUUID(),
+      public_url: null,
+    };
+  }
+
   const {
     data: { user },
     error: userError,
@@ -47,11 +76,14 @@ export async function uploadFotoPaciente({
   const pacienteSafe = sanitizeSegment(pacienteDocumento);
   const tipoSafe = sanitizeSegment(tipoFoto);
   const sesionSafe = sanitizeSegment(sesionTipo || "general");
-  const zonaSafe = sanitizeSegment(zona || "general");
+  const zonasSafe = sanitizeSegment(
+    zonasNormalizadas.length ? zonasNormalizadas.join("_") : "general",
+  );
+
   const extension = "jpg";
   const fileName = `${crypto.randomUUID()}.${extension}`;
 
-  const storagePath = `${user.id}/${pacienteSafe}/${sesionSafe}/${zonaSafe}/${tipoSafe}/${fileName}`;
+  const storagePath = `${user.id}/${pacienteSafe}/${sesionSafe}/${zonasSafe}/${tipoSafe}/${fileName}`;
 
   const { error: uploadError } = await supabase.storage
     .from(BUCKET_NAME)
@@ -68,7 +100,7 @@ export async function uploadFotoPaciente({
   const payload = {
     paciente_documento: String(pacienteDocumento),
     tipo_foto: String(tipoFoto),
-    zona: zona ? String(zona) : null,
+    zonas_evaluadas: zonasNormalizadas,
     nombre_archivo: fileName,
     storage_path: storagePath,
     profesional_cedula: String(profesionalCedula),

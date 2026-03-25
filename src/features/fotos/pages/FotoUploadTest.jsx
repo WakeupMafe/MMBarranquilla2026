@@ -401,7 +401,7 @@ export default function FotoUploadTest() {
           tipoFoto: photo.id,
           sesionTipo,
           profesionalCedula,
-          zona: photo.zona,
+          zonasEvaluadas: zonasProtocoloFotos, // 🔥 AQUÍ EL CAMBIO
         });
       }
 
