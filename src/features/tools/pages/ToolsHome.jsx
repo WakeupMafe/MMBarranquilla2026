@@ -11,6 +11,9 @@ import "./ToolsHome.css";
 import iconValoracion from "../../../assets/Valoracionimg.png";
 import iconLogrosF1 from "../../../assets/LogroF1.png";
 import iconLogrosF2 from "../../../assets/LogroF2.png";
+import obesidad from "../../../assets/obesidad.png";
+import admin from "../../../assets/admin.png";
+
 import iconConsultaBD from "../../../assets/ConsultaBD.png";
 
 const SESSION_KEY = "wk_profesional";
@@ -107,7 +110,7 @@ export default function ToolsHome() {
             chipLeft="3–5 min"
             chipRight="Calculo"
             buttonText="Abrir"
-            iconSrc={iconValoracion}
+            iconSrc={obesidad}
             onOpen={() => navigate("/herramientas/modulo-obesidad")}
           />
         </div>
@@ -145,7 +148,7 @@ export default function ToolsHome() {
               chipLeft="Privado"
               chipRight="Restringido"
               buttonText="Abrir"
-              iconSrc={iconValoracion}
+              iconSrc={admin}
               onOpen={() => navigate("/herramientas/fotos-admin")}
             />
           </div>
