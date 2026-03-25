@@ -132,9 +132,17 @@ export function construirOpcionesContinuidad({
       });
     }
 
+    zonasDisponiblesCambio.forEach((zona) => {
+      opciones.push({
+        value: `cambio_${zona}`,
+        label: `Cambiar a zona: ${formatearNombreZona(zona)}`,
+        tipo: "anamnesis_zona",
+        zona,
+      });
+    });
+
     return opciones;
   }
-
   if (siguientePaso === "decision_fotos_preliminar_o_funcional") {
     if (zonaActual && zonaActual !== "funcional") {
       opciones.push({
@@ -150,6 +158,15 @@ export function construirOpcionesContinuidad({
       label: "Avanzar a funcional",
       tipo: "fotos",
       zona: "funcional",
+    });
+
+    zonasDisponiblesCambio.forEach((zona) => {
+      opciones.push({
+        value: `cambio_${zona}`,
+        label: `Cambiar a zona: ${formatearNombreZona(zona)}`,
+        tipo: "anamnesis_zona",
+        zona,
+      });
     });
 
     return opciones;
