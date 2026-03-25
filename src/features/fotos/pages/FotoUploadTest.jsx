@@ -391,6 +391,8 @@ export default function FotoUploadTest() {
 
         setPhotos(createEmptyPhotos());
         setFaseCompletada(false);
+
+        navigate("/herramientas/valoracion/check-in");
         return;
       }
 
@@ -404,7 +406,6 @@ export default function FotoUploadTest() {
           zonasEvaluadas: zonasProtocoloFotos, // 🔥 AQUÍ EL CAMBIO
         });
       }
-
       await alertOk(
         "📸 Fotos subidas con éxito",
         `Se guardaron correctamente ${readyPhotos.length} foto(s). Ya puedes continuar con el proceso.`,
@@ -418,6 +419,8 @@ export default function FotoUploadTest() {
 
       setPhotos(createEmptyPhotos());
       setFaseCompletada(false);
+
+      navigate("/herramientas/valoracion/check-in");
     } catch (error) {
       await alertError(
         "Error en simulación",
