@@ -4,7 +4,12 @@ import { useNavigate } from "react-router-dom";
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import { supabase } from "../../../shared/lib/supabaseClient";
-import { alertError, alertOk } from "../../../shared/lib/alerts";
+import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
+import {
+  MODULO_OBESIDAD_UPLOAD_MODES,
+  getModuloObesidadUploadMode,
+} from "../../../shared/lib/moduloObesidadUploadMode";
 
 import "./ModuloObesidad.css";
 import "../pages/AnamnesisGlobal.css";
@@ -25,6 +30,10 @@ function calcularImc(peso, talla) {
   };
 }
 
+function tieneDato(valor) {
+  return valor !== null && valor !== undefined && String(valor).trim() !== "";
+}
+
 export default function ModuloObesidad() {
   const navigate = useNavigate();
 
@@ -37,6 +46,10 @@ export default function ModuloObesidad() {
   const [talla, setTalla] = useState("");
   const [guardando, setGuardando] = useState(false);
 
+  const [bloqueadoPorDatosPrevios, setBloqueadoPorDatosPrevios] =
+    useState(false);
+  const [checkinValidado, setCheckinValidado] = useState(false);
+
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(peso, talla);
   }, [peso, talla]);
@@ -46,13 +59,112 @@ export default function ModuloObesidad() {
     setCoincidencias([]);
     setPeso("");
     setTalla("");
+    setBloqueadoPorDatosPrevios(false);
+    setCheckinValidado(false);
   }
 
-  function handleSeleccionarPaciente(item) {
-    setPaciente(item);
-    setCoincidencias([]);
-    setPeso("");
-    setTalla("");
+  async function validarCheckinYAnamnesis(item) {
+    const mode = getModuloObesidadUploadMode();
+    const documento = String(item?.numero_documento_fisico || "").trim();
+
+    if (!documento) {
+      throw new Error("No fue posible validar la cédula del paciente.");
+    }
+
+    // 🔥 EN SIMULACIÓN NO REVISA NADA EN BD
+    if (mode === MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION) {
+      setCheckinValidado(true);
+      setBloqueadoPorDatosPrevios(false);
+      setPeso("");
+      setTalla("");
+      return true;
+    }
+
+    const { data: checkin, error: errorCheckin } = await supabase
+      .from("checkin_anamnesis")
+      .select("numero_documento_fisico")
+      .eq("numero_documento_fisico", documento)
+      .maybeSingle();
+
+    if (errorCheckin) {
+      throw errorCheckin;
+    }
+
+    if (!checkin) {
+      await alertError(
+        "Check-in requerido",
+        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in. Sin este paso no se pueden tomar los datos de talla, peso e IMC. Por favor, comuníquese con el encargado de realizar el check-in.",
+      );
+
+      setPaciente(null);
+      setPeso("");
+      setTalla("");
+      setBloqueadoPorDatosPrevios(false);
+      setCheckinValidado(false);
+      return false;
+    }
+
+    setCheckinValidado(true);
+
+    const { data: anamnesis, error: errorAnamnesis } = await supabase
+      .from("anamnesis_global")
+      .select("numero_documento_fisico, peso, talla, imc")
+      .eq("numero_documento_fisico", documento)
+      .maybeSingle();
+
+    if (errorAnamnesis) {
+      throw errorAnamnesis;
+    }
+
+    const yaTieneDatos =
+      anamnesis &&
+      tieneDato(anamnesis.peso) &&
+      tieneDato(anamnesis.talla) &&
+      tieneDato(anamnesis.imc);
+
+    if (yaTieneDatos) {
+      setBloqueadoPorDatosPrevios(true);
+      setPeso(String(anamnesis.peso ?? ""));
+      setTalla(String(anamnesis.talla ?? ""));
+
+      await alertError(
+        "Datos ya registrados",
+        "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
+      );
+
+      return true;
+    }
+
+    setBloqueadoPorDatosPrevios(false);
+
+    if (anamnesis) {
+      setPeso(tieneDato(anamnesis.peso) ? String(anamnesis.peso) : "");
+      setTalla(tieneDato(anamnesis.talla) ? String(anamnesis.talla) : "");
+    } else {
+      setPeso("");
+      setTalla("");
+    }
+
+    return true;
+  }
+
+  async function handleSeleccionarPaciente(item) {
+    try {
+      setPaciente(item);
+      setCoincidencias([]);
+
+      const ok = await validarCheckinYAnamnesis(item);
+      if (!ok) return;
+    } catch (error) {
+      console.error("Error validando paciente en módulo obesidad:", error);
+
+      limpiarSeleccionPaciente();
+
+      await alertError(
+        "Error de validación",
+        error?.message || "No fue posible validar la información del paciente.",
+      );
+    }
   }
 
   async function handleBuscarPaciente() {
@@ -90,6 +202,10 @@ export default function ModuloObesidad() {
         }
 
         setPaciente(data);
+
+        const ok = await validarCheckinYAnamnesis(data);
+        if (!ok) return;
+
         return;
       }
 
@@ -111,6 +227,8 @@ export default function ModuloObesidad() {
 
       setCoincidencias(data);
     } catch (error) {
+      console.error("Error buscando paciente:", error);
+
       await alertError(
         "Error al buscar",
         error.message || "No se pudo buscar el paciente.",
@@ -129,35 +247,129 @@ export default function ModuloObesidad() {
       return;
     }
 
+    if (!checkinValidado) {
+      await alertError(
+        "Check-in requerido",
+        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in. Sin este paso no se pueden tomar los datos de talla, peso e IMC. Por favor, comuníquese con el encargado de realizar el check-in.",
+      );
+      return;
+    }
+
+    if (bloqueadoPorDatosPrevios) {
+      await alertError(
+        "Edición no permitida",
+        "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
+      );
+      return;
+    }
+
     if (!peso || !talla) {
       await alertError("Datos incompletos", "Debes ingresar peso y talla.");
       return;
     }
 
+    if (!imc) {
+      await alertError(
+        "IMC inválido",
+        "Verifica los datos ingresados para peso y talla.",
+      );
+      return;
+    }
+
+    const confirmar = await alertConfirm({
+      title: "Confirmar registro",
+      text: "¿Deseas guardar los datos de peso, talla e IMC de este paciente?",
+      confirmText: "Sí, guardar",
+      cancelText: "Cancelar",
+    });
+
+    if (!confirmar) return;
+
     try {
       setGuardando(true);
 
-      await new Promise((resolve) => setTimeout(resolve, 700));
+      const documento = String(paciente.numero_documento_fisico || "").trim();
 
-      await alertOk(
-        "Medidas registradas",
-        `Se enviaron correctamente las medidas de ${paciente.nombre_apellido_documento || "No registrado"}.`,
-      );
-
-      console.log("ENVÍO SIMULADO MÓDULO OBESIDAD", {
-        cedula: paciente.numero_documento_fisico,
-        nombre_paciente: paciente.nombre_apellido_documento,
+      const payload = {
+        numero_documento_fisico: documento,
         peso: Number(peso),
         talla: Number(talla),
         imc,
-        obesidad,
-      });
+      };
 
-      setPeso("");
-      setTalla("");
+      const mode = getModuloObesidadUploadMode();
+
+      if (mode === MODULO_OBESIDAD_UPLOAD_MODES.REAL) {
+        const { data: existente, error: errorExistente } = await supabase
+          .from("anamnesis_global")
+          .select("numero_documento_fisico, peso, talla, imc")
+          .eq("numero_documento_fisico", documento)
+          .maybeSingle();
+
+        if (errorExistente) {
+          throw errorExistente;
+        }
+
+        if (
+          existente &&
+          tieneDato(existente.peso) &&
+          tieneDato(existente.talla) &&
+          tieneDato(existente.imc)
+        ) {
+          setBloqueadoPorDatosPrevios(true);
+
+          await alertError(
+            "Datos ya registrados",
+            "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
+          );
+          return;
+        }
+
+        if (existente) {
+          const { error: errorUpdate } = await supabase
+            .from("anamnesis_global")
+            .update(payload)
+            .eq("numero_documento_fisico", documento);
+
+          if (errorUpdate) throw errorUpdate;
+        } else {
+          const { error: errorInsert } = await supabase
+            .from("anamnesis_global")
+            .insert([payload]);
+
+          if (errorInsert) throw errorInsert;
+        }
+
+        await alertOk(
+          "Medidas registradas",
+          `Se guardaron correctamente las medidas de ${
+            paciente.nombre_apellido_documento || "No registrado"
+          }.`,
+        );
+      } else {
+        console.log("SIMULACIÓN MÓDULO OBESIDAD", {
+          numero_documento_fisico: paciente.numero_documento_fisico,
+          nombre_paciente: paciente.nombre_apellido_documento,
+          peso: Number(peso),
+          talla: Number(talla),
+          imc,
+          obesidad,
+        });
+
+        await alertOk(
+          "Modo simulación",
+          `La información de ${
+            paciente.nombre_apellido_documento || "No registrado"
+          } no se guardó en base de datos porque el módulo está en simulación.`,
+        );
+      }
+
+      setBloqueadoPorDatosPrevios(true);
     } catch (error) {
+      console.error("Error guardando medidas:", error);
+
       await alertError(
-        "Error al enviar",
+        "Error al guardar",
         error.message || "No se pudieron procesar las medidas.",
       );
     } finally {
@@ -286,6 +498,20 @@ export default function ModuloObesidad() {
                 <h2 className="valoracionCardTitle">Tomar medidas</h2>
               </div>
 
+              {bloqueadoPorDatosPrevios ? (
+                <div className="anamnesisInfoBox">
+                  <p>
+                    <strong>Bloqueado:</strong> Esta persona ya tiene datos de
+                    peso, talla e IMC registrados, por lo cual no se puede
+                    modificar.
+                  </p>
+                  <p>
+                    Si requieren modificación, deben comunicarse con el
+                    administrador de la página.
+                  </p>
+                </div>
+              ) : null}
+
               <div className="valoracionForm">
                 <input
                   type="number"
@@ -295,6 +521,7 @@ export default function ModuloObesidad() {
                   onChange={(e) => setPeso(e.target.value)}
                   placeholder="Peso en kg"
                   className="valoracionInput"
+                  disabled={bloqueadoPorDatosPrevios}
                 />
 
                 <input
@@ -305,6 +532,7 @@ export default function ModuloObesidad() {
                   onChange={(e) => setTalla(e.target.value)}
                   placeholder="Talla en metros"
                   className="valoracionInput"
+                  disabled={bloqueadoPorDatosPrevios}
                 />
 
                 <div className="anamnesisInfoBox">
@@ -317,14 +545,25 @@ export default function ModuloObesidad() {
                 </div>
 
                 <div className="valoracionActions">
-                  <button
+                  <BotonImportante
                     type="button"
-                    className="valoracionPrimaryBtn"
+                    variant="solid"
                     onClick={handleGuardar}
-                    disabled={guardando || !paciente}
+                    disabled={
+                      guardando || !paciente || bloqueadoPorDatosPrevios
+                    }
                   >
                     {guardando ? "Enviando..." : "Guardar medidas"}
-                  </button>
+                  </BotonImportante>
+
+                  <BotonImportante
+                    type="button"
+                    variant="outline"
+                    onClick={limpiarSeleccionPaciente}
+                    disabled={guardando}
+                  >
+                    Limpiar
+                  </BotonImportante>
                 </div>
               </div>
             </>

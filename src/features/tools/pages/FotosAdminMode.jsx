@@ -21,6 +21,11 @@ import {
   getAnamnesisGlobalUploadMode,
   setAnamnesisGlobalUploadMode,
 } from "../../../shared/lib/anamnesisGlobalUploadMode";
+import {
+  MODULO_OBESIDAD_UPLOAD_MODES,
+  getModuloObesidadUploadMode,
+  setModuloObesidadUploadMode,
+} from "../../../shared/lib/moduloObesidadUploadMode";
 
 const CEDULA_ADMIN_FOTOS = "1037670182";
 
@@ -35,6 +40,9 @@ export default function FotosAdminMode() {
   const [anamnesisGlobalMode, setAnamnesisGlobalMode] = useState(
     ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION,
   );
+  const [moduloObesidadMode, setModuloObesidadMode] = useState(
+    MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION,
+  );
 
   const cedulaProfesional = useMemo(() => {
     return String(profesional?.cedula || "").trim();
@@ -46,6 +54,7 @@ export default function FotosAdminMode() {
     setFotoMode(getFotosUploadMode());
     setCheckinMode(getCheckinUploadMode());
     setAnamnesisGlobalMode(getAnamnesisGlobalUploadMode());
+    setModuloObesidadMode(getModuloObesidadUploadMode());
   }, []);
 
   useEffect(() => {
@@ -94,6 +103,18 @@ export default function FotosAdminMode() {
       newMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
         ? "El envío real de anamnesis global a base de datos quedó ACTIVADO."
         : "La simulación de anamnesis global quedó ACTIVADA. No se enviará información a base de datos.",
+    );
+  }
+
+  async function handleSetModuloObesidadMode(newMode) {
+    setModuloObesidadUploadMode(newMode);
+    setModuloObesidadMode(newMode);
+
+    await alertOk(
+      "Modo de módulo obesidad actualizado",
+      newMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
+        ? "El envío real del módulo obesidad a base de datos quedó ACTIVADO."
+        : "La simulación del módulo obesidad quedó ACTIVADA. No se enviará información a base de datos.",
     );
   }
 
@@ -149,6 +170,12 @@ export default function FotosAdminMode() {
               <li>
                 <strong>Modo anamnesis global:</strong>{" "}
                 {anamnesisGlobalMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
+                  ? "ENVÍO REAL A BASE DE DATOS"
+                  : "SIMULACIÓN"}
+              </li>
+              <li>
+                <strong>Modo módulo obesidad:</strong>{" "}
+                {moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
                   ? "ENVÍO REAL A BASE DE DATOS"
                   : "SIMULACIÓN"}
               </li>
@@ -271,6 +298,49 @@ export default function FotosAdminMode() {
                 }
               >
                 Activar simulación anamnesis global
+              </BotonImportante>
+            </div>
+          </div>
+
+          <div style={{ marginBottom: 20 }}>
+            <h3
+              className="valoracionCardTitle"
+              style={{ fontSize: "1rem", marginBottom: 12 }}
+            >
+              Control de módulo obesidad
+            </h3>
+
+            <div className="valoracionActionsResponsive">
+              <BotonImportante
+                type="button"
+                variant={
+                  moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() =>
+                  handleSetModuloObesidadMode(MODULO_OBESIDAD_UPLOAD_MODES.REAL)
+                }
+              >
+                Activar envío real módulo obesidad
+              </BotonImportante>
+
+              <BotonImportante
+                type="button"
+                variant={
+                  moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION
+                    ? "solid"
+                    : "outline"
+                }
+                fullWidth
+                onClick={() =>
+                  handleSetModuloObesidadMode(
+                    MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION,
+                  )
+                }
+              >
+                Activar simulación módulo obesidad
               </BotonImportante>
             </div>
           </div>

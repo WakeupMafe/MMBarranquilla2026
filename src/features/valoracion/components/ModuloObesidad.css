@@ -217,6 +217,9 @@
   background: #fee4e2;
   color: #b42318;
 }
+.anamnesisInfoBox {
+  margin-bottom: 15px;
+}
 
 .moduloObesidadEstado--no {
   background: #eaf7e9;
