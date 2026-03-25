@@ -46,6 +46,22 @@ function crearFormularioEdicion(paciente) {
   };
 }
 
+async function obtenerPacientePorDocumento(documento) {
+  const { data, error } = await supabase
+    .from("participantes")
+    .select(
+      "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
+    )
+    .eq("numero_documento_fisico", String(documento || "").trim())
+    .maybeSingle();
+
+  if (error) {
+    throw error;
+  }
+
+  return data || null;
+}
+
 export default function Valoracion() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -101,23 +117,30 @@ export default function Valoracion() {
   useEffect(() => {
     async function cargarPacienteDesdeCheckIn() {
       if (!pacienteDesdeCheckIn?.numero_documento_fisico) return;
-      if (paciente?.clasificacionPaciente) return;
 
       try {
         setLoading(true);
 
-        const documento = pacienteDesdeCheckIn.numero_documento_fisico;
+        const documento = String(
+          pacienteDesdeCheckIn.numero_documento_fisico || "",
+        ).trim();
+
+        const pacienteBd = await obtenerPacientePorDocumento(documento);
+
+        const pacienteBase = pacienteBd || pacienteDesdeCheckIn;
+
         const clasificacionPaciente =
           await buscarClasificacionPaciente(documento);
 
-        const estadoCalidad =
-          construirEstadoCalidadPaciente(pacienteDesdeCheckIn);
+        const estadoCalidad = construirEstadoCalidadPaciente(pacienteBase);
 
         setPaciente({
-          ...pacienteDesdeCheckIn,
+          ...pacienteBase,
           clasificacionPaciente,
           estadoCalidad,
         });
+
+        setCedula(documento);
       } catch (error) {
         console.error("Error cargando clasificación desde check-in:", error);
 
@@ -131,7 +154,7 @@ export default function Valoracion() {
     }
 
     cargarPacienteDesdeCheckIn();
-  }, [pacienteDesdeCheckIn, paciente]);
+  }, [pacienteDesdeCheckIn]);
 
   async function handleBuscar(e) {
     e.preventDefault();
@@ -147,15 +170,9 @@ export default function Valoracion() {
 
       const documento = cedula.trim();
 
-      const { data, error } = await supabase
-        .from("participantes")
-        .select(
-          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
-        )
-        .eq("numero_documento_fisico", documento)
-        .single();
+      const data = await obtenerPacientePorDocumento(documento);
 
-      if (error || !data) {
+      if (!data) {
         setPaciente(null);
 
         await alertError(
@@ -266,6 +283,8 @@ export default function Valoracion() {
     try {
       setLoading(true);
 
+      const documento = String(paciente.numero_documento_fisico || "").trim();
+
       const payload = {
         nombre_apellido_documento: nombre,
         genero: genero || null,
@@ -273,27 +292,43 @@ export default function Valoracion() {
         fecha_nacimiento: fechaNacimiento || null,
       };
 
-      const { error } = await supabase
+      const { data: updatedRows, error } = await supabase
         .from("participantes")
         .update(payload)
-        .eq("numero_documento_fisico", paciente.numero_documento_fisico);
+        .eq("numero_documento_fisico", documento)
+        .select(
+          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
+        );
 
       if (error) {
         throw error;
       }
 
-      const pacienteActualizado = {
-        ...paciente,
-        ...payload,
-      };
+      if (!updatedRows || updatedRows.length === 0) {
+        throw new Error(
+          "No fue posible confirmar la actualización del paciente en la base de datos. Revisa políticas RLS o el filtro por número de documento.",
+        );
+      }
+
+      const pacienteActualizado =
+        updatedRows.find(
+          (item) =>
+            String(item?.numero_documento_fisico || "").trim() === documento,
+        ) || updatedRows[0];
+
+      const clasificacionPaciente =
+        paciente?.clasificacionPaciente ||
+        (await buscarClasificacionPaciente(documento));
 
       const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
 
       setPaciente({
         ...pacienteActualizado,
+        clasificacionPaciente,
         estadoCalidad,
       });
 
+      setCedula(documento);
       setMostrarEditor(false);
 
       await alertOk(
