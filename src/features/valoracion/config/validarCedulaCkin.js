@@ -151,3 +151,62 @@ export async function buscarPacienteCheckin(cedulaIngresada) {
     error: null,
   };
 }
+
+/**
+ * 🔴 Revisa si el paciente ya tiene un check-in registrado
+ * en la tabla checkin_anamnesis.
+ *
+ * Usa la cédula normalizada para consultar por numero_documento_fisico.
+ */
+export async function validarCheckInExistente(cedulaIngresada) {
+  const { esValido, documentoNormalizado } = validarCedulaCkin(cedulaIngresada);
+
+  if (!esValido) {
+    console.warn("[CKIN] Cédula inválida para validar check-in existente.", {
+      cedulaIngresada,
+      documentoNormalizado,
+    });
+
+    return {
+      yaExiste: false,
+      documentoNormalizado,
+      checkinExistente: null,
+      error: null,
+    };
+  }
+
+  const { data, error } = await supabase
+    .from("checkin_anamnesis")
+    .select("numero_documento_fisico, instructor_nombre, lugar_valoracion")
+    .eq("numero_documento_fisico", documentoNormalizado)
+    .maybeSingle();
+
+  if (error) {
+    console.error("[CKIN] Error validando check-in existente:", error);
+
+    return {
+      yaExiste: false,
+      documentoNormalizado,
+      checkinExistente: null,
+      error,
+    };
+  }
+
+  if (data) {
+    console.warn("[CKIN] El paciente ya realizó check-in:", data);
+
+    return {
+      yaExiste: true,
+      documentoNormalizado,
+      checkinExistente: data,
+      error: null,
+    };
+  }
+
+  return {
+    yaExiste: false,
+    documentoNormalizado,
+    checkinExistente: null,
+    error: null,
+  };
+}
