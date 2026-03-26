@@ -1,7 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { supabase } from "../../../shared/lib/supabaseClient";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 import "./FotoAuthGate.css";
+
+const SESSION_DURATION_MS = 2 * 60 * 60 * 1000; // 2 horas
+const SESSION_TIMER_KEY = "foto_auth_started_at";
 
 function getZonaLabel(zona) {
   const value = String(zona || "")
@@ -18,6 +22,17 @@ function getZonaLabel(zona) {
   return zona;
 }
 
+function formatRemainingTime(ms) {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000));
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  return [hours, minutes, seconds]
+    .map((value) => String(value).padStart(2, "0"))
+    .join(":");
+}
+
 export default function FotoAuthGate({ children }) {
   const location = useLocation();
 
@@ -27,6 +42,7 @@ export default function FotoAuthGate({ children }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(SESSION_DURATION_MS);
 
   const zonaActiva = useMemo(() => {
     return (
@@ -47,9 +63,19 @@ export default function FotoAuthGate({ children }) {
         data: { session },
       } = await supabase.auth.getSession();
 
-      if (mounted) {
-        setSession(session ?? null);
-        setLoading(false);
+      if (!mounted) return;
+
+      setSession(session ?? null);
+      setLoading(false);
+
+      if (session?.user) {
+        const savedStart = sessionStorage.getItem(SESSION_TIMER_KEY);
+
+        if (!savedStart) {
+          sessionStorage.setItem(SESSION_TIMER_KEY, String(Date.now()));
+        }
+      } else {
+        sessionStorage.removeItem(SESSION_TIMER_KEY);
       }
     }
 
@@ -60,6 +86,17 @@ export default function FotoAuthGate({ children }) {
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       setSession(newSession ?? null);
       setLoading(false);
+
+      if (newSession?.user) {
+        const savedStart = sessionStorage.getItem(SESSION_TIMER_KEY);
+
+        if (!savedStart) {
+          sessionStorage.setItem(SESSION_TIMER_KEY, String(Date.now()));
+        }
+      } else {
+        sessionStorage.removeItem(SESSION_TIMER_KEY);
+        setTimeLeft(SESSION_DURATION_MS);
+      }
     });
 
     return () => {
@@ -67,6 +104,41 @@ export default function FotoAuthGate({ children }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!session?.user) return;
+
+    const tick = async () => {
+      const startedAtRaw = sessionStorage.getItem(SESSION_TIMER_KEY);
+      const startedAt = Number(startedAtRaw || 0);
+
+      if (!startedAt) {
+        sessionStorage.setItem(SESSION_TIMER_KEY, String(Date.now()));
+        setTimeLeft(SESSION_DURATION_MS);
+        return;
+      }
+
+      const expiresAt = startedAt + SESSION_DURATION_MS;
+      const remaining = expiresAt - Date.now();
+
+      if (remaining <= 0) {
+        setTimeLeft(0);
+        sessionStorage.removeItem(SESSION_TIMER_KEY);
+        await supabase.auth.signOut();
+        return;
+      }
+
+      setTimeLeft(remaining);
+    };
+
+    tick();
+
+    const interval = setInterval(() => {
+      tick();
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [session]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -80,12 +152,18 @@ export default function FotoAuthGate({ children }) {
 
     if (error) {
       setError(error.message || "No se pudo iniciar sesión.");
+      setSubmitting(false);
+      return;
     }
 
+    sessionStorage.setItem(SESSION_TIMER_KEY, String(Date.now()));
+    setTimeLeft(SESSION_DURATION_MS);
     setSubmitting(false);
   };
 
   const handleLogout = async () => {
+    sessionStorage.removeItem(SESSION_TIMER_KEY);
+    setTimeLeft(SESSION_DURATION_MS);
     await supabase.auth.signOut();
   };
 
@@ -111,15 +189,19 @@ export default function FotoAuthGate({ children }) {
               <p className="fotoAuthUser">
                 Protocolo activo: <strong>{getZonaLabel(zonaActiva)}</strong>
               </p>
+              <p className="fotoAuthUser">
+                Tiempo restante:{" "}
+                <strong>{formatRemainingTime(timeLeft)}</strong>
+              </p>
             </div>
 
-            <button
+            <BotonImportante
               type="button"
-              className="fotoAuthLogoutBtn"
+              variant="outline"
               onClick={handleLogout}
             >
               Cerrar sesión
-            </button>
+            </BotonImportante>
           </div>
         </div>
 
@@ -132,9 +214,14 @@ export default function FotoAuthGate({ children }) {
     <div className="fotoAuthPage">
       <div className="fotoAuthCard">
         <h2 className="fotoAuthTitle">Acceso al módulo de fotos</h2>
+
         <p className="fotoAuthText">
           Inicia sesión para cargar de forma segura el protocolo fotográfico
           correspondiente a <strong>{getZonaLabel(zonaActiva)}</strong>.
+        </p>
+
+        <p className="fotoAuthText">
+          La sesión de este módulo dura máximo <strong>2 horas</strong>.
         </p>
 
         <form className="fotoAuthForm" onSubmit={handleLogin}>
@@ -172,13 +259,9 @@ export default function FotoAuthGate({ children }) {
 
           {error ? <p className="fotoAuthError">{error}</p> : null}
 
-          <button
-            type="submit"
-            className="fotoAuthSubmit"
-            disabled={submitting}
-          >
+          <BotonImportante type="submit" fullWidth disabled={submitting}>
             {submitting ? "Ingresando..." : "Ingresar al módulo"}
-          </button>
+          </BotonImportante>
         </form>
       </div>
     </div>

@@ -1,11 +1,15 @@
 import PhotoSlotCard from "./PhotoSlotCard";
+import VideoSlotCard from "./VideoSlotCard";
 
 export default function PhotoGroupCard({
   group,
-  photos,
+  photos = [],
+  videos = [], // 🔵 nuevo: lista de videos del grupo
   processingId,
   onPhotoChange,
   onRemovePhoto,
+  onVideoChange, // 🔵 nuevo
+  onRemoveVideo, // 🔵 nuevo
 }) {
   return (
     <section className="photoGroupCard">
@@ -14,6 +18,7 @@ export default function PhotoGroupCard({
       </div>
 
       <div className="photoGroupGrid">
+        {/* 🔵 FOTOS */}
         {photos.map((photo) => (
           <PhotoSlotCard
             key={photo.id}
@@ -21,6 +26,17 @@ export default function PhotoGroupCard({
             processingId={processingId}
             onPhotoChange={onPhotoChange}
             onRemovePhoto={onRemovePhoto}
+          />
+        ))}
+
+        {/* 🔵 VIDEOS */}
+        {videos.map((video) => (
+          <VideoSlotCard
+            key={video.id}
+            video={video}
+            processingId={processingId}
+            onVideoChange={onVideoChange}
+            onRemoveVideo={onRemoveVideo}
           />
         ))}
       </div>

@@ -2,7 +2,7 @@
   width: 100%;
   min-height: 100vh;
   padding: clamp(1rem, 2vw, 1.5rem);
-  background: #f7f8fc;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -25,7 +25,9 @@
   font-weight: 700;
   color: #1f2a44;
 }
-
+.fotoAuthTopbar {
+  background: transparent;
+}
 .fotoAuthText {
   margin: 0;
   color: #667085;

@@ -2,14 +2,15 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./FotoUploadTest.css";
 import { compressImage } from "../utils/imageCompression";
-import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+import { alertConfirm, alertError } from "../../../shared/lib/alerts";
 import { PHOTO_GROUPS } from "../constants/photoGroups";
+import { VIDEO_GROUPS } from "../constants/videoGroups";
 import PhotoGroupCard from "../components/PhotoGroupCard";
 import { obtenerValoracionActiva } from "../../valoracion/utils/valoracionSession";
-import {
-  FOTO_UPLOAD_MODES,
-  getFotosUploadMode,
-} from "../../../shared/lib/fotosUploadMode";
+
+/* =========================
+   ZONAS
+========================= */
 
 function normalizarZonaProtocolo(zona) {
   const value = String(zona || "")
@@ -26,6 +27,19 @@ function normalizarZonaProtocolo(zona) {
   return "funcional";
 }
 
+function normalizarZonaVideo(zona) {
+  const value = String(zona || "")
+    .trim()
+    .toLowerCase();
+
+  if (!value) return "";
+  if (value.includes("rodilla")) return "rodilla";
+  if (value.includes("cadera")) return "cadera";
+  if (value.includes("espalda") || value.includes("lumbar")) return "lumbar";
+
+  return "";
+}
+
 function getZonaTitle(zona) {
   const labels = {
     funcional: "Funcional",
@@ -38,14 +52,15 @@ function getZonaTitle(zona) {
   return labels[zona] || "Funcional";
 }
 
-const SESSION_KEY = "wk_profesional";
-
 export default function FotoUploadTest() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // 🔵 La sesión activa de valoración será la fuente principal del paciente
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
+
+  /* =========================
+     ZONAS ACTIVAS
+  ========================= */
 
   const zonasProtocoloFotos = useMemo(() => {
     const zonasDesdeState = location.state?.zonasProtocoloFotos;
@@ -68,6 +83,10 @@ export default function FotoUploadTest() {
     return [zonaUnica];
   }, [location.state, valoracionActiva]);
 
+  /* =========================
+     GRUPOS DE FOTOS
+  ========================= */
+
   const gruposActivos = useMemo(() => {
     if (!zonasProtocoloFotos.length) return [];
 
@@ -80,12 +99,30 @@ export default function FotoUploadTest() {
     );
   }, [zonasProtocoloFotos]);
 
-  // 🔵 El paciente SIEMPRE se toma de la sesión activa de valoración
+  /* =========================
+     GRUPOS DE VIDEOS
+  ========================= */
+
+  const gruposVideosActivos = useMemo(() => {
+    const zonasVideo = zonasProtocoloFotos
+      .map(normalizarZonaVideo)
+      .filter(Boolean);
+
+    if (!zonasVideo.length) return [];
+
+    return VIDEO_GROUPS.filter((group) =>
+      group.zonas?.some((zona) => zonasVideo.includes(zona)),
+    );
+  }, [zonasProtocoloFotos]);
+
+  /* =========================
+     PACIENTE
+  ========================= */
+
   const paciente = useMemo(() => {
     return valoracionActiva?.paciente || null;
   }, [valoracionActiva]);
 
-  // 🔵 La cédula también sale de la sesión activa
   const pacienteDocumento = useMemo(() => {
     return (
       valoracionActiva?.paciente?.numero_documento_fisico ||
@@ -95,56 +132,60 @@ export default function FotoUploadTest() {
     );
   }, [valoracionActiva]);
 
-  // 🔵 El profesional sí puede venir del state o de sessionStorage
-  const profesional = useMemo(() => {
-    if (location.state?.profesional) return location.state.profesional;
-
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, [location.state]);
-
-  const profesionalCedula = useMemo(() => {
-    return profesional?.cedula || "";
-  }, [profesional]);
+  /* =========================
+     ESTADO INICIAL DE FOTOS
+  ========================= */
 
   const createEmptyPhotos = () =>
     gruposActivos.flatMap((group) =>
-      group.items.map((item) => {
-        const zonaDeItem =
-          group.zonas?.find((zona) => zonasProtocoloFotos.includes(zona)) ||
-          group.zonas?.[0] ||
-          "funcional";
+      group.items.map((item) => ({
+        ...item,
+        groupId: group.id,
+        file: null,
+        preview: "",
+        fileName: "",
+        fileSize: 0,
+        width: 0,
+        height: 0,
+        status: "empty",
+      })),
+    );
 
-        return {
-          ...item,
-          zona: zonaDeItem,
-          groupId: group.id,
-          groupTitle: group.title,
-          file: null,
-          preview: "",
-          fileName: "",
-          fileSize: 0,
-          width: 0,
-          height: 0,
-          status: "empty",
-        };
-      }),
+  /* =========================
+     ESTADO INICIAL DE VIDEOS
+  ========================= */
+
+  const createEmptyVideos = () =>
+    gruposVideosActivos.flatMap((group) =>
+      group.items.map((item) => ({
+        ...item,
+        groupId: group.id,
+        file: null,
+        preview: "",
+        fileName: "",
+        fileSize: 0,
+        duration: 0,
+        status: "empty",
+      })),
     );
 
   const [photos, setPhotos] = useState([]);
+  const [videos, setVideos] = useState([]);
   const [processingId, setProcessingId] = useState("");
-  const [uploading, setUploading] = useState(false);
-  const [faseCompletada, setFaseCompletada] = useState(false);
+
+  /* =========================
+     REINICIAR CUANDO CAMBIAN LOS GRUPOS
+  ========================= */
 
   useEffect(() => {
     setPhotos(createEmptyPhotos());
+    setVideos(createEmptyVideos());
     setProcessingId("");
-    setFaseCompletada(false);
-  }, [gruposActivos]);
+  }, [gruposActivos, gruposVideosActivos]);
+
+  /* =========================
+     LIMPIAR URLS DE PREVIEW AL DESMONTAR
+  ========================= */
 
   useEffect(() => {
     return () => {
@@ -153,51 +194,21 @@ export default function FotoUploadTest() {
           URL.revokeObjectURL(photo.preview);
         }
       });
+
+      videos.forEach((video) => {
+        if (video.preview) {
+          URL.revokeObjectURL(video.preview);
+        }
+      });
     };
-  }, [photos]);
+  }, [photos, videos]);
 
-  useEffect(() => {
-    console.log("STATE FOTOS:", location.state);
-    console.log("VALORACION ACTIVA EN FOTOS:", valoracionActiva);
-    console.log("PACIENTE EN FOTOS:", paciente);
-  }, [
-    location.state,
-    valoracionActiva,
-    paciente,
-    pacienteDocumento,
-    profesional,
-    profesionalCedula,
-  ]);
-
-  const groupedPhotos = useMemo(() => {
-    return gruposActivos.map((group) => ({
-      ...group,
-      photos: photos.filter((photo) => photo.groupId === group.id),
-    }));
-  }, [gruposActivos, photos]);
-
-  const completedCount = photos.filter(
-    (photo) => photo.status === "ready",
-  ).length;
-
-  const todasCompletas =
-    photos.length > 0 && photos.every((photo) => photo.status === "ready");
-
-  useEffect(() => {
-    if (faseCompletada) return;
-    if (!todasCompletas) return;
-
-    setFaseCompletada(true);
-
-    alertOk(
-      "Primera fase completada",
-      "Excelente. Ya completaste todas las fotos requeridas para esta fase clínica.",
-    );
-  }, [todasCompletas, faseCompletada]);
+  /* =========================
+     MANEJO DE FOTO
+  ========================= */
 
   const handlePhotoChange = async (slotId, fileList) => {
     const file = fileList?.[0];
-
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
@@ -214,34 +225,33 @@ export default function FotoUploadTest() {
       const result = await compressImage(file, {
         maxWidth: 1000,
         maxHeight: 1000,
-        quality: 0.62,
-        outputType: "image/jpeg",
+        quality: 0.6,
       });
 
       setPhotos((prev) =>
-        prev.map((photo) => {
-          if (photo.id !== slotId) return photo;
+        prev.map((p) => {
+          if (p.id !== slotId) return p;
 
-          if (photo.preview) {
-            URL.revokeObjectURL(photo.preview);
+          if (p.preview) {
+            URL.revokeObjectURL(p.preview);
           }
 
           return {
-            ...photo,
+            ...p,
             file: result.file,
             preview: result.previewUrl,
-            fileName: result.compressed.name,
-            fileSize: result.compressed.size,
-            width: result.compressed.width,
-            height: result.compressed.height,
+            fileName: result.compressed?.name || result.file?.name || "",
+            fileSize: result.compressed?.size || result.file?.size || 0,
+            width: result.compressed?.width || 0,
+            height: result.compressed?.height || 0,
             status: "ready",
           };
         }),
       );
-    } catch (err) {
+    } catch (error) {
       await alertError(
         "Error al procesar",
-        err.message || "No se pudo procesar la imagen.",
+        error.message || "No se pudo procesar la imagen.",
       );
     } finally {
       setProcessingId("");
@@ -282,45 +292,160 @@ export default function FotoUploadTest() {
         };
       }),
     );
-
-    setFaseCompletada(false);
   };
 
-  const handleReset = async () => {
-    const hasPhotos = photos.some((photo) => photo.preview);
+  /* =========================
+     MANEJO DE VIDEO
+  ========================= */
 
-    if (!hasPhotos) {
+  const getVideoDuration = (file) =>
+    new Promise((resolve, reject) => {
+      const tempUrl = URL.createObjectURL(file);
+      const tempVideo = document.createElement("video");
+
+      tempVideo.preload = "metadata";
+      tempVideo.src = tempUrl;
+
+      tempVideo.onloadedmetadata = () => {
+        const duration = tempVideo.duration || 0;
+        URL.revokeObjectURL(tempUrl);
+        resolve(duration);
+      };
+
+      tempVideo.onerror = () => {
+        URL.revokeObjectURL(tempUrl);
+        reject(new Error("No se pudo leer la duración del video."));
+      };
+    });
+
+  const handleVideoChange = async (slotId, fileList) => {
+    const file = fileList?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("video/")) {
       await alertError(
-        "Nada para limpiar",
-        "Aún no has cargado fotos en el protocolo.",
+        "Archivo no válido",
+        "El archivo seleccionado no es un video válido.",
       );
       return;
     }
 
+    try {
+      setProcessingId(slotId);
+
+      const duration = await getVideoDuration(file);
+
+      if (duration > 15) {
+        await alertError(
+          "Video demasiado largo",
+          "El video debe durar máximo 15 segundos.",
+        );
+        return;
+      }
+
+      setVideos((prev) =>
+        prev.map((v) => {
+          if (v.id !== slotId) return v;
+
+          if (v.preview) {
+            URL.revokeObjectURL(v.preview);
+          }
+
+          return {
+            ...v,
+            file,
+            preview: URL.createObjectURL(file),
+            fileName: file.name || "",
+            fileSize: file.size || 0,
+            duration,
+            status: "ready",
+          };
+        }),
+      );
+    } catch (error) {
+      await alertError(
+        "Error al procesar",
+        error.message || "No se pudo procesar el video.",
+      );
+    } finally {
+      setProcessingId("");
+    }
+  };
+
+  const handleRemoveVideo = async (slotId) => {
+    const video = videos.find((item) => item.id === slotId);
+
+    if (!video?.preview) return;
+
     const ok = await alertConfirm({
-      title: "Limpiar protocolo",
-      text: "¿Deseas eliminar todas las fotos cargadas?",
-      confirmText: "Sí, limpiar",
+      title: "Quitar video",
+      text: `¿Deseas quitar el video "${video.title}"?`,
+      confirmText: "Sí, quitar",
       cancelText: "Cancelar",
     });
 
     if (!ok) return;
 
-    photos.forEach((photo) => {
-      if (photo.preview) {
-        URL.revokeObjectURL(photo.preview);
-      }
-    });
+    setVideos((prev) =>
+      prev.map((item) => {
+        if (item.id !== slotId) return item;
 
-    setPhotos(createEmptyPhotos());
-    setProcessingId("");
-    setFaseCompletada(false);
+        if (item.preview) {
+          URL.revokeObjectURL(item.preview);
+        }
 
-    await alertOk(
-      "Formulario limpiado",
-      "Se reiniciaron todas las fotos del protocolo.",
+        return {
+          ...item,
+          file: null,
+          preview: "",
+          fileName: "",
+          fileSize: 0,
+          duration: 0,
+          status: "empty",
+        };
+      }),
     );
   };
+
+  /* =========================
+     UNIR FOTOS Y VIDEOS POR GRUPO
+  ========================= */
+
+  const groupedFinal = useMemo(() => {
+    const zonasConVideosAsignados = new Set();
+
+    return gruposActivos.map((group) => {
+      const zonaDelGrupo = group.zonas?.find((zona) =>
+        zonasProtocoloFotos.includes(zona),
+      );
+
+      let videosDelGrupo = [];
+
+      if (zonaDelGrupo && !zonasConVideosAsignados.has(zonaDelGrupo)) {
+        const grupoVideo = gruposVideosActivos.find((g) =>
+          g.zonas?.includes(zonaDelGrupo),
+        );
+
+        if (grupoVideo) {
+          videosDelGrupo = videos.filter((video) =>
+            grupoVideo.items.some((item) => item.id === video.id),
+          );
+
+          zonasConVideosAsignados.add(zonaDelGrupo);
+        }
+      }
+
+      return {
+        ...group,
+        photos: photos.filter((photo) => photo.groupId === group.id),
+        videos: videosDelGrupo,
+      };
+    });
+  }, [gruposActivos, gruposVideosActivos, photos, videos, zonasProtocoloFotos]);
+
+  /* =========================
+     VOLVER
+  ========================= */
 
   const handleVolver = () => {
     navigate("/herramientas/anamnesis-zona", {
@@ -330,106 +455,9 @@ export default function FotoUploadTest() {
     });
   };
 
-  const handleUpload = async () => {
-    const readyPhotos = photos.filter((photo) => photo.status === "ready");
-
-    if (photos.length === 0) {
-      await alertError(
-        "Sin protocolo activo",
-        "No se encontró un protocolo fotográfico para esta valoración.",
-      );
-      return;
-    }
-
-    if (completedCount !== photos.length) {
-      await alertError(
-        "Protocolo incompleto",
-        "Debes completar todas las fotografías del protocolo antes de continuar.",
-      );
-      return;
-    }
-
-    if (!pacienteDocumento) {
-      await alertError(
-        "Paciente no identificado",
-        "No se encontró la cédula del paciente en la sesión activa de valoración.",
-      );
-      return;
-    }
-
-    if (!profesionalCedula) {
-      await alertError(
-        "Profesional no identificado",
-        "No se encontró la cédula del profesional para guardar las fotos.",
-      );
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
-      const uploadMode = getFotosUploadMode();
-
-      console.log("UPLOAD MODE:", uploadMode);
-      console.log("PACIENTE:", pacienteDocumento);
-      console.log("PROFESIONAL:", profesionalCedula);
-      console.log("READY PHOTOS:", readyPhotos);
-      console.log("SESIÓN TIPO:", sesionTipo);
-
-      if (uploadMode === FOTO_UPLOAD_MODES.SIMULACION) {
-        await alertOk(
-          "📸 Simulación completada",
-          `Se simuló correctamente el envío de ${readyPhotos.length} foto(s). No se guardó nada en base de datos.`,
-        );
-
-        photos.forEach((photo) => {
-          if (photo.preview) {
-            URL.revokeObjectURL(photo.preview);
-          }
-        });
-
-        setPhotos(createEmptyPhotos());
-        setFaseCompletada(false);
-
-        navigate("/herramientas/valoracion/check-in");
-        return;
-      }
-
-      for (const photo of readyPhotos) {
-        await uploadFotoPaciente({
-          file: photo.file,
-          pacienteDocumento,
-          tipoFoto: photo.id,
-          sesionTipo,
-          profesionalCedula,
-          zonasEvaluadas: zonasProtocoloFotos, // 🔥 AQUÍ EL CAMBIO
-        });
-      }
-      await alertOk(
-        "📸 Fotos subidas con éxito",
-        `Se guardaron correctamente ${readyPhotos.length} foto(s). Ya puedes continuar con el proceso.`,
-      );
-
-      photos.forEach((photo) => {
-        if (photo.preview) {
-          URL.revokeObjectURL(photo.preview);
-        }
-      });
-
-      setPhotos(createEmptyPhotos());
-      setFaseCompletada(false);
-
-      navigate("/herramientas/valoracion/check-in");
-    } catch (error) {
-      await alertError(
-        "Error en simulación",
-        error.message || "No se pudo completar la simulación de fotos.",
-      );
-    } finally {
-      setUploading(false);
-    }
-  };
+  /* =========================
+     RENDER
+  ========================= */
 
   return (
     <div className="photoTestPage">
@@ -440,21 +468,19 @@ export default function FotoUploadTest() {
               type="button"
               className="btnBack"
               onClick={handleVolver}
-              disabled={uploading || processingId !== ""}
+              disabled={processingId !== ""}
             >
               ← Volver
             </button>
           </div>
 
-          <h1 className="photoTitle">Protocolo de captura fotográfica</h1>
+          <h1 className="photoTitle">Fotos + Videos clínicos</h1>
 
           <p className="photoSubtitle">
             Protocolo activo para las zonas{" "}
             <strong>{zonasProtocoloFotos.map(getZonaTitle).join(", ")}</strong>.
-            Registra únicamente las tomas requeridas para esta fase clínica.
           </p>
 
-          {/* 🔵 Mostrar la sesión activa del paciente */}
           <div className="photoSessionInfo">
             <p>
               <strong>Paciente activo:</strong>{" "}
@@ -466,49 +492,18 @@ export default function FotoUploadTest() {
           </div>
         </section>
 
-        <section className="photoCard">
-          <div className="photoForm">
-            <p className="fieldHelp">
-              Fotos completadas: <strong>{completedCount}</strong> de{" "}
-              <strong>{photos.length}</strong>
-            </p>
-
-            <div className="actions">
-              <button
-                type="button"
-                className="btnSecondary"
-                onClick={handleReset}
-                disabled={processingId !== "" || uploading}
-              >
-                Limpiar todo
-              </button>
-
-              <button
-                type="button"
-                className="btnPrimary"
-                onClick={handleUpload}
-                disabled={
-                  uploading ||
-                  processingId !== "" ||
-                  completedCount !== photos.length ||
-                  photos.length === 0
-                }
-              >
-                {uploading ? "Subiendo..." : "Subir fotos"}
-              </button>
-            </div>
-          </div>
-        </section>
-
         <div className="photoGroupsList">
-          {groupedPhotos.map((group) => (
+          {groupedFinal.map((group) => (
             <PhotoGroupCard
               key={group.id}
               group={group}
               photos={group.photos}
+              videos={group.videos}
               processingId={processingId}
               onPhotoChange={handlePhotoChange}
               onRemovePhoto={handleRemovePhoto}
+              onVideoChange={handleVideoChange}
+              onRemoveVideo={handleRemoveVideo}
             />
           ))}
         </div>
