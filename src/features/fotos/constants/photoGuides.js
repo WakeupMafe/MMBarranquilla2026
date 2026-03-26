@@ -18,6 +18,7 @@ import rodillaSuperior from "../../../assets/rodilla_superior.svg";
 
 import frenteElevacionAbierta from "../../../assets/frenteEleacionAbierta.png";
 import frenteElevacionNormal from "../../../assets/frenteElevacionNormal.png";
+import hombroLadoConBaston from "../../../assets/hombroLateraLado.png";
 
 export const PHOTO_GUIDES = {
   bipodal_frente: bipodalFrente,
@@ -40,4 +41,10 @@ export const PHOTO_GUIDES = {
 
   hombro_frente_baston_arriba: frenteElevacionNormal,
   hombro_frente_agarre_variable: frenteElevacionAbierta,
+
+  // reutiliza la misma guía de bipodal_lado
+  hombro_lado_sin_elevacion_baston: bipodalLado,
+
+  // imagen nueva de hombro con elevación
+  hombro_lado_con_elevacion_baston: hombroLadoConBaston,
 };

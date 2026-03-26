@@ -130,7 +130,7 @@ export const PHOTO_GROUPS = [
       },
       {
         id: "hombro_lado_con_elevacion_baston",
-        title: "De lado Con elevación de bastón",
+        title: "De lado Con elevación de bastón", // este es la imagen nueva
       },
     ],
   },
