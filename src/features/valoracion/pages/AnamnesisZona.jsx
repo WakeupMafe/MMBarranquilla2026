@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 
 import TopHeader from "../../../shared/components/TopHeader/TopHeader";
@@ -9,6 +9,7 @@ import ZonaRenderer from "../components/zonas/ZonaRenderer";
 
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import { obtenerValoracionActiva } from "../utils/valoracionSession";
+import { eleccionDePasoAFotos } from "../config/eleccionDePasoAFotos";
 
 import "./Valoracion.css";
 
@@ -23,8 +24,59 @@ function normalizarZona(zona) {
 function capitalizarZona(zona) {
   const value = normalizarZona(zona);
   if (!value) return "";
-
   return value.charAt(0).toUpperCase() + value.slice(1);
+}
+
+function formatearListaZonas(zonas = []) {
+  return zonas.map(capitalizarZona).join(", ");
+}
+
+/**
+ * Construye un único mensaje resumido para mostrar en alert.
+ *
+ * Ejemplo:
+ * De las zonas (Cadera, Hombro), se enviarán todos los formularios.
+ * Solo la zona (Hombro) pasará a módulo de fotos.
+ * La zona (Cadera) queda suspendida por alertas hasta revisión profesional.
+ */
+function construirMensajePasoAFotos({
+  zonasEvaluadas = [],
+  zonasAptasParaFotos = [],
+  zonasSuspendidasPorRevision = [],
+}) {
+  const partes = [];
+
+  if (zonasEvaluadas.length > 0) {
+    partes.push(
+      `De las zonas (${formatearListaZonas(
+        zonasEvaluadas,
+      )}), se enviarán todos los formularios.`,
+    );
+  }
+
+  if (zonasAptasParaFotos.length > 0) {
+    const textoZona =
+      zonasAptasParaFotos.length === 1 ? "Solo la zona" : "Solo las zonas";
+
+    partes.push(
+      `${textoZona} (${formatearListaZonas(
+        zonasAptasParaFotos,
+      )}) pasarán a módulo de fotos.`,
+    );
+  }
+
+  if (zonasSuspendidasPorRevision.length > 0) {
+    const textoZona =
+      zonasSuspendidasPorRevision.length === 1 ? "La zona" : "Las zonas";
+
+    partes.push(
+      `${textoZona} (${formatearListaZonas(
+        zonasSuspendidasPorRevision,
+      )}) quedan suspendidas por alertas hasta revisión profesional.`,
+    );
+  }
+
+  return partes.join("\n\n");
 }
 
 export default function AnamnesisZona() {
@@ -38,12 +90,11 @@ export default function AnamnesisZona() {
     .map(normalizarZona)
     .filter(Boolean);
 
-  // 🔵 Primero intenta tomar el paciente desde state.
-  // Si no viene, lo recupera desde la sesión activa de valoración.
+  // Recupera paciente desde location.state o desde la valoración activa guardada.
   const paciente =
     location.state?.paciente || valoracionActiva?.paciente || null;
 
-  // 🔵 La cédula también se intenta recuperar desde varios caminos.
+  // Recupera la cédula del paciente desde varios posibles orígenes.
   const cedula =
     location.state?.cedula ||
     location.state?.paciente?.numero_documento_fisico ||
@@ -52,6 +103,7 @@ export default function AnamnesisZona() {
     paciente?.cedula ||
     "";
 
+  // Recupera los datos del profesional desde state o sessionStorage.
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
     if (fromState) return fromState;
@@ -64,38 +116,42 @@ export default function AnamnesisZona() {
     }
   }, [location.state]);
 
+  // Guarda el resultado persistido por cada zona evaluada.
   const [evaluacionesPorZona, setEvaluacionesPorZona] = useState({});
   const [resetCounter, setResetCounter] = useState(0);
+
+  // Evita repetir el mismo alert varias veces para el mismo resumen.
+  const [ultimoResumenAlertado, setUltimoResumenAlertado] = useState("");
 
   function handleZonaEvaluada(zona, payload) {
     const zonaNormalizada = normalizarZona(zona);
 
+    // Guarda el resultado de la zona en memoria local del flujo.
+    // Ojo: el guardado real a BD ocurre dentro del formulario de cada zona.
     setEvaluacionesPorZona((prev) => ({
       ...prev,
       [zonaNormalizada]: payload,
     }));
   }
 
+  // Usa el módulo externo para decidir qué zonas pasan a fotos
+  // y cuáles quedan suspendidas por revisión profesional.
   const resumenZonas = useMemo(() => {
-    const zonasEvaluadas = Object.entries(evaluacionesPorZona);
-
-    const zonasAptasParaFotos = zonasEvaluadas
-      .filter(
-        ([, value]) =>
-          value?.resultado && !value.resultado?.requiereRevisionProfesional,
-      )
-      .map(([zona]) => zona);
-
-    const zonasConRevisionProfesional = zonasEvaluadas
-      .filter(([, value]) => value?.resultado?.requiereRevisionProfesional)
-      .map(([zona]) => zona);
-
-    return {
-      zonasEvaluadas: zonasEvaluadas.map(([zona]) => zona),
-      zonasAptasParaFotos,
-      zonasConRevisionProfesional,
-    };
+    return eleccionDePasoAFotos(evaluacionesPorZona);
   }, [evaluacionesPorZona]);
+
+  useEffect(() => {
+    // Solo muestra alert cuando exista al menos una zona suspendida.
+    if (resumenZonas.zonasSuspendidasPorRevision.length === 0) return;
+
+    const mensaje = construirMensajePasoAFotos(resumenZonas);
+
+    // Evita mostrar exactamente el mismo resumen más de una vez.
+    if (!mensaje || mensaje === ultimoResumenAlertado) return;
+
+    alertOk("Resultado del envío por zonas", mensaje);
+    setUltimoResumenAlertado(mensaje);
+  }, [resumenZonas, ultimoResumenAlertado]);
 
   function handleVolverAGlobal() {
     navigate("/herramientas/anamnesis-global", {
@@ -131,6 +187,7 @@ export default function AnamnesisZona() {
 
     setEvaluacionesPorZona({});
     setResetCounter((prev) => prev + 1);
+    setUltimoResumenAlertado("");
 
     await alertOk(
       "Anamnesis reiniciada",
@@ -144,16 +201,17 @@ export default function AnamnesisZona() {
     navigate("/herramientas/fotos-test", {
       state: {
         ...location.state,
-
-        // 🔵 Mandamos explícitamente estos datos para que
-        // FotoUploadTest no dependa de defaults ni pierda la cédula.
         paciente,
         cedula,
         profesional,
 
+        // Solo se envían a fotos las zonas que sí quedaron habilitadas.
         zonasProtocoloFotos: resumenZonas.zonasAptasParaFotos,
+
+        // Se conserva el resumen completo por si luego lo necesitas mostrar.
         evaluacionesPorZona,
         zonasDetectadas,
+        zonasSuspendidasPorRevision: resumenZonas.zonasSuspendidasPorRevision,
       },
     });
   }
@@ -232,23 +290,10 @@ export default function AnamnesisZona() {
                   zona={zona}
                   onZonaEvaluada={handleZonaEvaluada}
                   resultadoPersistido={evaluacionesPorZona[zona]}
+                  numero_documento_fisico={cedula}
+                  profesional_cedula={profesional?.cedula || ""}
                 />
               ))}
-
-              {resumenZonas.zonasConRevisionProfesional.length > 0 && (
-                <div className="valoracionStatusAlert valoracionStatusAlert--warn">
-                  <strong>Zonas con revisión profesional requerida</strong>
-                  <p>
-                    Las siguientes zonas presentan criterios que requieren
-                    validación profesional antes del protocolo fotográfico:
-                  </p>
-                  <ul className="anamnesisInlineList">
-                    {resumenZonas.zonasConRevisionProfesional.map((zona) => (
-                      <li key={zona}>{capitalizarZona(zona)}</li>
-                    ))}
-                  </ul>
-                </div>
-              )}
 
               {resumenZonas.zonasAptasParaFotos.length > 0 && (
                 <div className="anamnesisResultadoCard">

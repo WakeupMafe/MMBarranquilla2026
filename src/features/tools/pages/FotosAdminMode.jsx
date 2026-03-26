@@ -6,6 +6,8 @@ import BotonImportante from "../../../shared/components/BotonImportante/BotonImp
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import useProfesionalSession from "../../../shared/hooks/useProfesionalSession";
 import { alertError, alertOk } from "../../../shared/lib/alerts";
+import UploadModeControl from "./UploadModeControl";
+
 import {
   FOTO_UPLOAD_MODES,
   getFotosUploadMode,
@@ -26,6 +28,17 @@ import {
   getModuloObesidadUploadMode,
   setModuloObesidadUploadMode,
 } from "../../../shared/lib/moduloObesidadUploadMode";
+import {
+  CADERA_UPLOAD_MODES,
+  getCaderaUploadMode,
+  setCaderaUploadMode,
+} from "../../../shared/lib/caderaUploadMode";
+
+import {
+  HOMBRO_UPLOAD_MODES,
+  getHombroUploadMode,
+  setHombroUploadMode,
+} from "../../../shared/lib/hombroUploadMode";
 
 const CEDULA_ADMIN_FOTOS = "1037670182";
 
@@ -43,6 +56,8 @@ export default function FotosAdminMode() {
   const [moduloObesidadMode, setModuloObesidadMode] = useState(
     MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION,
   );
+  const [caderaMode, setCaderaMode] = useState(CADERA_UPLOAD_MODES.SIMULACION);
+  const [hombroMode, setHombroMode] = useState(HOMBRO_UPLOAD_MODES.SIMULACION);
 
   const cedulaProfesional = useMemo(() => {
     return String(profesional?.cedula || "").trim();
@@ -55,6 +70,8 @@ export default function FotosAdminMode() {
     setCheckinMode(getCheckinUploadMode());
     setAnamnesisGlobalMode(getAnamnesisGlobalUploadMode());
     setModuloObesidadMode(getModuloObesidadUploadMode());
+    setCaderaMode(getCaderaUploadMode());
+    setHombroMode(getHombroUploadMode());
   }, []);
 
   useEffect(() => {
@@ -118,6 +135,29 @@ export default function FotosAdminMode() {
     );
   }
 
+  async function handleSetCaderaMode(newMode) {
+    setCaderaUploadMode(newMode);
+    setCaderaMode(newMode);
+
+    await alertOk(
+      "Modo de cadera actualizado",
+      newMode === CADERA_UPLOAD_MODES.REAL
+        ? "El envío real de cadera a base de datos quedó ACTIVADO."
+        : "La simulación de cadera quedó ACTIVADA. No se enviará información a base de datos.",
+    );
+  }
+  async function handleSetHombroMode(newMode) {
+    setHombroUploadMode(newMode);
+    setHombroMode(newMode);
+
+    await alertOk(
+      "Modo de hombro actualizado",
+      newMode === HOMBRO_UPLOAD_MODES.REAL
+        ? "El envío real de hombro a base de datos quedó ACTIVADO."
+        : "La simulación de hombro quedó ACTIVADA. No se enviará información a base de datos.",
+    );
+  }
+
   if (!profesional || !isAuthorized) {
     return null;
   }
@@ -174,176 +214,84 @@ export default function FotosAdminMode() {
                   : "SIMULACIÓN"}
               </li>
               <li>
+                <strong>Modo cadera:</strong>{" "}
+                {caderaMode === CADERA_UPLOAD_MODES.REAL
+                  ? "ENVÍO REAL A BASE DE DATOS"
+                  : "SIMULACIÓN"}
+              </li>
+              <li>
                 <strong>Modo módulo obesidad:</strong>{" "}
                 {moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
                   ? "ENVÍO REAL A BASE DE DATOS"
                   : "SIMULACIÓN"}
               </li>
             </ul>
+            <li>
+              <strong>Modo hombro:</strong>{" "}
+              {hombroMode === HOMBRO_UPLOAD_MODES.REAL
+                ? "ENVÍO REAL A BASE DE DATOS"
+                : "SIMULACIÓN"}
+            </li>
           </div>
 
-          <div style={{ marginBottom: 20 }}>
-            <h3
-              className="valoracionCardTitle"
-              style={{ fontSize: "1rem", marginBottom: 12 }}
-            >
-              Control de fotos
-            </h3>
+          <UploadModeControl
+            title="Control de fotos"
+            mode={fotoMode}
+            realValue={FOTO_UPLOAD_MODES.REAL}
+            simulationValue={FOTO_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetFotoMode}
+            realLabel="Activar envío real fotos"
+            simulationLabel="Activar simulación fotos"
+          />
 
-            <div className="valoracionActionsResponsive">
-              <BotonImportante
-                type="button"
-                variant={
-                  fotoMode === FOTO_UPLOAD_MODES.REAL ? "solid" : "outline"
-                }
-                fullWidth
-                onClick={() => handleSetFotoMode(FOTO_UPLOAD_MODES.REAL)}
-              >
-                Activar envío real fotos
-              </BotonImportante>
+          <UploadModeControl
+            title="Control de check-in"
+            mode={checkinMode}
+            realValue={CHECKIN_UPLOAD_MODES.REAL}
+            simulationValue={CHECKIN_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetCheckinMode}
+            realLabel="Activar envío real check-in"
+            simulationLabel="Activar simulación check-in"
+          />
 
-              <BotonImportante
-                type="button"
-                variant={
-                  fotoMode === FOTO_UPLOAD_MODES.SIMULACION
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() => handleSetFotoMode(FOTO_UPLOAD_MODES.SIMULACION)}
-              >
-                Activar simulación fotos
-              </BotonImportante>
-            </div>
-          </div>
+          <UploadModeControl
+            title="Control de anamnesis global"
+            mode={anamnesisGlobalMode}
+            realValue={ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL}
+            simulationValue={ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetAnamnesisGlobalMode}
+            realLabel="Activar envío real anamnesis global"
+            simulationLabel="Activar simulación anamnesis global"
+          />
 
-          <div style={{ marginBottom: 20 }}>
-            <h3
-              className="valoracionCardTitle"
-              style={{ fontSize: "1rem", marginBottom: 12 }}
-            >
-              Control de check-in
-            </h3>
+          <UploadModeControl
+            title="Control de módulo obesidad"
+            mode={moduloObesidadMode}
+            realValue={MODULO_OBESIDAD_UPLOAD_MODES.REAL}
+            simulationValue={MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetModuloObesidadMode}
+            realLabel="Activar envío real módulo obesidad"
+            simulationLabel="Activar simulación módulo obesidad"
+          />
 
-            <div className="valoracionActionsResponsive">
-              <BotonImportante
-                type="button"
-                variant={
-                  checkinMode === CHECKIN_UPLOAD_MODES.REAL
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() => handleSetCheckinMode(CHECKIN_UPLOAD_MODES.REAL)}
-              >
-                Activar envío real check-in
-              </BotonImportante>
-
-              <BotonImportante
-                type="button"
-                variant={
-                  checkinMode === CHECKIN_UPLOAD_MODES.SIMULACION
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() =>
-                  handleSetCheckinMode(CHECKIN_UPLOAD_MODES.SIMULACION)
-                }
-              >
-                Activar simulación check-in
-              </BotonImportante>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <h3
-              className="valoracionCardTitle"
-              style={{ fontSize: "1rem", marginBottom: 12 }}
-            >
-              Control de anamnesis global
-            </h3>
-
-            <div className="valoracionActionsResponsive">
-              <BotonImportante
-                type="button"
-                variant={
-                  anamnesisGlobalMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() =>
-                  handleSetAnamnesisGlobalMode(
-                    ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL,
-                  )
-                }
-              >
-                Activar envío real anamnesis global
-              </BotonImportante>
-
-              <BotonImportante
-                type="button"
-                variant={
-                  anamnesisGlobalMode ===
-                  ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() =>
-                  handleSetAnamnesisGlobalMode(
-                    ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION,
-                  )
-                }
-              >
-                Activar simulación anamnesis global
-              </BotonImportante>
-            </div>
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <h3
-              className="valoracionCardTitle"
-              style={{ fontSize: "1rem", marginBottom: 12 }}
-            >
-              Control de módulo obesidad
-            </h3>
-
-            <div className="valoracionActionsResponsive">
-              <BotonImportante
-                type="button"
-                variant={
-                  moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() =>
-                  handleSetModuloObesidadMode(MODULO_OBESIDAD_UPLOAD_MODES.REAL)
-                }
-              >
-                Activar envío real módulo obesidad
-              </BotonImportante>
-
-              <BotonImportante
-                type="button"
-                variant={
-                  moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION
-                    ? "solid"
-                    : "outline"
-                }
-                fullWidth
-                onClick={() =>
-                  handleSetModuloObesidadMode(
-                    MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION,
-                  )
-                }
-              >
-                Activar simulación módulo obesidad
-              </BotonImportante>
-            </div>
-          </div>
+          <UploadModeControl
+            title="Control de cadera"
+            mode={caderaMode}
+            realValue={CADERA_UPLOAD_MODES.REAL}
+            simulationValue={CADERA_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetCaderaMode}
+            realLabel="Activar envío real cadera"
+            simulationLabel="Activar simulación cadera"
+          />
+          <UploadModeControl
+            title="Control de hombro"
+            mode={hombroMode}
+            realValue={HOMBRO_UPLOAD_MODES.REAL}
+            simulationValue={HOMBRO_UPLOAD_MODES.SIMULACION}
+            onChange={handleSetHombroMode}
+            realLabel="Activar envío real hombro"
+            simulationLabel="Activar simulación hombro"
+          />
 
           <div style={{ marginTop: 16 }}>
             <BotonImportante

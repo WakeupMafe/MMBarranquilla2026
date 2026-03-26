@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 
 import CheckInContent from "../components/CheckInContent";
 
-import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertError, alertOk, alertConfirm } from "../../../shared/lib/alerts";
 import {
   CHECKIN_UPLOAD_MODES,
@@ -12,6 +11,10 @@ import {
 import { guardarCheckIn } from "../services/guardarCheckIn";
 import { obtenerProfesionalesCheckin } from "../services/profesionalesCheckin";
 import { prepararNavegacionCheckIn } from "../services/prepararNavegacionCheckIn";
+import {
+  normalizarDocumentoCkin,
+  buscarPacienteCheckin,
+} from "../config/validarCedulaCkin";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -23,17 +26,6 @@ const initialForm = {
   autorizacionImagen: "",
   seguridadSocial: "",
 };
-
-// =========================================================
-// UTILIDAD LOCAL
-// =========================================================
-// Normaliza el documento para comparar cédulas aunque en BD
-// existan espacios, caracteres invisibles o separadores.
-function normalizarDocumento(valor) {
-  return String(valor || "")
-    .replace(/\D/g, "")
-    .trim();
-}
 
 export default function CheckIn() {
   const navigate = useNavigate();
@@ -149,7 +141,7 @@ export default function CheckIn() {
   // =========================================================
   function validarFormularioBase() {
     const nuevosErrores = {};
-    const documentoNormalizado = normalizarDocumento(formData.cedula);
+    const documentoNormalizado = normalizarDocumentoCkin(formData.cedula);
 
     if (!documentoNormalizado) {
       nuevosErrores.cedula = "Debes ingresar el número de documento.";
@@ -195,7 +187,7 @@ export default function CheckIn() {
   // BÚSQUEDA Y VALIDACIÓN DEL PACIENTE EN PARTICIPANTES
   // =========================================================
   async function handleBuscarPaciente() {
-    const documentoIngresado = normalizarDocumento(formData.cedula);
+    const documentoIngresado = normalizarDocumentoCkin(formData.cedula);
 
     if (!documentoIngresado) {
       setErrores((prev) => ({
@@ -209,27 +201,15 @@ export default function CheckIn() {
       setLoadingBusqueda(true);
       setPaciente(null);
 
-      console.log("Cédula digitada:", formData.cedula);
-      console.log("Cédula normalizada:", documentoIngresado);
-
-      const { data, error } = await supabase
-        .from("participantes")
-        .select(
-          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
-        );
+      // La búsqueda real ahora se hace desde la utilidad centralizada.
+      // Allí mismo se normaliza la cédula, se consulta Supabase
+      // y se dejan logs claros en consola cuando no encuentre coincidencia.
+      const { pacienteEncontrado, documentoNormalizado, error } =
+        await buscarPacienteCheckin(formData.cedula);
 
       if (error) {
         throw error;
       }
-
-      // Compara el documento ya limpio contra el valor varchar que venga en BD
-      const pacienteEncontrado =
-        data?.find((item) => {
-          const documentoBd = normalizarDocumento(
-            item?.numero_documento_fisico,
-          );
-          return documentoBd === documentoIngresado;
-        }) || null;
 
       console.log("Paciente encontrado:", pacienteEncontrado);
 
@@ -251,7 +231,7 @@ export default function CheckIn() {
 
       setFormData((prev) => ({
         ...prev,
-        cedula: documentoIngresado,
+        cedula: documentoNormalizado,
       }));
 
       setErrores((prev) => ({
@@ -346,7 +326,7 @@ export default function CheckIn() {
       // 1) Armado del payload base de check-in
       // -----------------------------------------------------
       const checkInPayload = {
-        cedula: normalizarDocumento(formData.cedula),
+        cedula: normalizarDocumentoCkin(formData.cedula),
         instructor: formData.instructor.trim(),
         lugarValoracion: formData.lugarValoracion.trim(),
         habeasData: formData.habeasData === "si",
@@ -378,8 +358,6 @@ export default function CheckIn() {
       // -----------------------------------------------------
       // 3) Preparar navegación enriquecida
       // -----------------------------------------------------
-      // Aquí es donde se detecta si el paciente es nuevo o antiguo
-      // usando la lógica central del proyecto.
       const navigationState = await prepararNavegacionCheckIn({
         paciente,
         profesional,

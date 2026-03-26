@@ -3,11 +3,14 @@ import { useEffect, useState } from "react";
 import { hombroInitialState } from "../../config/zonas/hombroInitialState";
 import { validarHombro } from "../../services/zonas/validarHombro";
 import { evaluarHombro } from "../../services/zonas/evaluarHombro";
+import { guardarAnamnesisHombro } from "../../services/zonas/guardarAnamnesisHombro";
 import HombroFields from "./HombroFields";
 
 export default function HombroForm({
   onZonaEvaluada,
   resultadoPersistido = null,
+  numero_documento_fisico,
+  profesional_cedula,
 }) {
   const [formData, setFormData] = useState(
     resultadoPersistido?.formData || hombroInitialState,
@@ -45,7 +48,7 @@ export default function HombroForm({
     });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
 
     const nuevosErrores = validarHombro(formData);
@@ -60,6 +63,16 @@ export default function HombroForm({
 
     setErrores({});
     setResultado(evaluacion);
+
+    // 🔥 GUARDA EN BASE DE DATOS (o simula según el modo activo)
+    // - Si está en SIMULACIÓN → NO guarda (solo console.log)
+    // - Si está en REAL → hace UPSERT en anamnesis_hombro
+    await guardarAnamnesisHombro({
+      numero_documento_fisico,
+      profesional_cedula,
+      formData,
+      resultado: evaluacion,
+    });
 
     onZonaEvaluada?.("hombro", {
       zona: "hombro",
