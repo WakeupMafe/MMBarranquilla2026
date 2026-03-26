@@ -11,27 +11,9 @@ function esSi(valor) {
   );
 }
 
-export function calcularImc(peso, talla) {
-  const pesoNum = toNumber(peso);
-  const tallaNum = toNumber(talla);
-
-  if (!pesoNum || !tallaNum || tallaNum <= 0) {
-    return {
-      imc: null,
-      obesidad: false,
-    };
-  }
-
-  const imc = pesoNum / (tallaNum * tallaNum);
-
-  return {
-    imc: Number(imc.toFixed(2)),
-    obesidad: imc >= 30,
-  };
-}
-
 export function evaluarAnamnesisGlobal(formData) {
-  const { imc, obesidad } = calcularImc(formData.peso, formData.talla);
+  const imc = toNumber(formData.imc);
+  const obesidad = esSi(formData.obesidad) || (imc !== null && imc >= 30);
 
   const motivosDescarte = [];
   const alertas = [];
@@ -69,25 +51,24 @@ export function evaluarAnamnesisGlobal(formData) {
   if (esSi(formData.dolor_hombro)) zonasDetectadas.push("hombro");
 
   const cantidadZonasDolor = zonasDetectadas.length;
-  const descartado = motivosDescarte.length > 0;
 
   let pendienteAprobacion = false;
   let siguientePaso = "funcional";
   let mensajeResultado = "Paciente apto para pruebas funcionales generales.";
 
-  if (descartado) {
+  if (motivosDescarte.length > 0) {
     siguientePaso = "descartado";
     mensajeResultado =
       "Paciente con criterios de descarte. No debe realizar anamnesis de zona ni pruebas videográficas.";
-  } else if (cantidadZonasDolor >= 3) {
+  } else if (cantidadZonasDolor > 3) {
     pendienteAprobacion = true;
-    siguientePaso = "pendiente_aprobacion";
     alertas.push(
-      "Paciente con 3 o más zonas de dolor. Requiere aprobación médica antes de abrir anamnesis de zona.",
+      "Paciente con más de 3 zonas de dolor. Requiere aprobación médica antes de continuar.",
     );
     mensajeResultado =
       "Paciente pendiente de aprobación médica por múltiples zonas de dolor.";
-  } else if (cantidadZonasDolor >= 1 && cantidadZonasDolor <= 2) {
+    siguientePaso = "pendiente_aprobacion";
+  } else if (cantidadZonasDolor >= 1 && cantidadZonasDolor <= 3) {
     siguientePaso = "anamnesis_especifica_zona";
     mensajeResultado =
       "Paciente apto para anamnesis de zona en las áreas reportadas.";
@@ -95,6 +76,8 @@ export function evaluarAnamnesisGlobal(formData) {
     siguientePaso = "funcional";
     mensajeResultado = "Paciente sin dolor por zonas. Continúa a funcional.";
   }
+
+  const descartado = siguientePaso === "descartado";
 
   return {
     imc,

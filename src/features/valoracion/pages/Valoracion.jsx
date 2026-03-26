@@ -7,7 +7,6 @@ import ValoracionContent from "../components/ValoracionContent";
 
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
-import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -34,15 +33,6 @@ function construirEstadoCalidadPaciente(paciente) {
   return {
     requiereCorreccion: problemas.length > 0,
     problemas,
-  };
-}
-
-function crearFormularioEdicion(paciente) {
-  return {
-    nombre_apellido_documento: paciente?.nombre_apellido_documento || "",
-    genero: paciente?.genero || "",
-    numero_telefono: paciente?.numero_telefono || "",
-    fecha_nacimiento: paciente?.fecha_nacimiento || "",
   };
 }
 
@@ -74,14 +64,6 @@ export default function Valoracion() {
   );
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(false);
-
-  const [mostrarEditor, setMostrarEditor] = useState(false);
-  const [formEdicion, setFormEdicion] = useState({
-    nombre_apellido_documento: "",
-    genero: "",
-    numero_telefono: "",
-    fecha_nacimiento: "",
-  });
 
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
@@ -126,7 +108,6 @@ export default function Valoracion() {
         ).trim();
 
         const pacienteBd = await obtenerPacientePorDocumento(documento);
-
         const pacienteBase = pacienteBd || pacienteDesdeCheckIn;
 
         const clasificacionPaciente =
@@ -166,10 +147,8 @@ export default function Valoracion() {
 
     try {
       setLoading(true);
-      setMostrarEditor(false);
 
       const documento = cedula.trim();
-
       const data = await obtenerPacientePorDocumento(documento);
 
       if (!data) {
@@ -241,219 +220,23 @@ export default function Valoracion() {
     navigate("/herramientas/valoracion/check-in");
   }
 
-  function handleAbrirEditor() {
-    if (!paciente) return;
-
-    setFormEdicion(crearFormularioEdicion(paciente));
-    setMostrarEditor(true);
-  }
-
-  function handleCerrarEditor() {
-    setMostrarEditor(false);
-  }
-
-  function handleChangeEdicion(e) {
-    const { name, value } = e.target;
-
-    setFormEdicion((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  }
-
-  async function handleGuardarEdicionTemporal() {
-    if (!paciente?.numero_documento_fisico) {
-      await alertError(
-        "Paciente no válido",
-        "No se encontró un paciente válido para actualizar.",
-      );
-      return;
-    }
-
-    const nombre = String(formEdicion.nombre_apellido_documento || "").trim();
-    const genero = String(formEdicion.genero || "").trim();
-    const telefono = String(formEdicion.numero_telefono || "").trim();
-    const fechaNacimiento = String(formEdicion.fecha_nacimiento || "").trim();
-
-    if (!nombre) {
-      await alertError("Dato requerido", "El nombre no puede quedar vacío.");
-      return;
-    }
-
-    try {
-      setLoading(true);
-
-      const documento = String(paciente.numero_documento_fisico || "").trim();
-
-      const payload = {
-        nombre_apellido_documento: nombre,
-        genero: genero || null,
-        numero_telefono: telefono || null,
-        fecha_nacimiento: fechaNacimiento || null,
-      };
-
-      const { data: updatedRows, error } = await supabase
-        .from("participantes")
-        .update(payload)
-        .eq("numero_documento_fisico", documento)
-        .select(
-          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
-        );
-
-      if (error) {
-        throw error;
-      }
-
-      if (!updatedRows || updatedRows.length === 0) {
-        throw new Error(
-          "No fue posible confirmar la actualización del paciente en la base de datos. Revisa políticas RLS o el filtro por número de documento.",
-        );
-      }
-
-      const pacienteActualizado =
-        updatedRows.find(
-          (item) =>
-            String(item?.numero_documento_fisico || "").trim() === documento,
-        ) || updatedRows[0];
-
-      const clasificacionPaciente =
-        paciente?.clasificacionPaciente ||
-        (await buscarClasificacionPaciente(documento));
-
-      const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
-
-      setPaciente({
-        ...pacienteActualizado,
-        clasificacionPaciente,
-        estadoCalidad,
-      });
-
-      setCedula(documento);
-      setMostrarEditor(false);
-
-      await alertOk(
-        "Datos actualizados",
-        "Los datos del paciente fueron actualizados correctamente en la base de datos.",
-      );
-    } catch (error) {
-      console.error("Error actualizando paciente:", error);
-
-      await alertError(
-        "Error al guardar",
-        error.message || "No se pudieron actualizar los datos del paciente.",
-      );
-    } finally {
-      setLoading(false);
-    }
-  }
-
   if (!profesional) return null;
 
   const userName = profesional.nombre || "Profesional";
   const vieneDesdeCheckIn = Boolean(pacienteDesdeCheckIn);
 
   return (
-    <>
-      <ValoracionContent
-        userName={userName}
-        vieneDesdeCheckIn={vieneDesdeCheckIn}
-        cedula={cedula}
-        setCedula={setCedula}
-        loading={loading}
-        paciente={paciente}
-        onBuscar={handleBuscar}
-        onContinuar={handleContinuar}
-        onLogout={handleLogout}
-        onVolver={handleVolver}
-        onEditarDatos={handleAbrirEditor}
-      />
-
-      {mostrarEditor && (
-        <div className="editorPacienteOverlay">
-          <div className="editorPacienteModal">
-            <div className="editorPacienteHeader">
-              <h3 className="editorPacienteTitle">Editar datos del paciente</h3>
-              <p className="editorPacienteSubtitle">
-                Solo puedes modificar nombre, género, teléfono y fecha de
-                nacimiento.
-              </p>
-            </div>
-
-            <div className="editorPacienteForm">
-              <div className="editorPacienteField">
-                <label className="editorPacienteLabel">Nombre</label>
-                <input
-                  className="editorPacienteInput"
-                  type="text"
-                  name="nombre_apellido_documento"
-                  value={formEdicion.nombre_apellido_documento}
-                  onChange={handleChangeEdicion}
-                />
-              </div>
-
-              <div className="editorPacienteField">
-                <label className="editorPacienteLabel">Género</label>
-                <select
-                  className="editorPacienteInput"
-                  name="genero"
-                  value={formEdicion.genero}
-                  onChange={handleChangeEdicion}
-                >
-                  <option value="">Selecciona una opción</option>
-                  <option value="Femenino">Femenino</option>
-                  <option value="Masculino">Masculino</option>
-                  <option value="Indeterminado">Indeterminado</option>
-                  <option value="Prefiero no responder">
-                    Prefiero no responder
-                  </option>
-                </select>
-              </div>
-
-              <div className="editorPacienteField">
-                <label className="editorPacienteLabel">Teléfono</label>
-                <input
-                  className="editorPacienteInput"
-                  type="text"
-                  name="numero_telefono"
-                  value={formEdicion.numero_telefono}
-                  onChange={handleChangeEdicion}
-                />
-              </div>
-
-              <div className="editorPacienteField">
-                <label className="editorPacienteLabel">
-                  Fecha de nacimiento
-                </label>
-                <input
-                  className="editorPacienteInput"
-                  type="date"
-                  name="fecha_nacimiento"
-                  value={formEdicion.fecha_nacimiento || ""}
-                  onChange={handleChangeEdicion}
-                />
-              </div>
-            </div>
-
-            <div className="editorPacienteActions">
-              <BotonImportante
-                type="button"
-                variant="ghost"
-                onClick={handleCerrarEditor}
-              >
-                Cancelar
-              </BotonImportante>
-
-              <BotonImportante
-                type="button"
-                onClick={handleGuardarEdicionTemporal}
-                disabled={loading}
-              >
-                {loading ? "Guardando..." : "Guardar cambios"}
-              </BotonImportante>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
+    <ValoracionContent
+      userName={userName}
+      vieneDesdeCheckIn={vieneDesdeCheckIn}
+      cedula={cedula}
+      setCedula={setCedula}
+      loading={loading}
+      paciente={paciente}
+      onBuscar={handleBuscar}
+      onContinuar={handleContinuar}
+      onLogout={handleLogout}
+      onVolver={handleVolver}
+    />
   );
 }

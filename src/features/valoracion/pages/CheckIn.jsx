@@ -11,6 +11,7 @@ import {
 } from "../../../shared/lib/checkinUploadMode";
 import { guardarCheckIn } from "../services/guardarCheckIn";
 import { obtenerProfesionalesCheckin } from "../services/profesionalesCheckin";
+import { prepararNavegacionCheckIn } from "../services/prepararNavegacionCheckIn";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -23,10 +24,24 @@ const initialForm = {
   seguridadSocial: "",
 };
 
+// =========================================================
+// UTILIDAD LOCAL
+// =========================================================
+// Normaliza el documento para comparar cédulas aunque en BD
+// existan espacios, caracteres invisibles o separadores.
+function normalizarDocumento(valor) {
+  return String(valor || "")
+    .replace(/\D/g, "")
+    .trim();
+}
+
 export default function CheckIn() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // =========================================================
+  // ESTADOS PRINCIPALES DEL CHECK-IN
+  // =========================================================
   const [formData, setFormData] = useState(initialForm);
   const [paciente, setPaciente] = useState(null);
   const [loadingBusqueda, setLoadingBusqueda] = useState(false);
@@ -35,6 +50,9 @@ export default function CheckIn() {
     useState(false);
   const [profesionales, setProfesionales] = useState([]);
 
+  // =========================================================
+  // SESIÓN DEL PROFESIONAL
+  // =========================================================
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
     if (fromState) return fromState;
@@ -47,6 +65,7 @@ export default function CheckIn() {
     }
   }, [location.state]);
 
+  // Guarda en sessionStorage el profesional cuando llega por navegación
   useEffect(() => {
     if (location.state?.profesional) {
       sessionStorage.setItem(
@@ -56,6 +75,7 @@ export default function CheckIn() {
     }
   }, [location.state]);
 
+  // Si no hay profesional, no puede usar herramientas
   useEffect(() => {
     if (!profesional) {
       alertError(
@@ -66,6 +86,9 @@ export default function CheckIn() {
     }
   }, [profesional, navigate]);
 
+  // =========================================================
+  // CARGA DE PROFESIONALES / INSTRUCTORES
+  // =========================================================
   useEffect(() => {
     async function cargarProfesionales() {
       try {
@@ -80,6 +103,9 @@ export default function CheckIn() {
     cargarProfesionales();
   }, []);
 
+  // =========================================================
+  // LIMPIEZA DEL FLUJO SI NO ACEPTA POLÍTICA DE IMAGEN
+  // =========================================================
   function limpiarProcesoPorNoAutorizacion() {
     setFormData(initialForm);
     setPaciente(null);
@@ -87,6 +113,9 @@ export default function CheckIn() {
     setAdvertenciaImagenMostrada(false);
   }
 
+  // =========================================================
+  // MANEJO DE CAMBIOS DEL FORMULARIO
+  // =========================================================
   function handleChange(e) {
     const { name, value } = e.target;
 
@@ -100,6 +129,7 @@ export default function CheckIn() {
       [name]: "",
     }));
 
+    // Si cambia la cédula, se invalida el paciente cargado
     if (name === "cedula") {
       setPaciente(null);
       setErrores((prev) => ({
@@ -108,15 +138,20 @@ export default function CheckIn() {
       }));
     }
 
+    // Si ahora sí acepta imagen, quitamos la advertencia previa
     if (name === "autorizacionImagen" && value === "si") {
       setAdvertenciaImagenMostrada(false);
     }
   }
 
+  // =========================================================
+  // VALIDACIÓN BASE ANTES DE CONTINUAR
+  // =========================================================
   function validarFormularioBase() {
     const nuevosErrores = {};
+    const documentoNormalizado = normalizarDocumento(formData.cedula);
 
-    if (!formData.cedula.trim()) {
+    if (!documentoNormalizado) {
       nuevosErrores.cedula = "Debes ingresar el número de documento.";
     }
 
@@ -156,10 +191,13 @@ export default function CheckIn() {
     return Object.keys(nuevosErrores).length === 0;
   }
 
+  // =========================================================
+  // BÚSQUEDA Y VALIDACIÓN DEL PACIENTE EN PARTICIPANTES
+  // =========================================================
   async function handleBuscarPaciente() {
-    const documento = formData.cedula.trim();
+    const documentoIngresado = normalizarDocumento(formData.cedula);
 
-    if (!documento) {
+    if (!documentoIngresado) {
       setErrores((prev) => ({
         ...prev,
         cedula: "Ingresa el número de documento para validar al paciente.",
@@ -171,19 +209,31 @@ export default function CheckIn() {
       setLoadingBusqueda(true);
       setPaciente(null);
 
+      console.log("Cédula digitada:", formData.cedula);
+      console.log("Cédula normalizada:", documentoIngresado);
+
       const { data, error } = await supabase
         .from("participantes")
         .select(
-          "numero_documento_fisico, nombre_apellido_documento, numero_telefono",
-        )
-        .eq("numero_documento_fisico", documento)
-        .maybeSingle();
+          "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
+        );
 
       if (error) {
         throw error;
       }
 
-      if (!data) {
+      // Compara el documento ya limpio contra el valor varchar que venga en BD
+      const pacienteEncontrado =
+        data?.find((item) => {
+          const documentoBd = normalizarDocumento(
+            item?.numero_documento_fisico,
+          );
+          return documentoBd === documentoIngresado;
+        }) || null;
+
+      console.log("Paciente encontrado:", pacienteEncontrado);
+
+      if (!pacienteEncontrado) {
         setErrores((prev) => ({
           ...prev,
           paciente:
@@ -197,7 +247,13 @@ export default function CheckIn() {
         return;
       }
 
-      setPaciente(data);
+      setPaciente(pacienteEncontrado);
+
+      setFormData((prev) => ({
+        ...prev,
+        cedula: documentoIngresado,
+      }));
+
       setErrores((prev) => ({
         ...prev,
         cedula: "",
@@ -213,13 +269,17 @@ export default function CheckIn() {
 
       await alertError(
         "Error de consulta",
-        "Ocurrió un error al consultar la información del paciente.",
+        error.message ||
+          "Ocurrió un error al consultar la información del paciente.",
       );
     } finally {
       setLoadingBusqueda(false);
     }
   }
 
+  // =========================================================
+  // CONTINUAR EL FLUJO DE CHECK-IN
+  // =========================================================
   async function handleContinuar(e) {
     e.preventDefault();
 
@@ -232,6 +292,7 @@ export default function CheckIn() {
       return;
     }
 
+    // Primera advertencia si no acepta política de imagen
     if (formData.autorizacionImagen === "no" && !advertenciaImagenMostrada) {
       setAdvertenciaImagenMostrada(true);
       setErrores((prev) => ({
@@ -247,6 +308,7 @@ export default function CheckIn() {
       return;
     }
 
+    // Segunda confirmación si insiste en no aceptar imagen
     if (formData.autorizacionImagen === "no" && advertenciaImagenMostrada) {
       const confirmarNoAceptacion = await alertConfirm({
         title: "Confirmación de no aceptación",
@@ -280,8 +342,11 @@ export default function CheckIn() {
     try {
       const mode = getCheckinUploadMode();
 
+      // -----------------------------------------------------
+      // 1) Armado del payload base de check-in
+      // -----------------------------------------------------
       const checkInPayload = {
-        cedula: formData.cedula.trim(),
+        cedula: normalizarDocumento(formData.cedula),
         instructor: formData.instructor.trim(),
         lugarValoracion: formData.lugarValoracion.trim(),
         habeasData: formData.habeasData === "si",
@@ -289,6 +354,9 @@ export default function CheckIn() {
         seguridadSocial: formData.seguridadSocial,
       };
 
+      // -----------------------------------------------------
+      // 2) Guardado real o simulación
+      // -----------------------------------------------------
       if (mode === CHECKIN_UPLOAD_MODES.REAL) {
         await guardarCheckIn({
           ...checkInPayload,
@@ -307,12 +375,31 @@ export default function CheckIn() {
         );
       }
 
+      // -----------------------------------------------------
+      // 3) Preparar navegación enriquecida
+      // -----------------------------------------------------
+      // Aquí es donde se detecta si el paciente es nuevo o antiguo
+      // usando la lógica central del proyecto.
+      const navigationState = await prepararNavegacionCheckIn({
+        paciente,
+        profesional,
+        checkInPayload,
+      });
+
+      console.log("Clasificación preparada desde check-in:", {
+        esPacienteNuevo:
+          navigationState?.clasificacionPaciente?.esPacienteNuevo,
+        esPacienteAntiguo:
+          navigationState?.clasificacionPaciente?.esPacienteAntiguo,
+        flujo: navigationState?.clasificacionPaciente?.flujo,
+        clasificacionPaciente: navigationState?.clasificacionPaciente,
+      });
+
+      // -----------------------------------------------------
+      // 4) Navegar a valoración con etiqueta de nuevo/antiguo
+      // -----------------------------------------------------
       navigate("/herramientas/valoracion", {
-        state: {
-          profesional,
-          paciente,
-          checkIn: checkInPayload,
-        },
+        state: navigationState,
       });
     } catch (error) {
       console.error("Error guardando check-in:", error);
@@ -324,6 +411,9 @@ export default function CheckIn() {
     }
   }
 
+  // =========================================================
+  // CIERRE DE SESIÓN
+  // =========================================================
   async function handleLogout() {
     const ok = await alertConfirm({
       title: "Cerrar sesión",
@@ -339,6 +429,9 @@ export default function CheckIn() {
     navigate("/", { replace: true });
   }
 
+  // =========================================================
+  // VOLVER
+  // =========================================================
   function handleVolver() {
     navigate("/herramientas");
   }

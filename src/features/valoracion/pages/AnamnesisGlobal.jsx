@@ -111,15 +111,7 @@ function construirResultadoPorFlujo(evaluacionBase, clasificacionPaciente) {
   }
 
   if (flujo === "NUEVO_PROCESO") {
-    if (evaluacionBase.pendienteAprobacion) {
-      return evaluacionBase;
-    }
-
-    return {
-      ...evaluacionBase,
-      siguientePaso: "decision_zona_o_funcional",
-      mensajeResultado: "",
-    };
+    return evaluacionBase;
   }
 
   return evaluacionBase;
@@ -146,10 +138,23 @@ export default function AnamnesisGlobal() {
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
 
+  // Mostrar la valoracion del paciente (Nuevo / Antiguo)
+  console.log("valoracionActiva desde session", valoracionActiva);
+  console.log(
+    "clasificacionPaciente en AnamnesisGlobal",
+    clasificacionPaciente,
+  );
+  console.log(
+    "esPacienteNuevo en AnamnesisGlobal",
+    clasificacionPaciente?.esPacienteNuevo,
+  );
+  console.log("flujo en AnamnesisGlobal", clasificacionPaciente?.flujo);
+
   const { formData, errores, setErrores, handleChange, resetForm } =
     useAnamnesisGlobalForm();
 
   const ocultarDeteccionDolor = !!clasificacionPaciente?.ocultarDeteccionDolor;
+
   const formDataNormalizado = useMemo(
     () => limpiarCamposDolorSiOculto(formData, ocultarDeteccionDolor),
     [formData, ocultarDeteccionDolor],

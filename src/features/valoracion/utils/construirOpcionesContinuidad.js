@@ -62,6 +62,11 @@ export function construirOpcionesContinuidad({
     clasificacionPaciente,
   );
 
+  const esPacienteNuevo = !!clasificacionPaciente?.esPacienteNuevo;
+  const zonasDetectadas = Array.isArray(resultado?.zonasDetectadas)
+    ? resultado.zonasDetectadas
+    : [];
+
   const opciones = [];
 
   if (siguientePaso === "funcional") {
@@ -75,11 +80,13 @@ export function construirOpcionesContinuidad({
   }
 
   if (siguientePaso === "anamnesis_especifica_zona") {
-    const zonas = Array.isArray(resultado?.zonasDetectadas)
-      ? resultado.zonasDetectadas
-      : [];
+    // Paciente nuevo:
+    // no mostrar opciones cuando va directo a las zonas detectadas.
+    if (esPacienteNuevo) {
+      return [];
+    }
 
-    zonas.forEach((zona) => {
+    zonasDetectadas.forEach((zona) => {
       opciones.push({
         value: `anamnesis_${zona}`,
         label: `Abrir anamnesis de ${formatearNombreZona(zona)}`,
@@ -143,6 +150,7 @@ export function construirOpcionesContinuidad({
 
     return opciones;
   }
+
   if (siguientePaso === "decision_fotos_preliminar_o_funcional") {
     if (zonaActual && zonaActual !== "funcional") {
       opciones.push({
@@ -231,11 +239,7 @@ export function construirOpcionesContinuidad({
   }
 
   if (siguientePaso === "decision_zona_o_funcional") {
-    const zonas = Array.isArray(resultado?.zonasDetectadas)
-      ? resultado.zonasDetectadas
-      : [];
-
-    zonas.forEach((zona) => {
+    zonasDetectadas.forEach((zona) => {
       opciones.push({
         value: `anamnesis_${zona}`,
         label: `Continuar intervención específica: ${formatearNombreZona(zona)}`,
