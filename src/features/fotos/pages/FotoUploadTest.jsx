@@ -2,11 +2,20 @@ import { useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import "./FotoUploadTest.css";
 import { compressImage } from "../utils/imageCompression";
-import { alertConfirm, alertError } from "../../../shared/lib/alerts";
+import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import { PHOTO_GROUPS } from "../constants/photoGroups";
 import { VIDEO_GROUPS } from "../constants/videoGroups";
 import PhotoGroupCard from "../components/PhotoGroupCard";
+import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 import { obtenerValoracionActiva } from "../../valoracion/utils/valoracionSession";
+import { uploadFotoPaciente } from "../services/fotosService";
+import { uploadVideoPaciente } from "../services/videosService";
+import {
+  FOTO_UPLOAD_MODES,
+  getFotosUploadMode,
+} from "../../../shared/lib/fotosUploadMode";
+
+const SESSION_KEY = "wk_profesional";
 
 /* =========================
    ZONAS
@@ -116,7 +125,7 @@ export default function FotoUploadTest() {
   }, [zonasProtocoloFotos]);
 
   /* =========================
-     PACIENTE
+     PACIENTE / PROFESIONAL
   ========================= */
 
   const paciente = useMemo(() => {
@@ -132,8 +141,23 @@ export default function FotoUploadTest() {
     );
   }, [valoracionActiva]);
 
+  const profesional = useMemo(() => {
+    if (location.state?.profesional) return location.state.profesional;
+
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [location.state]);
+
+  const profesionalCedula = useMemo(() => {
+    return profesional?.cedula || "";
+  }, [profesional]);
+
   /* =========================
-     ESTADO INICIAL DE FOTOS
+     ESTADOS INICIALES
   ========================= */
 
   const createEmptyPhotos = () =>
@@ -150,10 +174,6 @@ export default function FotoUploadTest() {
         status: "empty",
       })),
     );
-
-  /* =========================
-     ESTADO INICIAL DE VIDEOS
-  ========================= */
 
   const createEmptyVideos = () =>
     gruposVideosActivos.flatMap((group) =>
@@ -172,6 +192,7 @@ export default function FotoUploadTest() {
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
   const [processingId, setProcessingId] = useState("");
+  const [uploading, setUploading] = useState(false);
 
   /* =========================
      REINICIAR CUANDO CAMBIAN LOS GRUPOS
@@ -204,7 +225,7 @@ export default function FotoUploadTest() {
   }, [photos, videos]);
 
   /* =========================
-     MANEJO DE FOTO
+     FOTO
   ========================= */
 
   const handlePhotoChange = async (slotId, fileList) => {
@@ -225,19 +246,20 @@ export default function FotoUploadTest() {
       const result = await compressImage(file, {
         maxWidth: 1000,
         maxHeight: 1000,
-        quality: 0.6,
+        quality: 0.62,
+        outputType: "image/jpeg",
       });
 
       setPhotos((prev) =>
-        prev.map((p) => {
-          if (p.id !== slotId) return p;
+        prev.map((item) => {
+          if (item.id !== slotId) return item;
 
-          if (p.preview) {
-            URL.revokeObjectURL(p.preview);
+          if (item.preview) {
+            URL.revokeObjectURL(item.preview);
           }
 
           return {
-            ...p,
+            ...item,
             file: result.file,
             preview: result.previewUrl,
             fileName: result.compressed?.name || result.file?.name || "",
@@ -295,7 +317,7 @@ export default function FotoUploadTest() {
   };
 
   /* =========================
-     MANEJO DE VIDEO
+     VIDEO
   ========================= */
 
   const getVideoDuration = (file) =>
@@ -344,15 +366,15 @@ export default function FotoUploadTest() {
       }
 
       setVideos((prev) =>
-        prev.map((v) => {
-          if (v.id !== slotId) return v;
+        prev.map((item) => {
+          if (item.id !== slotId) return item;
 
-          if (v.preview) {
-            URL.revokeObjectURL(v.preview);
+          if (item.preview) {
+            URL.revokeObjectURL(item.preview);
           }
 
           return {
-            ...v,
+            ...item,
             file,
             preview: URL.createObjectURL(file),
             fileName: file.name || "",
@@ -408,7 +430,73 @@ export default function FotoUploadTest() {
   };
 
   /* =========================
-     UNIR FOTOS Y VIDEOS POR GRUPO
+     LIMPIAR TODO
+  ========================= */
+
+  const handleReset = async () => {
+    const hasPhotos = photos.some((item) => item.preview);
+    const hasVideos = videos.some((item) => item.preview);
+
+    if (!hasPhotos && !hasVideos) {
+      await alertError(
+        "Nada para limpiar",
+        "Aún no has cargado fotos ni videos en el protocolo.",
+      );
+      return;
+    }
+
+    const ok = await alertConfirm({
+      title: "Limpiar protocolo",
+      text: "¿Deseas eliminar todas las fotos y videos cargados?",
+      confirmText: "Sí, limpiar",
+      cancelText: "Cancelar",
+    });
+
+    if (!ok) return;
+
+    photos.forEach((item) => {
+      if (item.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
+
+    videos.forEach((item) => {
+      if (item.preview) {
+        URL.revokeObjectURL(item.preview);
+      }
+    });
+
+    setPhotos(createEmptyPhotos());
+    setVideos(createEmptyVideos());
+    setProcessingId("");
+
+    await alertOk(
+      "Formulario limpiado",
+      "Se reiniciaron todas las fotos y videos del protocolo.",
+    );
+  };
+
+  /* =========================
+     CONTADORES
+  ========================= */
+
+  const completedPhotosCount = photos.filter(
+    (item) => item.status === "ready",
+  ).length;
+
+  const completedVideosCount = videos.filter(
+    (item) => item.status === "ready",
+  ).length;
+
+  const totalRequiredCount = photos.length + videos.length;
+  const totalCompletedCount = completedPhotosCount + completedVideosCount;
+
+  const todoCompleto =
+    totalRequiredCount > 0 && totalCompletedCount === totalRequiredCount;
+
+  /* =========================
+     AGRUPAR FOTOS + VIDEOS
+     LOS VIDEOS SOLO UNA VEZ POR ZONA
   ========================= */
 
   const groupedFinal = useMemo(() => {
@@ -456,6 +544,114 @@ export default function FotoUploadTest() {
   };
 
   /* =========================
+     ENVIAR TODO JUNTO
+  ========================= */
+
+  const handleUpload = async () => {
+    const readyPhotos = photos.filter((item) => item.status === "ready");
+    const readyVideos = videos.filter((item) => item.status === "ready");
+
+    if (totalRequiredCount === 0) {
+      await alertError(
+        "Sin protocolo activo",
+        "No se encontraron fotos o videos requeridos para esta valoración.",
+      );
+      return;
+    }
+
+    if (!todoCompleto) {
+      await alertError(
+        "Protocolo incompleto",
+        "Debes completar todas las fotos y videos requeridos antes de enviar.",
+      );
+      return;
+    }
+
+    if (!pacienteDocumento) {
+      await alertError(
+        "Paciente no identificado",
+        "No se encontró la cédula del paciente en la sesión activa.",
+      );
+      return;
+    }
+
+    if (!profesionalCedula) {
+      await alertError(
+        "Profesional no identificado",
+        "No se encontró la cédula del profesional para guardar la evidencia.",
+      );
+      return;
+    }
+
+    try {
+      setUploading(true);
+
+      const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
+      const uploadMode = getFotosUploadMode();
+
+      for (const photo of readyPhotos) {
+        await uploadFotoPaciente({
+          file: photo.file,
+          pacienteDocumento,
+          tipoFoto: photo.id,
+          sesionTipo,
+          profesionalCedula,
+          zonasEvaluadas: zonasProtocoloFotos,
+        });
+      }
+
+      for (const video of readyVideos) {
+        await uploadVideoPaciente({
+          file: video.file,
+          pacienteDocumento,
+          tipoVideo: video.id,
+          sesionTipo,
+          profesionalCedula,
+          zonasEvaluadas: zonasProtocoloFotos,
+          duracionSegundos: video.duration || null,
+        });
+      }
+
+      photos.forEach((item) => {
+        if (item.preview) {
+          URL.revokeObjectURL(item.preview);
+        }
+      });
+
+      videos.forEach((item) => {
+        if (item.preview) {
+          URL.revokeObjectURL(item.preview);
+        }
+      });
+
+      setPhotos(createEmptyPhotos());
+      setVideos(createEmptyVideos());
+      setProcessingId("");
+
+      if (uploadMode === FOTO_UPLOAD_MODES.SIMULACION) {
+        await alertOk(
+          "Simulación completada",
+          `Se simuló correctamente el envío de ${readyPhotos.length} foto(s) y ${readyVideos.length} video(s). No se guardó nada en base de datos.`,
+        );
+      } else {
+        await alertOk(
+          "Evidencia guardada",
+          `Se guardaron correctamente ${readyPhotos.length} foto(s) y ${readyVideos.length} video(s).`,
+        );
+      }
+
+      navigate("/herramientas/valoracion/check-in");
+    } catch (error) {
+      await alertError(
+        "Error al enviar",
+        error.message || "No se pudo completar el envío a base de datos.",
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  /* =========================
      RENDER
   ========================= */
 
@@ -464,14 +660,14 @@ export default function FotoUploadTest() {
       <div className="photoTestWrapper">
         <section className="photoCard">
           <div className="photoHeaderTop">
-            <button
+            <BotonImportante
               type="button"
-              className="btnBack"
+              variant="outline"
               onClick={handleVolver}
-              disabled={processingId !== ""}
+              disabled={uploading || processingId !== ""}
             >
               ← Volver
-            </button>
+            </BotonImportante>
           </div>
 
           <h1 className="photoTitle">Fotos + Videos clínicos</h1>
@@ -479,6 +675,8 @@ export default function FotoUploadTest() {
           <p className="photoSubtitle">
             Protocolo activo para las zonas{" "}
             <strong>{zonasProtocoloFotos.map(getZonaTitle).join(", ")}</strong>.
+            Registra únicamente las evidencias requeridas para esta fase
+            clínica.
           </p>
 
           <div className="photoSessionInfo">
@@ -489,6 +687,49 @@ export default function FotoUploadTest() {
             <p>
               <strong>Cédula:</strong> {pacienteDocumento || "No disponible"}
             </p>
+          </div>
+        </section>
+
+        <section className="photoCard">
+          <div className="photoForm">
+            <p className="fieldHelp">
+              Fotos completadas: <strong>{completedPhotosCount}</strong> de{" "}
+              <strong>{photos.length}</strong>
+            </p>
+
+            <p className="fieldHelp">
+              Videos completados: <strong>{completedVideosCount}</strong> de{" "}
+              <strong>{videos.length}</strong>
+            </p>
+
+            <p className="fieldHelp">
+              Total completado: <strong>{totalCompletedCount}</strong> de{" "}
+              <strong>{totalRequiredCount}</strong>
+            </p>
+
+            <div className="actions">
+              <BotonImportante
+                type="button"
+                variant="outline"
+                onClick={handleReset}
+                disabled={processingId !== "" || uploading}
+              >
+                Limpiar todo
+              </BotonImportante>
+
+              <BotonImportante
+                type="button"
+                onClick={handleUpload}
+                disabled={
+                  uploading ||
+                  processingId !== "" ||
+                  !todoCompleto ||
+                  totalRequiredCount === 0
+                }
+              >
+                {uploading ? "Enviando..." : "Enviar a base de datos"}
+              </BotonImportante>
+            </div>
           </div>
         </section>
 
