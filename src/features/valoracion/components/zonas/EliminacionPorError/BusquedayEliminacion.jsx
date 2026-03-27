@@ -15,7 +15,7 @@ import logoWakeup from "../../../../../assets/LogoWakeup.png";
 
 import "./BusquedayEliminacion.css";
 
-const CEDULA_ADMIN = "1037670182";
+const CEDULAS_ADMIN = ["1037670182", "1037649258"];
 const FOTOS_BUCKET = "fotos_pacientes";
 
 const TABLAS_BUSQUEDA = [
