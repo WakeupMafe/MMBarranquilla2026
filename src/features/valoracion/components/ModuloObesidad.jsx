@@ -6,10 +6,6 @@ import logoWakeup from "../../../assets/LogoWakeup.png";
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
-import {
-  MODULO_OBESIDAD_UPLOAD_MODES,
-  getModuloObesidadUploadMode,
-} from "../../../shared/lib/moduloObesidadUploadMode";
 
 import "./ModuloObesidad.css";
 import "../pages/AnamnesisGlobal.css";
@@ -48,7 +44,6 @@ export default function ModuloObesidad() {
 
   const [bloqueadoPorDatosPrevios, setBloqueadoPorDatosPrevios] =
     useState(false);
-  const [checkinValidado, setCheckinValidado] = useState(false);
 
   const { imc, obesidad } = useMemo(() => {
     return calcularImc(peso, talla);
@@ -60,90 +55,52 @@ export default function ModuloObesidad() {
     setPeso("");
     setTalla("");
     setBloqueadoPorDatosPrevios(false);
-    setCheckinValidado(false);
   }
 
-  async function validarCheckinYAnamnesis(item) {
-    const mode = getModuloObesidadUploadMode();
+  async function validarModuloObesidad(item) {
     const documento = String(item?.numero_documento_fisico || "").trim();
 
     if (!documento) {
       throw new Error("No fue posible validar la cédula del paciente.");
     }
 
-    // 🔥 EN SIMULACIÓN NO REVISA NADA EN BD
-    if (mode === MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION) {
-      setCheckinValidado(true);
-      setBloqueadoPorDatosPrevios(false);
-      setPeso("");
-      setTalla("");
-      return true;
-    }
+    console.log("🟡 Validando módulo obesidad para:", documento);
 
-    const { data: checkin, error: errorCheckin } = await supabase
-      .from("checkin_anamnesis")
-      .select("numero_documento_fisico")
+    const { data, error } = await supabase
+      .from("modulo_obesidad")
+      .select("numero_documento_fisico, peso, talla, imc, obesidad")
       .eq("numero_documento_fisico", documento)
       .maybeSingle();
 
-    if (errorCheckin) {
-      throw errorCheckin;
+    if (error) {
+      console.error("❌ Error consultando modulo_obesidad:", error);
+      throw error;
     }
 
-    if (!checkin) {
-      await alertError(
-        "Check-in requerido",
-        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in. Sin este paso no se pueden tomar los datos de talla, peso e IMC. Por favor, comuníquese con el encargado de realizar el check-in.",
-      );
-
-      setPaciente(null);
-      setPeso("");
-      setTalla("");
-      setBloqueadoPorDatosPrevios(false);
-      setCheckinValidado(false);
-      return false;
-    }
-
-    setCheckinValidado(true);
-
-    const { data: anamnesis, error: errorAnamnesis } = await supabase
-      .from("anamnesis_global")
-      .select("numero_documento_fisico, peso, talla, imc")
-      .eq("numero_documento_fisico", documento)
-      .maybeSingle();
-
-    if (errorAnamnesis) {
-      throw errorAnamnesis;
-    }
+    console.log("📦 Datos previos modulo_obesidad:", data);
 
     const yaTieneDatos =
-      anamnesis &&
-      tieneDato(anamnesis.peso) &&
-      tieneDato(anamnesis.talla) &&
-      tieneDato(anamnesis.imc);
+      data &&
+      tieneDato(data.peso) &&
+      tieneDato(data.talla) &&
+      tieneDato(data.imc);
 
     if (yaTieneDatos) {
       setBloqueadoPorDatosPrevios(true);
-      setPeso(String(anamnesis.peso ?? ""));
-      setTalla(String(anamnesis.talla ?? ""));
+      setPeso(String(data.peso ?? ""));
+      setTalla(String(data.talla ?? ""));
 
       await alertError(
         "Datos ya registrados",
-        "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
+        "Esta persona ya tiene datos de peso, talla e IMC registrados en el módulo de obesidad, por lo cual no se puede modificar.",
       );
 
       return true;
     }
 
     setBloqueadoPorDatosPrevios(false);
-
-    if (anamnesis) {
-      setPeso(tieneDato(anamnesis.peso) ? String(anamnesis.peso) : "");
-      setTalla(tieneDato(anamnesis.talla) ? String(anamnesis.talla) : "");
-    } else {
-      setPeso("");
-      setTalla("");
-    }
+    setPeso(tieneDato(data?.peso) ? String(data.peso) : "");
+    setTalla(tieneDato(data?.talla) ? String(data.talla) : "");
 
     return true;
   }
@@ -153,10 +110,10 @@ export default function ModuloObesidad() {
       setPaciente(item);
       setCoincidencias([]);
 
-      const ok = await validarCheckinYAnamnesis(item);
+      const ok = await validarModuloObesidad(item);
       if (!ok) return;
     } catch (error) {
-      console.error("Error validando paciente en módulo obesidad:", error);
+      console.error("💥 Error validando paciente en módulo obesidad:", error);
 
       limpiarSeleccionPaciente();
 
@@ -203,7 +160,7 @@ export default function ModuloObesidad() {
 
         setPaciente(data);
 
-        const ok = await validarCheckinYAnamnesis(data);
+        const ok = await validarModuloObesidad(data);
         if (!ok) return;
 
         return;
@@ -227,7 +184,7 @@ export default function ModuloObesidad() {
 
       setCoincidencias(data);
     } catch (error) {
-      console.error("Error buscando paciente:", error);
+      console.error("💥 Error buscando paciente:", error);
 
       await alertError(
         "Error al buscar",
@@ -243,14 +200,6 @@ export default function ModuloObesidad() {
       await alertError(
         "Paciente requerido",
         "Debes buscar y seleccionar un paciente existente antes de continuar.",
-      );
-      return;
-    }
-
-    if (!checkinValidado) {
-      await alertError(
-        "Check-in requerido",
-        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in.",
       );
       return;
     }
@@ -295,14 +244,14 @@ export default function ModuloObesidad() {
         peso: Number(peso),
         talla: Number(talla),
         imc,
-        obesidad, // 🔥 AHORA SÍ LO GUARDA
+        obesidad,
+        updated_at: new Date().toISOString(),
       };
 
-      console.log("📤 Enviando a anamnesis_global:", payload);
+      console.log("📤 Enviando a modulo_obesidad:", payload);
 
-      // 🔥 UPSERT DIRECTO (INSERT o UPDATE automático)
       const { data, error } = await supabase
-        .from("anamnesis_global")
+        .from("modulo_obesidad")
         .upsert([payload], {
           onConflict: "numero_documento_fisico",
         })
@@ -310,11 +259,11 @@ export default function ModuloObesidad() {
         .single();
 
       if (error) {
-        console.error("❌ Error Supabase:", error);
+        console.error("❌ Error Supabase modulo_obesidad:", error);
         throw error;
       }
 
-      console.log("✅ Guardado exitoso:", data);
+      console.log("✅ Guardado exitoso modulo_obesidad:", data);
 
       await alertOk(
         "Guardado correcto",
