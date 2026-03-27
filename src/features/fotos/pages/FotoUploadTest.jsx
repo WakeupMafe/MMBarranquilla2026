@@ -62,12 +62,28 @@ export default function FotoUploadTest() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
+  /* =========================
+     ORIGEN REAL DEL FLUJO
+  ========================= */
+  const rutaOrigen = String(
+    location.state?.from || location.state?.origen || "",
+  ).trim();
+
+  const vieneDesdeAnamnesisZona =
+    rutaOrigen === "/herramientas/anamnesis-zona" ||
+    location.state?.vieneDesdeAnamnesisZona === true;
+
+  /* =========================
+     CACHE CONTROLADO
+  ========================= */
+  const valoracionActiva = useMemo(() => {
+    if (!vieneDesdeAnamnesisZona) return null;
+    return obtenerValoracionActiva();
+  }, [vieneDesdeAnamnesisZona]);
 
   /* =========================
      ZONAS ACTIVAS
   ========================= */
-
   const zonasProtocoloFotos = useMemo(() => {
     const zonasDesdeState = location.state?.zonasProtocoloFotos;
 
@@ -81,13 +97,17 @@ export default function FotoUploadTest() {
         location.state?.resultado?.zonasDetectadas?.[0] ||
         location.state?.clasificacionPaciente?.zonaSecundaria ||
         location.state?.clasificacionPaciente?.zonaDestino ||
-        valoracionActiva?.clasificacionPaciente?.zonaSecundaria ||
-        valoracionActiva?.clasificacionPaciente?.zonaDestino ||
+        (vieneDesdeAnamnesisZona
+          ? valoracionActiva?.clasificacionPaciente?.zonaSecundaria
+          : null) ||
+        (vieneDesdeAnamnesisZona
+          ? valoracionActiva?.clasificacionPaciente?.zonaDestino
+          : null) ||
         "funcional",
     );
 
     return [zonaUnica];
-  }, [location.state, valoracionActiva]);
+  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
 
   /* =========================
      GRUPOS DE FOTOS
@@ -124,19 +144,27 @@ export default function FotoUploadTest() {
   /* =========================
      PACIENTE / PROFESIONAL
   ========================= */
-
   const paciente = useMemo(() => {
-    return valoracionActiva?.paciente || null;
-  }, [valoracionActiva]);
+    if (location.state?.paciente) return location.state.paciente;
+    if (vieneDesdeAnamnesisZona) return valoracionActiva?.paciente || null;
+    return null;
+  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
 
   const pacienteDocumento = useMemo(() => {
     return (
-      valoracionActiva?.paciente?.numero_documento_fisico ||
-      valoracionActiva?.paciente?.num_documento ||
-      valoracionActiva?.paciente?.cedula ||
+      location.state?.paciente?.numero_documento_fisico ||
+      location.state?.paciente?.num_documento ||
+      location.state?.paciente?.cedula ||
+      (vieneDesdeAnamnesisZona
+        ? valoracionActiva?.paciente?.numero_documento_fisico
+        : "") ||
+      (vieneDesdeAnamnesisZona
+        ? valoracionActiva?.paciente?.num_documento
+        : "") ||
+      (vieneDesdeAnamnesisZona ? valoracionActiva?.paciente?.cedula : "") ||
       ""
     );
-  }, [valoracionActiva]);
+  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
 
   const profesional = useMemo(() => {
     if (location.state?.profesional) return location.state.profesional;
@@ -396,13 +424,10 @@ export default function FotoUploadTest() {
     return gruposActivos.map((group, index) => {
       let videosDelGrupo = [];
 
-      // 🔥 CASO FUNCIONAL:
-      // pega todos los videos funcionales al primer grupo visible
       if (esFuncional && index === 0) {
         videosDelGrupo = videos;
       }
 
-      // 🔥 CASO NORMAL POR ZONA:
       if (!esFuncional) {
         const zonaDelGrupo = group.zonas?.find((zona) =>
           zonasProtocoloFotos.includes(zona),
@@ -434,40 +459,12 @@ export default function FotoUploadTest() {
   /* =========================
      VOLVER
   ========================= */
-  /* =========================
-   VOLVER INTELIGENTE
-   - Si existe una ruta de retorno enviada por state, la usa.
-   - Si NO hay cédula del paciente y tampoco hay ruta de retorno,
-     devuelve a herramientas.
-   - Si SÍ hay cédula del paciente, devuelve a anamnesis-zona
-     conservando el state actual.
-========================= */
 
-  /* =========================
-     VOLVER
-  ========================= */
-  // ✅ CAMBIO EN BOTÓN VOLVER:
-  // Ya NO depende de cédula, cache ni valoracionActiva.
-  // Solo depende del origen real enviado por navegación.
-  // - Si viene desde check-in, vuelve a check-in.
-  // - Si viene desde herramientas, vuelve a herramientas.
-  // - Si no viene nada, por defecto vuelve a herramientas.
   const handleVolver = () => {
-    const rutaOrigen = String(
-      location.state?.from || location.state?.origen || "",
-    ).trim();
-
-    const vieneDesdeCheckIn =
-      rutaOrigen === "/herramientas/valoracion/check-in" ||
-      location.state?.vieneDesdeCheckIn === true;
-
-    if (vieneDesdeCheckIn) {
-      navigate("/herramientas/valoracion/check-in", {
+    if (vieneDesdeAnamnesisZona) {
+      navigate("/herramientas/anamnesis-zona", {
         state: {
-          profesional: location.state?.profesional || null,
-          paciente: location.state?.paciente || null,
-          checkIn: location.state?.checkIn || null,
-          clasificacionPaciente: location.state?.clasificacionPaciente || null,
+          ...location.state,
         },
       });
       return;
@@ -475,13 +472,10 @@ export default function FotoUploadTest() {
 
     navigate("/herramientas");
   };
+
   /* =========================
      ENVIAR TODO JUNTO
   ========================= */
-  /* =========================
-   ENVIAR TODO
-   - Delegado al hook
-========================= */
 
   const handleUpload = async () => {
     await hadleUploadPhoto({
