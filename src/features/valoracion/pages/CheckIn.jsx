@@ -331,11 +331,10 @@ export default function CheckIn() {
       }
 
       if (yaExiste) {
-        await alertError(
+        await alertOk(
           "Check-in ya registrado",
-          "El paciente ya realizó el proceso de check-in.",
+          "El paciente ya realizó check-in. No se enviará nuevamente a base de datos, pero el flujo continuará.",
         );
-        return;
       }
 
       const mode = getCheckinUploadMode();
