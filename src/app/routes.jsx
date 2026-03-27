@@ -16,6 +16,8 @@ import AnamnesisGlobal from "../features/valoracion/pages/AnamnesisGlobal";
 import AnamnesisZona from "../features/valoracion/pages/AnamnesisZona";
 import ModuloObesidad from "../features/valoracion/components/ModuloObesidad";
 import FotosAdminMode from "../features/tools/pages/FotosAdminMode";
+import BusquedayEliminacion from "../features/valoracion/components/zonas/EliminacionPorError/BusquedayEliminacion";
+
 export const router = createBrowserRouter([
   {
     path: "/",
@@ -78,5 +80,10 @@ export const router = createBrowserRouter([
   {
     path: "/herramientas/fotos-admin",
     element: <FotosAdminMode />,
+  },
+
+  {
+    path: "/herramientas/eliminacion-por-error",
+    element: <BusquedayEliminacion />,
   },
 ]);

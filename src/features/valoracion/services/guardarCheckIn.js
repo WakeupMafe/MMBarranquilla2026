@@ -1,5 +1,9 @@
 import { supabase } from "../../../shared/lib/supabaseClient";
 
+function textoSeguro(valor) {
+  return String(valor ?? "").trim();
+}
+
 export async function guardarCheckIn({
   cedula,
   instructor,
@@ -9,15 +13,21 @@ export async function guardarCheckIn({
   seguridadSocial,
   paciente,
 }) {
-  const numeroDocumento = String(cedula || "").trim();
+  // 🔴 IMPORTANTE:
+  // usar el documento EXACTO que viene del paciente encontrado en participantes
+  // para no romper la FK con participantes
+  const numeroDocumento = String(
+    paciente?.numero_documento_fisico || cedula || "",
+  );
 
-  if (!numeroDocumento) {
+  const numeroDocumentoLimpio = textoSeguro(numeroDocumento);
+  const instructorNombre = textoSeguro(instructor);
+  const lugar = textoSeguro(lugarValoracion);
+  const seguridad = textoSeguro(seguridadSocial);
+
+  if (!numeroDocumentoLimpio) {
     throw new Error("La cédula del paciente es obligatoria.");
   }
-
-  const instructorNombre = String(instructor || "").trim();
-  const lugar = String(lugarValoracion || "").trim();
-  const seguridad = String(seguridadSocial || "").trim();
 
   if (!instructorNombre) {
     throw new Error("El nombre del instructor es obligatorio.");
@@ -31,18 +41,18 @@ export async function guardarCheckIn({
     throw new Error("La seguridad social es obligatoria.");
   }
 
-  // 🔍 1. VALIDAR SI YA EXISTE
+  // 🔍 VALIDAR SI YA EXISTE
   const { data: existente, error: errorBusqueda } = await supabase
     .from("checkin_anamnesis")
     .select("numero_documento_fisico")
-    .eq("numero_documento_fisico", numeroDocumento)
+    .eq("numero_documento_fisico", numeroDocumentoLimpio)
     .maybeSingle();
 
   if (errorBusqueda) {
     throw errorBusqueda;
   }
 
-  // ⚠️ 2. SI YA EXISTE → NO GUARDAR PERO PERMITIR CONTINUAR
+  // ⚠️ SI YA EXISTE → NO GUARDAR PERO PERMITIR CONTINUAR
   if (existente) {
     return {
       yaExiste: true,
@@ -51,20 +61,18 @@ export async function guardarCheckIn({
     };
   }
 
-  // 🧠 3. SI NO EXISTE → GUARDAR NORMAL
+  // 🧠 GUARDAR
   const payload = {
-    numero_documento_fisico: numeroDocumento,
+    numero_documento_fisico: numeroDocumentoLimpio,
     instructor_nombre: instructorNombre,
     lugar_valoracion: lugar,
     habeas_data: Boolean(habeasData),
     autorizacion_imagen: Boolean(autorizacionImagen),
     seguridad_social: seguridad,
     paciente_nombre:
-      String(
-        paciente?.nombre_apellido_documento ||
-          paciente?.nombres_apellidos ||
-          "",
-      ).trim() || null,
+      textoSeguro(
+        paciente?.nombre_apellido_documento || paciente?.nombres_apellidos,
+      ) || null,
   };
 
   const { data, error } = await supabase

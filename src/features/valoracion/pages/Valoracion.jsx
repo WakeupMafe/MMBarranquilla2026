@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { iniciarValoracionActiva } from "../utils/valoracionSession";
 import { buscarClasificacionPaciente } from "../services/buscarClasificacionPaciente";
 import ValoracionContent from "../components/ValoracionContent";
+import EditarPacienteModal from "../components/EditarPacienteModal";
 
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
@@ -64,6 +65,16 @@ export default function Valoracion() {
   );
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  // ✅ Estados del modal de edición
+  const [modalEdicionVisible, setModalEdicionVisible] = useState(false);
+  const [guardandoEdicion, setGuardandoEdicion] = useState(false);
+  const [formEdicion, setFormEdicion] = useState({
+    nombre_apellido_documento: "",
+    genero: "",
+    numero_telefono: "",
+    fecha_nacimiento: "",
+  });
 
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
@@ -184,6 +195,95 @@ export default function Valoracion() {
     }
   }
 
+  function handleEditarDatos() {
+    if (!paciente) {
+      alertError(
+        "Paciente no disponible",
+        "No se encontró información del paciente para editar.",
+      );
+      return;
+    }
+
+    setFormEdicion({
+      nombre_apellido_documento: paciente.nombre_apellido_documento || "",
+      genero: paciente.genero || "",
+      numero_telefono: paciente.numero_telefono || "",
+      fecha_nacimiento: paciente.fecha_nacimiento || "",
+    });
+
+    setModalEdicionVisible(true);
+  }
+
+  function handleChangeEdicion(e) {
+    const { name, value } = e.target;
+
+    setFormEdicion((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  }
+
+  async function handleSaveEdicion() {
+    if (!paciente?.numero_documento_fisico) {
+      await alertError(
+        "Paciente no válido",
+        "No se encontró la cédula del paciente para guardar cambios.",
+      );
+      return;
+    }
+
+    try {
+      setGuardandoEdicion(true);
+
+      const payload = {
+        nombre_apellido_documento: String(
+          formEdicion.nombre_apellido_documento || "",
+        ).trim(),
+        genero: String(formEdicion.genero || "").trim() || null,
+        numero_telefono:
+          String(formEdicion.numero_telefono || "").trim() || null,
+        fecha_nacimiento: formEdicion.fecha_nacimiento || null,
+      };
+
+      const { error } = await supabase
+        .from("participantes")
+        .update(payload)
+        .eq("numero_documento_fisico", paciente.numero_documento_fisico);
+
+      if (error) {
+        throw error;
+      }
+
+      const pacienteActualizado = {
+        ...paciente,
+        ...payload,
+      };
+
+      const estadoCalidad = construirEstadoCalidadPaciente(pacienteActualizado);
+
+      setPaciente({
+        ...pacienteActualizado,
+        estadoCalidad,
+      });
+
+      setModalEdicionVisible(false);
+
+      await alertOk(
+        "Datos actualizados",
+        "La información del paciente fue actualizada correctamente.",
+      );
+    } catch (error) {
+      console.error("Error actualizando paciente:", error);
+
+      await alertError(
+        "Error al guardar",
+        error.message || "No se pudieron guardar los cambios.",
+      );
+    } finally {
+      setGuardandoEdicion(false);
+    }
+  }
+
   function handleContinuar() {
     if (!paciente?.clasificacionPaciente) return;
 
@@ -220,44 +320,35 @@ export default function Valoracion() {
     navigate("/herramientas/valoracion/check-in");
   }
 
-  function handleEditarDatos() {
-    if (!paciente) {
-      alertError(
-        "Paciente no disponible",
-        "No se encontró información del paciente para editar.",
-      );
-      return;
-    }
-
-    navigate("/herramientas/valoracion/check-in", {
-      state: {
-        profesional,
-        paciente,
-        checkIn,
-        cedula: paciente?.numero_documento_fisico || cedula || "",
-        modoEdicionDatos: true,
-      },
-    });
-  }
-
   if (!profesional) return null;
 
   const userName = profesional.nombre || "Profesional";
   const vieneDesdeCheckIn = Boolean(pacienteDesdeCheckIn);
 
   return (
-    <ValoracionContent
-      userName={userName}
-      vieneDesdeCheckIn={vieneDesdeCheckIn}
-      cedula={cedula}
-      setCedula={setCedula}
-      loading={loading}
-      paciente={paciente}
-      onBuscar={handleBuscar}
-      onContinuar={handleContinuar}
-      onLogout={handleLogout}
-      onVolver={handleVolver}
-      onEditarDatos={handleEditarDatos}
-    />
+    <>
+      <ValoracionContent
+        userName={userName}
+        vieneDesdeCheckIn={vieneDesdeCheckIn}
+        cedula={cedula}
+        setCedula={setCedula}
+        loading={loading}
+        paciente={paciente}
+        onBuscar={handleBuscar}
+        onContinuar={handleContinuar}
+        onLogout={handleLogout}
+        onVolver={handleVolver}
+        onEditarDatos={handleEditarDatos}
+      />
+
+      <EditarPacienteModal
+        visible={modalEdicionVisible}
+        loading={guardandoEdicion}
+        formEdicion={formEdicion}
+        onChange={handleChangeEdicion}
+        onClose={() => setModalEdicionVisible(false)}
+        onSave={handleSaveEdicion}
+      />
+    </>
   );
 }

@@ -6,7 +6,11 @@ function textoSeguro(valor) {
 
 // 🔹 Normaliza dejando solo números (clave para comparar contra BD sucia)
 export function normalizarDocumentoCkin(valor) {
-  return textoSeguro(valor).replace(/\D/g, "").trim();
+  return textoSeguro(valor)
+    .replace(/[\u200B-\u200D\uFEFF]/g, "") // invisibles comunes
+    .replace(/\s+/g, "") // espacios normales o raros
+    .replace(/\D/g, "") // deja solo números
+    .trim();
 }
 
 // 🔹 Valida que sí haya algo usable
