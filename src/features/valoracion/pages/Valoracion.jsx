@@ -220,6 +220,26 @@ export default function Valoracion() {
     navigate("/herramientas/valoracion/check-in");
   }
 
+  function handleEditarDatos() {
+    if (!paciente) {
+      alertError(
+        "Paciente no disponible",
+        "No se encontró información del paciente para editar.",
+      );
+      return;
+    }
+
+    navigate("/herramientas/valoracion/check-in", {
+      state: {
+        profesional,
+        paciente,
+        checkIn,
+        cedula: paciente?.numero_documento_fisico || cedula || "",
+        modoEdicionDatos: true,
+      },
+    });
+  }
+
   if (!profesional) return null;
 
   const userName = profesional.nombre || "Profesional";
@@ -237,6 +257,7 @@ export default function Valoracion() {
       onContinuar={handleContinuar}
       onLogout={handleLogout}
       onVolver={handleVolver}
+      onEditarDatos={handleEditarDatos}
     />
   );
 }

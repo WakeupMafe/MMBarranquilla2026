@@ -119,15 +119,18 @@ export default function CheckInContent({
                   <label className="checkinLabel" htmlFor="lugarValoracion">
                     Lugar de valoración
                   </label>
-                  <input
+                  <select
                     id="lugarValoracion"
                     className="checkinInput"
-                    type="text"
                     name="lugarValoracion"
-                    value={formData.lugarValoracion}
+                    value={formData.lugarValoracion || ""}
                     onChange={onChange}
-                    placeholder="Ej. Barranquilla - sede principal"
-                  />
+                  >
+                    <option value="">Selecciona un lugar</option>
+                    <option value="Pibem">Pibe</option>
+                    <option value="Las nieves">Las Nieves</option>
+                    <option value="La inmaculada">La Inmaculada</option>
+                  </select>
                   {errores.lugarValoracion ? (
                     <span className="checkinError">
                       {errores.lugarValoracion}

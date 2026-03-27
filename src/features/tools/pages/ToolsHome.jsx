@@ -13,7 +13,6 @@ import iconLogrosF1 from "../../../assets/LogroF1.png";
 import iconLogrosF2 from "../../../assets/LogroF2.png";
 import obesidad from "../../../assets/obesidad.png";
 import admin from "../../../assets/admin.png";
-
 import iconConsultaBD from "../../../assets/ConsultaBD.png";
 
 const SESSION_KEY = "wk_profesional";
@@ -58,7 +57,7 @@ export default function ToolsHome() {
 
   const userName = profesional.nombre;
 
-  // 🔵 Solo esta cédula puede ver la card de administración de fotos
+  // Solo esta cédula puede ver la card de administración de fotos
   const puedeVerAdminFotos =
     String(profesional?.cedula || "").trim() === CEDULA_ADMIN_FOTOS;
 
@@ -105,10 +104,22 @@ export default function ToolsHome() {
 
         <div className="cards">
           <ToolCard
+            title="Prueba de Fotos"
+            subtitle="Validar captura y comportamiento del módulo"
+            chipLeft="Test"
+            chipRight="Fotos"
+            buttonText="Abrir"
+            iconSrc={iconValoracion}
+            onOpen={() => navigate("/herramientas/fotos-test")}
+          />
+        </div>
+
+        <div className="cards">
+          <ToolCard
             title="Módulo Obesidad"
             subtitle="Peso, talla e IMC del paciente"
             chipLeft="3–5 min"
-            chipRight="Calculo"
+            chipRight="Cálculo"
             buttonText="Abrir"
             iconSrc={obesidad}
             onOpen={() => navigate("/herramientas/modulo-obesidad")}
@@ -139,7 +150,6 @@ export default function ToolsHome() {
           />
         </div>
 
-        {/* 🔵 Card restringida solo para la cédula autorizada */}
         {puedeVerAdminFotos && (
           <div className="cards">
             <ToolCard
@@ -171,6 +181,20 @@ export default function ToolsHome() {
             }
           />
         </div>
+
+        {puedeVerAdminFotos && (
+          <div className="cards">
+            <ToolCard
+              title="Eliminación por error"
+              subtitle="Buscar y eliminar registros completos del paciente"
+              chipLeft="Privado"
+              chipRight="Crítico"
+              buttonText="Abrir"
+              iconSrc={admin}
+              onOpen={() => navigate("/herramientas/eliminacion-por-error")}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

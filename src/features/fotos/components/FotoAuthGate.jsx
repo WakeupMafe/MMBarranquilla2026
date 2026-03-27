@@ -60,6 +60,7 @@ export default function FotoAuthGate({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, newSession) => {
       if (!mounted) return;
+
       setSession(newSession ?? null);
       setLoading(false);
     });
@@ -89,10 +90,6 @@ export default function FotoAuthGate({ children }) {
     setSubmitting(false);
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-  };
-
   if (loading) {
     return (
       <div className="fotoAuthPage">
@@ -116,14 +113,6 @@ export default function FotoAuthGate({ children }) {
                 Protocolo activo: <strong>{getZonaLabel(zonaActiva)}</strong>
               </p>
             </div>
-
-            <BotonImportante
-              type="button"
-              variant="outline"
-              onClick={handleLogout}
-            >
-              Cerrar sesión
-            </BotonImportante>
           </div>
         </div>
 

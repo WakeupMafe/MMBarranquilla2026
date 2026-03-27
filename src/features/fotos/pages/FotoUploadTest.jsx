@@ -8,13 +8,8 @@ import { VIDEO_GROUPS } from "../constants/videoGroups";
 import PhotoGroupCard from "../components/PhotoGroupCard";
 import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 import { obtenerValoracionActiva } from "../../valoracion/utils/valoracionSession";
-import { uploadFotoPaciente } from "../services/fotosService";
-import { uploadVideoPaciente } from "../services/videosService";
-import {
-  FOTO_UPLOAD_MODES,
-  getFotosUploadMode,
-} from "../../../shared/lib/fotosUploadMode";
 import { usePhotoUpload } from "../hooks/usePhotoUpload";
+import { hadleUploadPhoto } from "../hooks/hadleUploadPhoto";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -439,121 +434,72 @@ export default function FotoUploadTest() {
   /* =========================
      VOLVER
   ========================= */
+  /* =========================
+   VOLVER INTELIGENTE
+   - Si existe una ruta de retorno enviada por state, la usa.
+   - Si NO hay cédula del paciente y tampoco hay ruta de retorno,
+     devuelve a herramientas.
+   - Si SÍ hay cédula del paciente, devuelve a anamnesis-zona
+     conservando el state actual.
+========================= */
 
   const handleVolver = () => {
+    // 🔹 Ruta opcional que puedes enviar desde otras pantallas
+    // ejemplo: navigate("/herramientas/fotos-test", { state: { volverA: "/herramientas" } })
+    const rutaVolver = String(location.state?.volverA || "").trim();
+
+    // 🔹 Verifica si realmente tenemos una cédula usable
+    const tieneCedulaPaciente = Boolean(String(pacienteDocumento || "").trim());
+
+    // 🔹 Si viene una ruta explícita, se respeta primero
+    if (rutaVolver) {
+      navigate(rutaVolver, {
+        state: {
+          ...location.state,
+        },
+      });
+      return;
+    }
+
+    // 🔹 Si no hay cédula ni contexto suficiente, mejor salir a herramientas
+    if (!tieneCedulaPaciente) {
+      navigate("/herramientas", { replace: true });
+      return;
+    }
+
+    // 🔹 Si sí hay cédula, volvemos al flujo clínico
     navigate("/herramientas/anamnesis-zona", {
       state: {
         ...location.state,
       },
     });
   };
-
   /* =========================
      ENVIAR TODO JUNTO
   ========================= */
+  /* =========================
+   ENVIAR TODO
+   - Delegado al hook
+========================= */
 
   const handleUpload = async () => {
-    const readyPhotos = photos.filter((item) => item.status === "ready");
-    const readyVideos = videos.filter((item) => item.status === "ready");
-
-    if (totalRequiredCount === 0) {
-      await alertError(
-        "Sin protocolo activo",
-        "No se encontraron fotos o videos requeridos para esta valoración.",
-      );
-      return;
-    }
-
-    if (!todoCompleto) {
-      await alertError(
-        "Protocolo incompleto",
-        "Debes completar todas las fotos y videos requeridos antes de enviar.",
-      );
-      return;
-    }
-
-    if (!pacienteDocumento) {
-      await alertError(
-        "Paciente no identificado",
-        "No se encontró la cédula del paciente en la sesión activa.",
-      );
-      return;
-    }
-
-    if (!profesionalCedula) {
-      await alertError(
-        "Profesional no identificado",
-        "No se encontró la cédula del profesional para guardar la evidencia.",
-      );
-      return;
-    }
-
-    try {
-      setUploading(true);
-
-      const sesionTipo = `evaluacion_${zonasProtocoloFotos.join("_")}`;
-      const uploadMode = getFotosUploadMode();
-
-      for (const photo of readyPhotos) {
-        await uploadFotoPaciente({
-          file: photo.file,
-          pacienteDocumento,
-          tipoFoto: photo.id,
-          sesionTipo,
-          profesionalCedula,
-          zonasEvaluadas: zonasProtocoloFotos,
-        });
-      }
-
-      for (const video of readyVideos) {
-        await uploadVideoPaciente({
-          file: video.file,
-          pacienteDocumento,
-          tipoVideo: video.id,
-          sesionTipo,
-          profesionalCedula,
-          zonasEvaluadas: zonasProtocoloFotos,
-          duracionSegundos: video.duration || null,
-        });
-      }
-
-      photos.forEach((item) => {
-        if (item.preview) {
-          URL.revokeObjectURL(item.preview);
-        }
-      });
-
-      videos.forEach((item) => {
-        if (item.preview) {
-          URL.revokeObjectURL(item.preview);
-        }
-      });
-
-      setPhotos(createEmptyPhotos());
-      setVideos(createEmptyVideos());
-      setProcessingId("");
-
-      if (uploadMode === FOTO_UPLOAD_MODES.SIMULACION) {
-        await alertOk(
-          "Simulación completada",
-          `Se simuló correctamente el envío de ${readyPhotos.length} foto(s) y ${readyVideos.length} video(s). No se guardó nada en base de datos.`,
-        );
-      } else {
-        await alertOk(
-          "Evidencia guardada",
-          `Se guardaron correctamente ${readyPhotos.length} foto(s) y ${readyVideos.length} video(s).`,
-        );
-      }
-
-      navigate("/herramientas/valoracion/check-in");
-    } catch (error) {
-      await alertError(
-        "Error al enviar",
-        error.message || "No se pudo completar el envío a base de datos.",
-      );
-    } finally {
-      setUploading(false);
-    }
+    await hadleUploadPhoto({
+      photos,
+      videos,
+      totalRequiredCount,
+      todoCompleto,
+      pacienteDocumento,
+      profesionalCedula,
+      zonasProtocoloFotos,
+      createEmptyPhotos,
+      createEmptyVideos,
+      setPhotos,
+      setVideos,
+      setProcessingId,
+      setUploading,
+      navigate,
+      locationState: location.state,
+    });
   };
 
   /* =========================

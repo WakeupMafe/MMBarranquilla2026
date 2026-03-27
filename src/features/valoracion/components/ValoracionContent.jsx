@@ -161,14 +161,22 @@ export default function ValoracionContent({
                       <li key={problema}>{problema}</li>
                     ))}
                   </ul>
-
-                  <div className="valoracionActions">
-                    <BotonImportante type="button" onClick={onEditarDatos}>
-                      ✏️ Editar datos
-                    </BotonImportante>
-                  </div>
                 </div>
               )}
+
+              <div className="valoracionActions">
+                <BotonImportante
+                  type="button"
+                  variant="ghost"
+                  onClick={onEditarDatos}
+                >
+                  ✏️ Editar datos del paciente
+                </BotonImportante>
+
+                <BotonImportante type="button" onClick={onContinuar}>
+                  Continuar a anamnesis global
+                </BotonImportante>
+              </div>
 
               <div className={claseAlerta}>
                 <h3 className="valoracionStatusTitle">
