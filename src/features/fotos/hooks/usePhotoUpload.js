@@ -5,8 +5,8 @@ import { alertError, alertConfirm } from "../../../shared/lib/alerts";
    CONFIG VIDEO
 ========================= */
 
-const MAX_VIDEO_DURATION_SECONDS = 12;
-const MAX_VIDEO_SIZE_MB = 25;
+const MAX_VIDEO_DURATION_SECONDS = 14;
+const MAX_VIDEO_SIZE_MB = 30;
 
 /* =========================
    HELPERS VIDEO
