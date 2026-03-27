@@ -5,7 +5,34 @@ function normalizarDocumento(valor) {
   return String(valor ?? "").trim();
 }
 
-export async function editarGlobalPorErrores(numeroDocumento) {
+function normalizarTexto(valor) {
+  return String(valor ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+function arreglarArray(valor) {
+  return Array.isArray(valor)
+    ? valor
+        .map((item) =>
+          String(item ?? "")
+            .trim()
+            .toLowerCase(),
+        )
+        .filter(Boolean)
+    : [];
+}
+
+function sonArraysIguales(a = [], b = []) {
+  if (a.length !== b.length) return false;
+
+  const aOrdenado = [...a].sort();
+  const bOrdenado = [...b].sort();
+
+  return aOrdenado.every((valor, index) => valor === bOrdenado[index]);
+}
+
+export async function editarGlobalPorErrores(numeroDocumento, resultadoNuevo) {
   const cedula = normalizarDocumento(numeroDocumento);
 
   if (!cedula) {
@@ -18,13 +45,16 @@ export async function editarGlobalPorErrores(numeroDocumento) {
       puedeContinuar: false,
       existeRegistroPrevio: false,
       debeSobrescribir: false,
+      cambioRutaDetectado: false,
       registroPrevio: null,
     };
   }
 
   const { data, error } = await supabase
     .from("anamnesis_global")
-    .select("numero_documento_fisico, siguiente_paso, mensaje_resultado")
+    .select(
+      "numero_documento_fisico, siguiente_paso, mensaje_resultado, zonas_detectadas",
+    )
     .eq("numero_documento_fisico", cedula)
     .maybeSingle();
 
@@ -40,6 +70,7 @@ export async function editarGlobalPorErrores(numeroDocumento) {
       puedeContinuar: false,
       existeRegistroPrevio: false,
       debeSobrescribir: false,
+      cambioRutaDetectado: false,
       registroPrevio: null,
     };
   }
@@ -49,14 +80,29 @@ export async function editarGlobalPorErrores(numeroDocumento) {
       puedeContinuar: true,
       existeRegistroPrevio: false,
       debeSobrescribir: false,
+      cambioRutaDetectado: false,
       registroPrevio: null,
     };
   }
 
+  const pasoPrevio = normalizarTexto(data?.siguiente_paso);
+  const pasoNuevo = normalizarTexto(resultadoNuevo?.siguientePaso);
+
+  const zonasPrevias = arreglarArray(data?.zonas_detectadas);
+  const zonasNuevas = arreglarArray(resultadoNuevo?.zonasDetectadas);
+
+  const cambioPaso = pasoPrevio !== pasoNuevo;
+  const cambioZonas = !sonArraysIguales(zonasPrevias, zonasNuevas);
+  const cambioRutaDetectado = cambioPaso || cambioZonas;
+
   const confirmar = await alertConfirm({
-    title: "Ruta previa encontrada",
-    text: "Este paciente ya tiene una ruta previa registrada en anamnesis global. Si continúas, se reemplazará la ruta anterior con la nueva información ingresada. ¿Deseas seguir?",
-    confirmText: "Sí, seguir",
+    title: cambioRutaDetectado
+      ? "Re-evaluación detectada"
+      : "Ruta previa encontrada",
+    text: cambioRutaDetectado
+      ? "Se detectó un cambio en la ruta previamente registrada para este paciente. Si continúas, se reemplazará la ruta anterior con la nueva decisión clínica. ¿Deseas continuar?"
+      : "Este paciente ya tiene una ruta previa registrada en anamnesis global. Si continúas, se actualizará con la información actual. ¿Deseas continuar?",
+    confirmText: "Sí, continuar",
     cancelText: "Cancelar",
   });
 
@@ -65,6 +111,7 @@ export async function editarGlobalPorErrores(numeroDocumento) {
       puedeContinuar: false,
       existeRegistroPrevio: true,
       debeSobrescribir: false,
+      cambioRutaDetectado,
       registroPrevio: data,
     };
   }
@@ -73,6 +120,7 @@ export async function editarGlobalPorErrores(numeroDocumento) {
     puedeContinuar: true,
     existeRegistroPrevio: true,
     debeSobrescribir: true,
+    cambioRutaDetectado,
     registroPrevio: data,
   };
 }

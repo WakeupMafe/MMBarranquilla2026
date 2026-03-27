@@ -20,6 +20,7 @@ import {
   obtenerZonasCambioDisponibles,
 } from "../utils/construirOpcionesContinuidad";
 import { editarGlobalPorErrores } from "./editarGlobalporErrores";
+import { resolverConflictoAnamnesisZonaAntesDeContinuar } from "./resolverConflictoAnamnesisZonaAntesDeContinuar";
 
 export function useAnamnesisGlobalContinue({
   resultado,
@@ -30,10 +31,6 @@ export function useAnamnesisGlobalContinue({
 }) {
   const navigate = useNavigate();
 
-  // =========================================================
-  // 1) NAVEGACIÓN A FOTOS
-  // =========================================================
-  // Esta función envía al módulo de fotos con la zona elegida.
   const irAFotos = useCallback(
     (zonaProtocoloFotos) => {
       const pacienteActivo = valoracionActiva?.paciente || null;
@@ -67,11 +64,6 @@ export function useAnamnesisGlobalContinue({
     ],
   );
 
-  // =========================================================
-  // 2) NAVEGACIÓN A ANAMNESIS DE ZONA (CAMBIO MANUAL)
-  // =========================================================
-  // Esta función se usa cuando el usuario elige UNA zona puntual
-  // desde opciones de continuidad o cambio de diagnóstico.
   const irAAnamnesisZona = useCallback(
     (zonaElegida, zonasDisponiblesCambio = []) => {
       navigate("/herramientas/anamnesis-zona", {
@@ -89,12 +81,6 @@ export function useAnamnesisGlobalContinue({
     [navigate, resultado, formDataNormalizado, clasificacionPaciente],
   );
 
-  // =========================================================
-  // 3) NAVEGACIÓN DIRECTA A ANAMNESIS DE ZONA PARA PACIENTES NUEVOS
-  // =========================================================
-  // Esta función es la corrección importante.
-  // Aquí mandamos TODAS las zonas detectadas directamente,
-  // sin mostrar modal de opciones.
   const irAAnamnesisZonaDirecta = useCallback(
     (zonasDetectadas = []) => {
       navigate("/herramientas/anamnesis-zona", {
@@ -112,16 +98,9 @@ export function useAnamnesisGlobalContinue({
     [navigate, resultado, formDataNormalizado, clasificacionPaciente],
   );
 
-  // =========================================================
-  // 4) CONTINUAR DESPUÉS DE GUARDAR ANAMNESIS GLOBAL
-  // =========================================================
-  // Aquí se guarda la información y se decide la siguiente ruta.
   const handleContinuar = useCallback(async () => {
     if (!resultado) return;
 
-    // ---------------------------------------------------------
-    // 4.1) Bloqueo por revisión crítica
-    // ---------------------------------------------------------
     if (resultado.siguientePaso === "revision_critica") {
       await alertError(
         "Paciente alertado para revisión",
@@ -130,9 +109,6 @@ export function useAnamnesisGlobalContinue({
       return;
     }
 
-    // ---------------------------------------------------------
-    // 4.2) Confirmación antes de guardar
-    // ---------------------------------------------------------
     const ok = await alertConfirm({
       title: "Guardar primera fase",
       text: "La anamnesis global quedará guardada y pasarás a la siguiente fase. ¿Deseas continuar?",
@@ -144,6 +120,7 @@ export function useAnamnesisGlobalContinue({
 
     try {
       const mode = getAnamnesisGlobalUploadMode();
+      let decisionEdicion = null;
 
       const cedulaPacienteActual = String(
         valoracionActiva?.paciente?.numero_documento_fisico ||
@@ -160,9 +137,6 @@ export function useAnamnesisGlobalContinue({
         return;
       }
 
-      // -------------------------------------------------------
-      // 4.3) Payload para guardar en BD
-      // -------------------------------------------------------
       const payload = {
         numero_documento_fisico: cedulaPacienteActual,
 
@@ -242,12 +216,11 @@ export function useAnamnesisGlobalContinue({
         mensaje_resultado: resultado.mensajeResultado || null,
       };
 
-      // -------------------------------------------------------
-      // 4.4) Guardado real o simulación
-      // -------------------------------------------------------
       if (mode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
-        const decisionEdicion =
-          await editarGlobalPorErrores(cedulaPacienteActual);
+        decisionEdicion = await editarGlobalPorErrores(
+          cedulaPacienteActual,
+          resultado,
+        );
 
         if (!decisionEdicion.puedeContinuar) {
           return;
@@ -256,12 +229,16 @@ export function useAnamnesisGlobalContinue({
         await guardarAnamnesisGlobal(payload);
 
         await alertOk(
-          decisionEdicion.debeSobrescribir
-            ? "Anamnesis global reemplazada"
-            : "Anamnesis global guardada",
-          decisionEdicion.debeSobrescribir
-            ? "La ruta previa del paciente fue reemplazada correctamente."
-            : "La anamnesis global fue guardada correctamente en base de datos.",
+          decisionEdicion.cambioRutaDetectado
+            ? "Ruta re-evaluada correctamente"
+            : decisionEdicion.debeSobrescribir
+              ? "Anamnesis global reemplazada"
+              : "Anamnesis global guardada",
+          decisionEdicion.cambioRutaDetectado
+            ? "Se detectó un cambio en la ruta del paciente y la nueva decisión fue aplicada correctamente."
+            : decisionEdicion.debeSobrescribir
+              ? "La ruta previa del paciente fue reemplazada correctamente."
+              : "La anamnesis global fue guardada correctamente en base de datos.",
         );
       } else {
         await alertOk(
@@ -270,17 +247,8 @@ export function useAnamnesisGlobalContinue({
         );
       }
 
-      // -------------------------------------------------------
-      // 4.5) Limpiar draft local
-      // -------------------------------------------------------
       limpiarAnamnesisGlobalDraft();
 
-      // -------------------------------------------------------
-      // 4.6) CORRECCIÓN PARA PACIENTES NUEVOS
-      // -------------------------------------------------------
-      // Si es paciente nuevo y el resultado indica anamnesis de zona,
-      // NO se debe mostrar modal con opciones.
-      // Solo informamos y navegamos directo con TODAS las zonas detectadas.
       const esPacienteNuevo = Boolean(clasificacionPaciente?.esPacienteNuevo);
       const zonasDetectadas = Array.isArray(resultado?.zonasDetectadas)
         ? resultado.zonasDetectadas
@@ -300,10 +268,6 @@ export function useAnamnesisGlobalContinue({
         return;
       }
 
-      // -------------------------------------------------------
-      // 4.7) Construcción normal de opciones de continuidad
-      // -------------------------------------------------------
-      // Esto aplica para pacientes antiguos o flujos que sí requieren decisión.
       const opcionesContinuidad = construirOpcionesContinuidad({
         resultado,
         clasificacionPaciente,
@@ -317,11 +281,44 @@ export function useAnamnesisGlobalContinue({
         return;
       }
 
-      // -------------------------------------------------------
-      // 4.8) Si solo hay una opción, navegar directo
-      // -------------------------------------------------------
+      const validarAntesDeNavegar = async (zonaFinal) => {
+        if (!decisionEdicion || mode !== ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
+          return {
+            puedeContinuar: true,
+            continuarConExistente: false,
+          };
+        }
+
+        const conflicto = await resolverConflictoAnamnesisZonaAntesDeContinuar({
+          numeroDocumento: cedulaPacienteActual,
+          zonaNueva: zonaFinal,
+        });
+
+        if (!conflicto.puedeContinuar) {
+          return {
+            puedeContinuar: false,
+            continuarConExistente: false,
+          };
+        }
+
+        return {
+          puedeContinuar: true,
+          continuarConExistente: conflicto.accion === "continuar_existente",
+        };
+      };
+
       if (opcionesContinuidad.length === 1) {
         const unica = opcionesContinuidad[0];
+
+        const decisionNavegacion = await validarAntesDeNavegar(unica.zona);
+
+        if (!decisionNavegacion.puedeContinuar) {
+          return;
+        }
+
+        if (decisionNavegacion.continuarConExistente) {
+          return;
+        }
 
         if (unica.tipo === "fotos") {
           irAFotos(unica.zona || "funcional");
@@ -344,11 +341,6 @@ export function useAnamnesisGlobalContinue({
         return;
       }
 
-      // -------------------------------------------------------
-      // 4.9) Si hay varias opciones, mostrar selector
-      // -------------------------------------------------------
-      // Este bloque ya NO se ejecuta para pacientes nuevos con zonas detectadas,
-      // porque arriba salimos antes con return.
       const inputOptions = Object.fromEntries(
         opcionesContinuidad.map((opcion) => [opcion.value, opcion.label]),
       );
@@ -375,6 +367,18 @@ export function useAnamnesisGlobalContinue({
           "Selección inválida",
           "No se pudo identificar la opción seleccionada.",
         );
+        return;
+      }
+
+      const decisionNavegacion = await validarAntesDeNavegar(
+        opcionElegida.zona,
+      );
+
+      if (!decisionNavegacion.puedeContinuar) {
+        return;
+      }
+
+      if (decisionNavegacion.continuarConExistente) {
         return;
       }
 
