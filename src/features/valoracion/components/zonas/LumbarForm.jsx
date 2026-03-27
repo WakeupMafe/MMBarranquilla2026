@@ -4,7 +4,14 @@ import { lumbarInitialState } from "../../config/zonas/lumbarInitialState";
 import { validarLumbar } from "../../services/zonas/validarLumbar";
 import { evaluarLumbar } from "../../services/zonas/evaluarLumbar";
 import LumbarFields from "./LumbarFields";
+import { guardarAnamnesisLumbar } from "../../config/zonas/guardarlumbar";
 
+// dentro de handleSubmit DESPUÉS de evaluar:
+
+await guardarAnamnesisLumbar({
+  numeroDocumento: "CEDULA_DEL_PACIENTE", // ⚠️ debes traerla del contexto
+  formData,
+});
 export default function LumbarForm({
   onZonaEvaluada,
   resultadoPersistido = null,
