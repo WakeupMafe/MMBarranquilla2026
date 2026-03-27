@@ -15,16 +15,8 @@ import logoWakeup from "../../../../../assets/LogoWakeup.png";
 
 import "./BusquedayEliminacion.css";
 
+const CEDULAS_ADMIN = ["1037670182", "1037649258"];
 const FOTOS_BUCKET = "fotos_pacientes";
-
-function normalizarCedula(valor) {
-  return String(valor ?? "")
-    .replace(/\D/g, "")
-    .trim();
-}
-
-// 🔹 admins permitidos normalizados
-const CEDULAS_ADMIN = ["1037670182", "1037649258"].map(normalizarCedula);
 
 const TABLAS_BUSQUEDA = [
   {
@@ -98,6 +90,12 @@ const ORDEN_ELIMINACION = [
   "obesidad",
   "checkin",
 ];
+
+function normalizarCedula(valor) {
+  return String(valor ?? "")
+    .replace(/\D/g, "")
+    .trim();
+}
 
 function formatearFecha(valor) {
   if (!valor) return "Sin fecha";
@@ -359,26 +357,12 @@ export default function BusquedayEliminacion() {
   const [resultadoBusqueda, setResultadoBusqueda] = useState(null);
 
   const userName = profesional?.nombre || "Profesional";
-
-  // 🔹 toma varios campos posibles y normaliza
-  const cedulaProfesional = useMemo(() => {
-    return normalizarCedula(
-      profesional?.cedula ||
-        profesional?.numero_documento_fisico ||
-        profesional?.numero_documento ||
-        profesional?.documento ||
-        "",
-    );
-  }, [profesional]);
+  const cedulaProfesional = useMemo(
+    () => String(profesional?.cedula || "").trim(),
+    [profesional],
+  );
 
   const autorizado = CEDULAS_ADMIN.includes(cedulaProfesional);
-
-  // 🔹 log corto para depurar acceso
-  console.log("admin acceso:", {
-    profesional,
-    cedulaProfesional,
-    autorizado,
-  });
 
   const totalRegistros = useMemo(() => {
     if (!resultadoBusqueda) return 0;
