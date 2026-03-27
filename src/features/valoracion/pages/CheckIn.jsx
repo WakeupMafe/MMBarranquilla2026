@@ -355,16 +355,18 @@ export default function CheckIn() {
       // 2) Guardado real o simulación
       // -----------------------------------------------------
       if (mode === CHECKIN_UPLOAD_MODES.REAL) {
-        await guardarCheckIn({
-          ...checkInPayload,
-          profesional,
-          paciente,
-        });
+        if (!yaExiste) {
+          await guardarCheckIn({
+            ...checkInPayload,
+            profesional,
+            paciente,
+          });
 
-        await alertOk(
-          "Check-in guardado",
-          "La información del check-in fue guardada correctamente en base de datos.",
-        );
+          await alertOk(
+            "Check-in guardado",
+            "La información del check-in fue guardada correctamente en base de datos.",
+          );
+        }
       } else {
         await alertOk(
           "Modo simulación",
