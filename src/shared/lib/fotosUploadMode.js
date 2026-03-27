@@ -1,38 +1,24 @@
-const STORAGE_KEY = "fotos_upload_mode";
-
 export const FOTO_UPLOAD_MODES = {
   REAL: "real",
   SIMULACION: "simulacion",
 };
 
+// 🔥 SIEMPRE REAL
 export function getFotosUploadMode() {
-  const value = localStorage.getItem(STORAGE_KEY);
-
-  if (
-    value !== FOTO_UPLOAD_MODES.REAL &&
-    value !== FOTO_UPLOAD_MODES.SIMULACION
-  ) {
-    return FOTO_UPLOAD_MODES.SIMULACION;
-  }
-
-  return value;
+  return FOTO_UPLOAD_MODES.REAL;
 }
 
-export function setFotosUploadMode(mode) {
-  if (
-    mode !== FOTO_UPLOAD_MODES.REAL &&
-    mode !== FOTO_UPLOAD_MODES.SIMULACION
-  ) {
-    return;
-  }
-
-  localStorage.setItem(STORAGE_KEY, mode);
+// 🔥 DESACTIVADO
+export function setFotosUploadMode() {
+  return FOTO_UPLOAD_MODES.REAL;
 }
 
+// 🔥 SIEMPRE TRUE
 export function isFotosUploadRealMode() {
-  return getFotosUploadMode() === FOTO_UPLOAD_MODES.REAL;
+  return true;
 }
 
+// 🔥 SIEMPRE FALSE
 export function isFotosUploadSimulacionMode() {
-  return getFotosUploadMode() === FOTO_UPLOAD_MODES.SIMULACION;
+  return false;
 }
