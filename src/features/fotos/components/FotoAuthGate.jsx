@@ -73,6 +73,9 @@ export default function FotoAuthGate({ children }) {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
+
+      // ✅ CAMBIO CLAVE:
+      // Mantiene sincronizado el gate con la sesión real de Supabase.
       setSession(newSession ?? null);
     });
 
@@ -102,29 +105,37 @@ export default function FotoAuthGate({ children }) {
     setSubmitting(false);
   };
 
-  // ✅ CAMBIO EN BOTÓN VOLVER:
-  // Ya NO depende de cédula, cache ni datos viejos.
-  // Si viene desde check-in, vuelve a check-in.
-  // En cualquier otro caso, vuelve a /herramientas.
+  const rutaOrigen = String(
+    location.state?.from || location.state?.origen || "",
+  ).trim();
+
+  const vieneDesdeAnamnesisZona =
+    rutaOrigen === "/herramientas/anamnesis-zona" ||
+    location.state?.vieneDesdeAnamnesisZona === true;
+
+  const vieneDesdeHerramientas =
+    rutaOrigen === "/herramientas" ||
+    location.state?.vieneDesdeHerramientas === true;
+
+  // ✅ CAMBIO CLAVE:
+  // Volver lineal según el paso anterior real del flujo.
   const handleVolver = () => {
-    const rutaOrigen = location.state?.from || location.state?.origen || "";
-
-    const vieneDesdeCheckIn =
-      rutaOrigen === "/herramientas/valoracion/check-in" ||
-      location.state?.vieneDesdeCheckIn === true;
-
-    if (vieneDesdeCheckIn) {
-      navigate("/herramientas/valoracion/check-in", {
+    if (vieneDesdeAnamnesisZona) {
+      navigate("/herramientas/anamnesis-zona", {
         state: {
-          profesional: location.state?.profesional || null,
-          paciente: location.state?.paciente || null,
-          checkIn: location.state?.checkIn || null,
-          clasificacionPaciente: location.state?.clasificacionPaciente || null,
+          ...location.state,
         },
       });
       return;
     }
 
+    if (vieneDesdeHerramientas) {
+      navigate("/herramientas");
+      return;
+    }
+
+    // ✅ CAMBIO CLAVE:
+    // Fallback seguro cuando no llega origen.
     navigate("/herramientas");
   };
 
