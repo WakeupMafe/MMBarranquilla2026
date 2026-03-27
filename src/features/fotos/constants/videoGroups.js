@@ -37,4 +37,14 @@ export const VIDEO_GROUPS = [
       VIDEO_SLOTS.cadera_marcha_espaldas,
     ],
   },
+  {
+    id: "funcional_videos_marcha",
+    title: "Videos funcionales",
+    description: "Captura los videos básicos de marcha.",
+    zonas: ["funcional"],
+    items: [
+      VIDEO_SLOTS.rodilla_marcha_frente,
+      VIDEO_SLOTS.rodilla_marcha_espaldas,
+    ],
+  },
 ];

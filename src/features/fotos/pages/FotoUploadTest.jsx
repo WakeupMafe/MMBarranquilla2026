@@ -46,6 +46,7 @@ function normalizarZonaVideo(zona) {
   if (value.includes("rodilla")) return "rodilla";
   if (value.includes("cadera")) return "cadera";
   if (value.includes("espalda") || value.includes("lumbar")) return "lumbar";
+  if (value.includes("funcional")) return "funcional";
 
   return "";
 }
@@ -395,25 +396,35 @@ export default function FotoUploadTest() {
 
   const groupedFinal = useMemo(() => {
     const zonasConVideosAsignados = new Set();
+    const esFuncional = zonasProtocoloFotos.includes("funcional");
 
-    return gruposActivos.map((group) => {
-      const zonaDelGrupo = group.zonas?.find((zona) =>
-        zonasProtocoloFotos.includes(zona),
-      );
-
+    return gruposActivos.map((group, index) => {
       let videosDelGrupo = [];
 
-      if (zonaDelGrupo && !zonasConVideosAsignados.has(zonaDelGrupo)) {
-        const grupoVideo = gruposVideosActivos.find((g) =>
-          g.zonas?.includes(zonaDelGrupo),
+      // 🔥 CASO FUNCIONAL:
+      // pega todos los videos funcionales al primer grupo visible
+      if (esFuncional && index === 0) {
+        videosDelGrupo = videos;
+      }
+
+      // 🔥 CASO NORMAL POR ZONA:
+      if (!esFuncional) {
+        const zonaDelGrupo = group.zonas?.find((zona) =>
+          zonasProtocoloFotos.includes(zona),
         );
 
-        if (grupoVideo) {
-          videosDelGrupo = videos.filter((video) =>
-            grupoVideo.items.some((item) => item.id === video.id),
+        if (zonaDelGrupo && !zonasConVideosAsignados.has(zonaDelGrupo)) {
+          const grupoVideo = gruposVideosActivos.find((g) =>
+            g.zonas?.includes(zonaDelGrupo),
           );
 
-          zonasConVideosAsignados.add(zonaDelGrupo);
+          if (grupoVideo) {
+            videosDelGrupo = videos.filter((video) =>
+              grupoVideo.items.some((item) => item.id === video.id),
+            );
+
+            zonasConVideosAsignados.add(zonaDelGrupo);
+          }
         }
       }
 
