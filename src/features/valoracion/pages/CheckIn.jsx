@@ -32,9 +32,6 @@ export default function CheckIn() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // =========================================================
-  // ESTADOS PRINCIPALES DEL CHECK-IN
-  // =========================================================
   const [formData, setFormData] = useState(initialForm);
   const [paciente, setPaciente] = useState(null);
   const [loadingBusqueda, setLoadingBusqueda] = useState(false);
@@ -43,9 +40,6 @@ export default function CheckIn() {
     useState(false);
   const [profesionales, setProfesionales] = useState([]);
 
-  // =========================================================
-  // SESIÓN DEL PROFESIONAL
-  // =========================================================
   const profesional = useMemo(() => {
     const fromState = location.state?.profesional;
     if (fromState) return fromState;
@@ -58,7 +52,6 @@ export default function CheckIn() {
     }
   }, [location.state]);
 
-  // Guarda en sessionStorage el profesional cuando llega por navegación
   useEffect(() => {
     if (location.state?.profesional) {
       sessionStorage.setItem(
@@ -68,7 +61,6 @@ export default function CheckIn() {
     }
   }, [location.state]);
 
-  // Si no hay profesional, no puede usar herramientas
   useEffect(() => {
     if (!profesional) {
       alertError(
@@ -79,9 +71,6 @@ export default function CheckIn() {
     }
   }, [profesional, navigate]);
 
-  // =========================================================
-  // CARGA DE PROFESIONALES / INSTRUCTORES
-  // =========================================================
   useEffect(() => {
     async function cargarProfesionales() {
       try {
@@ -96,9 +85,6 @@ export default function CheckIn() {
     cargarProfesionales();
   }, []);
 
-  // =========================================================
-  // LIMPIEZA DEL FLUJO SI NO ACEPTA POLÍTICA DE IMAGEN
-  // =========================================================
   function limpiarProcesoPorNoAutorizacion() {
     setFormData(initialForm);
     setPaciente(null);
@@ -106,9 +92,6 @@ export default function CheckIn() {
     setAdvertenciaImagenMostrada(false);
   }
 
-  // =========================================================
-  // MANEJO DE CAMBIOS DEL FORMULARIO
-  // =========================================================
   function handleChange(e) {
     const { name, value } = e.target;
 
@@ -122,7 +105,6 @@ export default function CheckIn() {
       [name]: "",
     }));
 
-    // Si cambia la cédula, se invalida el paciente cargado
     if (name === "cedula") {
       setPaciente(null);
       setErrores((prev) => ({
@@ -131,15 +113,11 @@ export default function CheckIn() {
       }));
     }
 
-    // Si ahora sí acepta imagen, quitamos la advertencia previa
     if (name === "autorizacionImagen" && value === "si") {
       setAdvertenciaImagenMostrada(false);
     }
   }
 
-  // =========================================================
-  // VALIDACIÓN BASE ANTES DE CONTINUAR
-  // =========================================================
   function validarFormularioBase() {
     const nuevosErrores = {};
     const documentoNormalizado = normalizarDocumentoCkin(formData.cedula);
@@ -184,9 +162,6 @@ export default function CheckIn() {
     return Object.keys(nuevosErrores).length === 0;
   }
 
-  // =========================================================
-  // BÚSQUEDA Y VALIDACIÓN DEL PACIENTE EN PARTICIPANTES
-  // =========================================================
   async function handleBuscarPaciente() {
     const documentoIngresado = normalizarDocumentoCkin(formData.cedula);
 
@@ -202,9 +177,6 @@ export default function CheckIn() {
       setLoadingBusqueda(true);
       setPaciente(null);
 
-      // La búsqueda real ahora se hace desde la utilidad centralizada.
-      // Allí mismo se normaliza la cédula, se consulta Supabase
-      // y se dejan logs claros en consola cuando no encuentre coincidencia.
       const { pacienteEncontrado, documentoNormalizado, error } =
         await buscarPacienteCheckin(formData.cedula);
 
@@ -258,9 +230,6 @@ export default function CheckIn() {
     }
   }
 
-  // =========================================================
-  // CONTINUAR EL FLUJO DE CHECK-IN
-  // =========================================================
   async function handleContinuar(e) {
     e.preventDefault();
 
@@ -273,7 +242,6 @@ export default function CheckIn() {
       return;
     }
 
-    // Primera advertencia si no acepta política de imagen
     if (formData.autorizacionImagen === "no" && !advertenciaImagenMostrada) {
       setAdvertenciaImagenMostrada(true);
       setErrores((prev) => ({
@@ -289,7 +257,6 @@ export default function CheckIn() {
       return;
     }
 
-    // Segunda confirmación si insiste en no aceptar imagen
     if (formData.autorizacionImagen === "no" && advertenciaImagenMostrada) {
       const confirmarNoAceptacion = await alertConfirm({
         title: "Confirmación de no aceptación",
@@ -321,8 +288,6 @@ export default function CheckIn() {
     if (!confirmar) return;
 
     try {
-      // 🔴 Verifica si el paciente ya tiene un check-in registrado.
-      // Si ya existe, se bloquea el proceso y se muestra la alerta.
       const { yaExiste, error: errorCheckinExistente } =
         await validarCheckInExistente(formData.cedula);
 
@@ -339,9 +304,6 @@ export default function CheckIn() {
 
       const mode = getCheckinUploadMode();
 
-      // -----------------------------------------------------
-      // 1) Armado del payload base de check-in
-      // -----------------------------------------------------
       const checkInPayload = {
         cedula: normalizarDocumentoCkin(formData.cedula),
         instructor: formData.instructor.trim(),
@@ -351,50 +313,63 @@ export default function CheckIn() {
         seguridadSocial: formData.seguridadSocial,
       };
 
-      // -----------------------------------------------------
-      // 2) Guardado real o simulación
-      // -----------------------------------------------------
-      if (mode === CHECKIN_UPLOAD_MODES.REAL) {
-        if (!yaExiste) {
-          await guardarCheckIn({
-            ...checkInPayload,
-            profesional,
-            paciente,
-          });
+      if (mode === CHECKIN_UPLOAD_MODES.REAL && !yaExiste) {
+        const resultadoGuardado = await guardarCheckIn({
+          ...checkInPayload,
+          profesional,
+          paciente,
+        });
 
+        if (resultadoGuardado?.yaExiste) {
+          await alertOk(
+            "Check-in ya registrado",
+            resultadoGuardado.mensaje ||
+              "El paciente ya tenía check-in. El flujo continuará sin guardar nuevamente.",
+          );
+        } else {
           await alertOk(
             "Check-in guardado",
             "La información del check-in fue guardada correctamente en base de datos.",
           );
         }
-      } else {
+      } else if (mode !== CHECKIN_UPLOAD_MODES.REAL) {
         await alertOk(
           "Modo simulación",
           "El check-in no se guardó en base de datos porque el módulo está en simulación.",
         );
       }
 
-      // -----------------------------------------------------
-      // 3) Preparar navegación enriquecida
-      // -----------------------------------------------------
-      const navigationState = await prepararNavegacionCheckIn({
-        paciente,
-        profesional,
-        checkInPayload,
-      });
+      let navigationState = null;
 
-      console.log("Clasificación preparada desde check-in:", {
-        esPacienteNuevo:
-          navigationState?.clasificacionPaciente?.esPacienteNuevo,
-        esPacienteAntiguo:
-          navigationState?.clasificacionPaciente?.esPacienteAntiguo,
-        flujo: navigationState?.clasificacionPaciente?.flujo,
-        clasificacionPaciente: navigationState?.clasificacionPaciente,
-      });
+      try {
+        navigationState = await prepararNavegacionCheckIn({
+          paciente,
+          profesional,
+          checkInPayload,
+        });
 
-      // -----------------------------------------------------
-      // 4) Navegar a valoración con etiqueta de nuevo/antiguo
-      // -----------------------------------------------------
+        console.log("Clasificación preparada desde check-in:", {
+          esPacienteNuevo:
+            navigationState?.clasificacionPaciente?.esPacienteNuevo,
+          esPacienteAntiguo:
+            navigationState?.clasificacionPaciente?.esPacienteAntiguo,
+          flujo: navigationState?.clasificacionPaciente?.flujo,
+          clasificacionPaciente: navigationState?.clasificacionPaciente,
+        });
+      } catch (errorPreparandoNavegacion) {
+        console.error(
+          "Error preparando navegación del check-in:",
+          errorPreparandoNavegacion,
+        );
+
+        navigationState = {
+          profesional,
+          paciente,
+          checkIn: checkInPayload,
+          clasificacionPaciente: null,
+        };
+      }
+
       navigate("/herramientas/valoracion", {
         state: navigationState,
       });
@@ -408,9 +383,6 @@ export default function CheckIn() {
     }
   }
 
-  // =========================================================
-  // CIERRE DE SESIÓN
-  // =========================================================
   async function handleLogout() {
     const ok = await alertConfirm({
       title: "Cerrar sesión",
@@ -426,9 +398,6 @@ export default function CheckIn() {
     navigate("/", { replace: true });
   }
 
-  // =========================================================
-  // VOLVER
-  // =========================================================
   function handleVolver() {
     navigate("/herramientas");
   }

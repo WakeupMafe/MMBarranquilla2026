@@ -124,7 +124,6 @@ export default function FotoAuthGate({ children }) {
       if (remaining <= 0) {
         setTimeLeft(0);
         sessionStorage.removeItem(SESSION_TIMER_KEY);
-        await supabase.auth.signOut();
         return;
       }
 
