@@ -19,6 +19,7 @@ import {
   construirOpcionesContinuidad,
   obtenerZonasCambioDisponibles,
 } from "../utils/construirOpcionesContinuidad";
+import { editarGlobalPorErrores } from "./editarGlobalporErrores";
 
 export function useAnamnesisGlobalContinue({
   resultado,
@@ -245,11 +246,22 @@ export function useAnamnesisGlobalContinue({
       // 4.4) Guardado real o simulación
       // -------------------------------------------------------
       if (mode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
+        const decisionEdicion =
+          await editarGlobalPorErrores(cedulaPacienteActual);
+
+        if (!decisionEdicion.puedeContinuar) {
+          return;
+        }
+
         await guardarAnamnesisGlobal(payload);
 
         await alertOk(
-          "Anamnesis global guardada",
-          "La anamnesis global fue guardada correctamente en base de datos.",
+          decisionEdicion.debeSobrescribir
+            ? "Anamnesis global reemplazada"
+            : "Anamnesis global guardada",
+          decisionEdicion.debeSobrescribir
+            ? "La ruta previa del paciente fue reemplazada correctamente."
+            : "La anamnesis global fue guardada correctamente en base de datos.",
         );
       } else {
         await alertOk(
