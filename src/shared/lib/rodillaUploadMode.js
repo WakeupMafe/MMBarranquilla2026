@@ -3,16 +3,12 @@ export const RODILLA_UPLOAD_MODES = {
   REAL: "REAL",
 };
 
-const STORAGE_KEY = "rodilla_upload_mode";
-
+// 🔥 SIEMPRE REAL
 export function getRodillaUploadMode() {
-  const saved = localStorage.getItem(STORAGE_KEY);
-  return saved === RODILLA_UPLOAD_MODES.REAL
-    ? RODILLA_UPLOAD_MODES.REAL
-    : RODILLA_UPLOAD_MODES.SIMULACION;
+  return RODILLA_UPLOAD_MODES.REAL;
 }
 
-export function setRodillaUploadMode(mode) {
-  if (!Object.values(RODILLA_UPLOAD_MODES).includes(mode)) return;
-  localStorage.setItem(STORAGE_KEY, mode);
+// 🔥 DESACTIVADO
+export function setRodillaUploadMode() {
+  return RODILLA_UPLOAD_MODES.REAL;
 }
