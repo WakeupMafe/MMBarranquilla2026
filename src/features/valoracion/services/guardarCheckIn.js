@@ -31,6 +31,7 @@ export async function guardarCheckIn({
     throw new Error("La seguridad social es obligatoria.");
   }
 
+  // 🔍 1. VALIDAR SI YA EXISTE
   const { data: existente, error: errorBusqueda } = await supabase
     .from("checkin_anamnesis")
     .select("numero_documento_fisico")
@@ -41,12 +42,16 @@ export async function guardarCheckIn({
     throw errorBusqueda;
   }
 
+  // ⚠️ 2. SI YA EXISTE → NO GUARDAR PERO PERMITIR CONTINUAR
   if (existente) {
-    throw new Error(
-      "Este paciente ya tiene un check-in registrado y no se puede volver a guardar.",
-    );
+    return {
+      yaExiste: true,
+      mensaje:
+        "El usuario ya tiene check-in registrado. No se enviará a base de datos, pero puedes continuar.",
+    };
   }
 
+  // 🧠 3. SI NO EXISTE → GUARDAR NORMAL
   const payload = {
     numero_documento_fisico: numeroDocumento,
     instructor_nombre: instructorNombre,
@@ -72,5 +77,8 @@ export async function guardarCheckIn({
     throw error;
   }
 
-  return data;
+  return {
+    yaExiste: false,
+    data,
+  };
 }
