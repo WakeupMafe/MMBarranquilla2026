@@ -14,6 +14,7 @@ import {
   FOTO_UPLOAD_MODES,
   getFotosUploadMode,
 } from "../../../shared/lib/fotosUploadMode";
+import { usePhotoUpload } from "../hooks/usePhotoUpload";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -191,8 +192,14 @@ export default function FotoUploadTest() {
 
   const [photos, setPhotos] = useState([]);
   const [videos, setVideos] = useState([]);
-  const [processingId, setProcessingId] = useState("");
   const [uploading, setUploading] = useState(false);
+
+  const {
+    processingId,
+    setProcessingId,
+    handleVideoChange,
+    handleRemoveVideo,
+  } = usePhotoUpload();
 
   /* =========================
      REINICIAR CUANDO CAMBIAN LOS GRUPOS
@@ -202,7 +209,7 @@ export default function FotoUploadTest() {
     setPhotos(createEmptyPhotos());
     setVideos(createEmptyVideos());
     setProcessingId("");
-  }, [gruposActivos, gruposVideosActivos]);
+  }, [gruposActivos, gruposVideosActivos, setProcessingId]);
 
   /* =========================
      LIMPIAR URLS DE PREVIEW AL DESMONTAR
@@ -310,119 +317,6 @@ export default function FotoUploadTest() {
           fileSize: 0,
           width: 0,
           height: 0,
-          status: "empty",
-        };
-      }),
-    );
-  };
-
-  /* =========================
-     VIDEO
-  ========================= */
-
-  const getVideoDuration = (file) =>
-    new Promise((resolve, reject) => {
-      const tempUrl = URL.createObjectURL(file);
-      const tempVideo = document.createElement("video");
-
-      tempVideo.preload = "metadata";
-      tempVideo.src = tempUrl;
-
-      tempVideo.onloadedmetadata = () => {
-        const duration = tempVideo.duration || 0;
-        URL.revokeObjectURL(tempUrl);
-        resolve(duration);
-      };
-
-      tempVideo.onerror = () => {
-        URL.revokeObjectURL(tempUrl);
-        reject(new Error("No se pudo leer la duración del video."));
-      };
-    });
-
-  const handleVideoChange = async (slotId, fileList) => {
-    const file = fileList?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith("video/")) {
-      await alertError(
-        "Archivo no válido",
-        "El archivo seleccionado no es un video válido.",
-      );
-      return;
-    }
-
-    try {
-      setProcessingId(slotId);
-
-      const duration = await getVideoDuration(file);
-
-      if (duration > 15) {
-        await alertError(
-          "Video demasiado largo",
-          "El video debe durar máximo 15 segundos.",
-        );
-        return;
-      }
-
-      setVideos((prev) =>
-        prev.map((item) => {
-          if (item.id !== slotId) return item;
-
-          if (item.preview) {
-            URL.revokeObjectURL(item.preview);
-          }
-
-          return {
-            ...item,
-            file,
-            preview: URL.createObjectURL(file),
-            fileName: file.name || "",
-            fileSize: file.size || 0,
-            duration,
-            status: "ready",
-          };
-        }),
-      );
-    } catch (error) {
-      await alertError(
-        "Error al procesar",
-        error.message || "No se pudo procesar el video.",
-      );
-    } finally {
-      setProcessingId("");
-    }
-  };
-
-  const handleRemoveVideo = async (slotId) => {
-    const video = videos.find((item) => item.id === slotId);
-
-    if (!video?.preview) return;
-
-    const ok = await alertConfirm({
-      title: "Quitar video",
-      text: `¿Deseas quitar el video "${video.title}"?`,
-      confirmText: "Sí, quitar",
-      cancelText: "Cancelar",
-    });
-
-    if (!ok) return;
-
-    setVideos((prev) =>
-      prev.map((item) => {
-        if (item.id !== slotId) return item;
-
-        if (item.preview) {
-          URL.revokeObjectURL(item.preview);
-        }
-
-        return {
-          ...item,
-          file: null,
-          preview: "",
-          fileName: "",
-          fileSize: 0,
-          duration: 0,
           status: "empty",
         };
       }),
@@ -743,8 +637,12 @@ export default function FotoUploadTest() {
               processingId={processingId}
               onPhotoChange={handlePhotoChange}
               onRemovePhoto={handleRemovePhoto}
-              onVideoChange={handleVideoChange}
-              onRemoveVideo={handleRemoveVideo}
+              onVideoChange={(slotId, fileList) =>
+                handleVideoChange(slotId, fileList, setVideos)
+              }
+              onRemoveVideo={(slotId) =>
+                handleRemoveVideo(slotId, videos, setVideos)
+              }
             />
           ))}
         </div>

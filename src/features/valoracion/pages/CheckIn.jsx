@@ -14,6 +14,7 @@ import { prepararNavegacionCheckIn } from "../services/prepararNavegacionCheckIn
 import {
   normalizarDocumentoCkin,
   buscarPacienteCheckin,
+  validarCheckInExistente,
 } from "../config/validarCedulaCkin";
 
 const SESSION_KEY = "wk_profesional";
@@ -320,6 +321,23 @@ export default function CheckIn() {
     if (!confirmar) return;
 
     try {
+      // 🔴 Verifica si el paciente ya tiene un check-in registrado.
+      // Si ya existe, se bloquea el proceso y se muestra la alerta.
+      const { yaExiste, error: errorCheckinExistente } =
+        await validarCheckInExistente(formData.cedula);
+
+      if (errorCheckinExistente) {
+        throw errorCheckinExistente;
+      }
+
+      if (yaExiste) {
+        await alertError(
+          "Check-in ya registrado",
+          "El paciente ya realizó el proceso de check-in.",
+        );
+        return;
+      }
+
       const mode = getCheckinUploadMode();
 
       // -----------------------------------------------------

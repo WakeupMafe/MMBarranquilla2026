@@ -1,7 +1,7 @@
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { isFotosUploadSimulacionMode } from "../../../shared/lib/fotosUploadMode";
 
-const BUCKET_NAME = "videos_pacientes";
+const BUCKET_NAME = "fotos_pacientes";
 
 function sanitizeSegment(value) {
   return String(value || "")
@@ -17,7 +17,9 @@ function getExtensionFromFile(file) {
     ? originalName.split(".").pop()?.toLowerCase()
     : "";
 
-  if (byName) return byName;
+  if (byName && ["mp4", "webm", "ogv", "mov"].includes(byName)) {
+    return byName;
+  }
 
   const mime = String(file?.type || "").toLowerCase();
 
@@ -37,6 +39,12 @@ function getSafeContentType(file) {
   }
 
   return "video/mp4";
+}
+
+function mergeUniqueStrings(current = [], incoming = []) {
+  return [
+    ...new Set([...(current || []), ...(incoming || [])].filter(Boolean)),
+  ];
 }
 
 export async function uploadVideoPaciente({
@@ -73,35 +81,47 @@ export async function uploadVideoPaciente({
     ? zonasEvaluadas.filter(Boolean).map((z) => String(z).trim())
     : [];
 
+  const pacienteDocumentoFinal = String(pacienteDocumento);
+  const tipoVideoFinal = String(tipoVideo);
+  const sesionTipoFinal = sesionTipo ? String(sesionTipo) : "general";
+  const profesionalCedulaFinal = String(profesionalCedula);
+
   const extension = getExtensionFromFile(file);
   const contentType = getSafeContentType(file);
   const fileName = `${crypto.randomUUID()}.${extension}`;
 
-  // simulación
+  // 🔹 SIMULACIÓN
   if (isFotosUploadSimulacionMode()) {
     const payloadSimulado = {
-      paciente_documento: String(pacienteDocumento),
-      tipo_video: String(tipoVideo),
+      numero_documento_fisico: pacienteDocumentoFinal,
+      sesion_tipo: sesionTipoFinal,
+      profesional_cedula: profesionalCedulaFinal,
       zonas_evaluadas: zonasNormalizadas,
-      nombre_archivo: fileName,
-      storage_path: `simulacion/${String(pacienteDocumento)}/${String(tipoVideo)}/${fileName}`,
-      profesional_cedula: String(profesionalCedula),
-      sesion_tipo: sesionTipo ? String(sesionTipo) : null,
-      observacion: observacion ? String(observacion) : null,
-      duracion_segundos:
-        duracionSegundos !== null && duracionSegundos !== undefined
-          ? Number(duracionSegundos)
-          : null,
-      content_type: contentType,
-      tamano_bytes: Number(file.size || 0),
+      fotos: {},
+      videos: {
+        [tipoVideoFinal]: {
+          nombre_archivo: fileName,
+          storage_path: `simulacion/${pacienteDocumentoFinal}/${sesionTipoFinal}/${tipoVideoFinal}/${fileName}`,
+          public_url: null,
+          mime_type: contentType,
+          tamano_bytes: Number(file.size || 0),
+          duracion_segundos:
+            duracionSegundos !== null && duracionSegundos !== undefined
+              ? Number(duracionSegundos)
+              : null,
+          observacion: observacion ? String(observacion) : null,
+          fecha_subida: new Date().toISOString(),
+          tipo_archivo: "video",
+        },
+      },
     };
 
     console.log("SIMULACIÓN VIDEO", payloadSimulado);
 
     return {
-      ...payloadSimulado,
-      id: crypto.randomUUID(),
-      public_url: null,
+      success: true,
+      simulacion: true,
+      data: payloadSimulado,
     };
   }
 
@@ -114,9 +134,9 @@ export async function uploadVideoPaciente({
     throw new Error("No hay sesión activa para subir videos.");
   }
 
-  const pacienteSafe = sanitizeSegment(pacienteDocumento);
-  const tipoSafe = sanitizeSegment(tipoVideo);
-  const sesionSafe = sanitizeSegment(sesionTipo || "general");
+  const pacienteSafe = sanitizeSegment(pacienteDocumentoFinal);
+  const tipoSafe = sanitizeSegment(tipoVideoFinal);
+  const sesionSafe = sanitizeSegment(sesionTipoFinal);
   const zonasSafe = sanitizeSegment(
     zonasNormalizadas.length ? zonasNormalizadas.join("_") : "general",
   );
@@ -135,33 +155,80 @@ export async function uploadVideoPaciente({
     throw new Error(`Error subiendo el video: ${uploadError.message}`);
   }
 
-  const payload = {
-    paciente_documento: String(pacienteDocumento),
-    tipo_video: String(tipoVideo),
-    zonas_evaluadas: zonasNormalizadas,
+  const nuevoVideo = {
     nombre_archivo: fileName,
     storage_path: storagePath,
-    profesional_cedula: String(profesionalCedula),
-    sesion_tipo: sesionTipo ? String(sesionTipo) : null,
-    observacion: observacion ? String(observacion) : null,
+    public_url: null,
+    mime_type: contentType,
+    tamano_bytes: Number(file.size || 0),
     duracion_segundos:
       duracionSegundos !== null && duracionSegundos !== undefined
         ? Number(duracionSegundos)
         : null,
-    content_type: contentType,
-    tamano_bytes: Number(file.size || 0),
+    observacion: observacion ? String(observacion) : null,
+    fecha_subida: new Date().toISOString(),
+    tipo_archivo: "video",
   };
 
-  const { data, error: insertError } = await supabase
-    .from("videos_pacientes")
-    .insert(payload)
+  const { data: existente, error: selectError } = await supabase
+    .from("fotos_pacientes")
+    .select(
+      "numero_documento_fisico, sesion_tipo, zonas_evaluadas, fotos, videos",
+    )
+    .eq("numero_documento_fisico", pacienteDocumentoFinal)
+    .eq("sesion_tipo", sesionTipoFinal)
+    .maybeSingle();
+
+  if (selectError) {
+    await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
+    throw new Error(
+      `Error consultando la sesión actual: ${selectError.message}`,
+    );
+  }
+
+  const fotosActuales =
+    existente?.fotos && typeof existente.fotos === "object"
+      ? existente.fotos
+      : {};
+
+  const videosActuales =
+    existente?.videos && typeof existente.videos === "object"
+      ? existente.videos
+      : {};
+
+  const zonasFinales = mergeUniqueStrings(
+    existente?.zonas_evaluadas || [],
+    zonasNormalizadas,
+  );
+
+  const videosFinales = {
+    ...videosActuales,
+    [tipoVideoFinal]: nuevoVideo,
+  };
+
+  const payload = {
+    numero_documento_fisico: pacienteDocumentoFinal,
+    sesion_tipo: sesionTipoFinal,
+    profesional_cedula: profesionalCedulaFinal,
+    zonas_evaluadas: zonasFinales,
+    observacion: observacion ? String(observacion) : null,
+    fotos: fotosActuales,
+    videos: videosFinales,
+    updated_at: new Date().toISOString(),
+  };
+
+  const { data, error: upsertError } = await supabase
+    .from("fotos_pacientes")
+    .upsert(payload, {
+      onConflict: "numero_documento_fisico,sesion_tipo",
+    })
     .select()
     .single();
 
-  if (insertError) {
+  if (upsertError) {
     await supabase.storage.from(BUCKET_NAME).remove([storagePath]);
     throw new Error(
-      `Error guardando el registro del video: ${insertError.message}`,
+      `Error guardando la sesión de evidencia: ${upsertError.message}`,
     );
   }
 
