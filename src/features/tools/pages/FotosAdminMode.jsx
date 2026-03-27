@@ -5,38 +5,31 @@ import TopHeader from "../../../shared/components/TopHeader/TopHeader";
 import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 import logoWakeup from "../../../assets/LogoWakeup.png";
 import useProfesionalSession from "../../../shared/hooks/useProfesionalSession";
-import { alertError, alertOk } from "../../../shared/lib/alerts";
+import { alertError } from "../../../shared/lib/alerts";
 import UploadModeControl from "./UploadModeControl";
 
 import {
   FOTO_UPLOAD_MODES,
-  getFotosUploadMode,
   setFotosUploadMode,
 } from "../../../shared/lib/fotosUploadMode";
 import {
   CHECKIN_UPLOAD_MODES,
-  getCheckinUploadMode,
   setCheckinUploadMode,
 } from "../../../shared/lib/checkinUploadMode";
 import {
   ANAMNESIS_GLOBAL_UPLOAD_MODES,
-  getAnamnesisGlobalUploadMode,
   setAnamnesisGlobalUploadMode,
 } from "../../../shared/lib/anamnesisGlobalUploadMode";
 import {
   MODULO_OBESIDAD_UPLOAD_MODES,
-  getModuloObesidadUploadMode,
   setModuloObesidadUploadMode,
 } from "../../../shared/lib/moduloObesidadUploadMode";
 import {
   CADERA_UPLOAD_MODES,
-  getCaderaUploadMode,
   setCaderaUploadMode,
 } from "../../../shared/lib/caderaUploadMode";
-
 import {
   HOMBRO_UPLOAD_MODES,
-  getHombroUploadMode,
   setHombroUploadMode,
 } from "../../../shared/lib/hombroUploadMode";
 
@@ -46,18 +39,12 @@ export default function FotosAdminMode() {
   const navigate = useNavigate();
   const { profesional } = useProfesionalSession();
 
-  const [fotoMode, setFotoMode] = useState(FOTO_UPLOAD_MODES.SIMULACION);
-  const [checkinMode, setCheckinMode] = useState(
-    CHECKIN_UPLOAD_MODES.SIMULACION,
-  );
-  const [anamnesisGlobalMode, setAnamnesisGlobalMode] = useState(
-    ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION,
-  );
-  const [moduloObesidadMode, setModuloObesidadMode] = useState(
-    MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION,
-  );
-  const [caderaMode, setCaderaMode] = useState(CADERA_UPLOAD_MODES.SIMULACION);
-  const [hombroMode, setHombroMode] = useState(HOMBRO_UPLOAD_MODES.SIMULACION);
+  const [fotoMode] = useState(FOTO_UPLOAD_MODES.REAL);
+  const [checkinMode] = useState(CHECKIN_UPLOAD_MODES.REAL);
+  const [anamnesisGlobalMode] = useState(ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL);
+  const [moduloObesidadMode] = useState(MODULO_OBESIDAD_UPLOAD_MODES.REAL);
+  const [caderaMode] = useState(CADERA_UPLOAD_MODES.REAL);
+  const [hombroMode] = useState(HOMBRO_UPLOAD_MODES.REAL);
 
   const cedulaProfesional = useMemo(() => {
     return String(profesional?.cedula || "").trim();
@@ -66,12 +53,14 @@ export default function FotosAdminMode() {
   const isAuthorized = cedulaProfesional === CEDULA_ADMIN_FOTOS;
 
   useEffect(() => {
-    setFotoMode(getFotosUploadMode());
-    setCheckinMode(getCheckinUploadMode());
-    setAnamnesisGlobalMode(getAnamnesisGlobalUploadMode());
-    setModuloObesidadMode(getModuloObesidadUploadMode());
-    setCaderaMode(getCaderaUploadMode());
-    setHombroMode(getHombroUploadMode());
+    setFotosUploadMode(FOTO_UPLOAD_MODES.REAL);
+    setCheckinUploadMode(CHECKIN_UPLOAD_MODES.REAL);
+    setAnamnesisGlobalUploadMode(ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL);
+    setModuloObesidadUploadMode(MODULO_OBESIDAD_UPLOAD_MODES.REAL);
+    setCaderaUploadMode(CADERA_UPLOAD_MODES.REAL);
+    setHombroUploadMode(HOMBRO_UPLOAD_MODES.REAL);
+
+    console.log("✅ Modos forzados a REAL desde código");
   }, []);
 
   useEffect(() => {
@@ -86,77 +75,6 @@ export default function FotosAdminMode() {
       });
     }
   }, [profesional, isAuthorized, navigate]);
-
-  async function handleSetFotoMode(newMode) {
-    setFotosUploadMode(newMode);
-    setFotoMode(newMode);
-
-    await alertOk(
-      "Modo de fotos actualizado",
-      newMode === FOTO_UPLOAD_MODES.REAL
-        ? "El envío real de fotos a base de datos quedó ACTIVADO."
-        : "La simulación de fotos quedó ACTIVADA. No se enviarán fotos a base de datos.",
-    );
-  }
-
-  async function handleSetCheckinMode(newMode) {
-    setCheckinUploadMode(newMode);
-    setCheckinMode(newMode);
-
-    await alertOk(
-      "Modo de check-in actualizado",
-      newMode === CHECKIN_UPLOAD_MODES.REAL
-        ? "El envío real de check-in a base de datos quedó ACTIVADO."
-        : "La simulación de check-in quedó ACTIVADA. No se enviará información a base de datos.",
-    );
-  }
-
-  async function handleSetAnamnesisGlobalMode(newMode) {
-    setAnamnesisGlobalUploadMode(newMode);
-    setAnamnesisGlobalMode(newMode);
-
-    await alertOk(
-      "Modo de anamnesis global actualizado",
-      newMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
-        ? "El envío real de anamnesis global a base de datos quedó ACTIVADO."
-        : "La simulación de anamnesis global quedó ACTIVADA. No se enviará información a base de datos.",
-    );
-  }
-
-  async function handleSetModuloObesidadMode(newMode) {
-    setModuloObesidadUploadMode(newMode);
-    setModuloObesidadMode(newMode);
-
-    await alertOk(
-      "Modo de módulo obesidad actualizado",
-      newMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
-        ? "El envío real del módulo obesidad a base de datos quedó ACTIVADO."
-        : "La simulación del módulo obesidad quedó ACTIVADA. No se enviará información a base de datos.",
-    );
-  }
-
-  async function handleSetCaderaMode(newMode) {
-    setCaderaUploadMode(newMode);
-    setCaderaMode(newMode);
-
-    await alertOk(
-      "Modo de cadera actualizado",
-      newMode === CADERA_UPLOAD_MODES.REAL
-        ? "El envío real de cadera a base de datos quedó ACTIVADO."
-        : "La simulación de cadera quedó ACTIVADA. No se enviará información a base de datos.",
-    );
-  }
-  async function handleSetHombroMode(newMode) {
-    setHombroUploadMode(newMode);
-    setHombroMode(newMode);
-
-    await alertOk(
-      "Modo de hombro actualizado",
-      newMode === HOMBRO_UPLOAD_MODES.REAL
-        ? "El envío real de hombro a base de datos quedó ACTIVADO."
-        : "La simulación de hombro quedó ACTIVADA. No se enviará información a base de datos.",
-    );
-  }
 
   if (!profesional || !isAuthorized) {
     return null;
@@ -196,42 +114,26 @@ export default function FotosAdminMode() {
                 <strong>Cédula:</strong> {cedulaProfesional}
               </li>
               <li>
-                <strong>Modo fotos:</strong>{" "}
-                {fotoMode === FOTO_UPLOAD_MODES.REAL
-                  ? "ENVÍO REAL A BASE DE DATOS"
-                  : "SIMULACIÓN"}
+                <strong>Modo fotos:</strong> ENVÍO REAL A BASE DE DATOS
               </li>
               <li>
-                <strong>Modo check-in:</strong>{" "}
-                {checkinMode === CHECKIN_UPLOAD_MODES.REAL
-                  ? "ENVÍO REAL A BASE DE DATOS"
-                  : "SIMULACIÓN"}
+                <strong>Modo check-in:</strong> ENVÍO REAL A BASE DE DATOS
               </li>
               <li>
-                <strong>Modo anamnesis global:</strong>{" "}
-                {anamnesisGlobalMode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL
-                  ? "ENVÍO REAL A BASE DE DATOS"
-                  : "SIMULACIÓN"}
+                <strong>Modo anamnesis global:</strong> ENVÍO REAL A BASE DE
+                DATOS
               </li>
               <li>
-                <strong>Modo cadera:</strong>{" "}
-                {caderaMode === CADERA_UPLOAD_MODES.REAL
-                  ? "ENVÍO REAL A BASE DE DATOS"
-                  : "SIMULACIÓN"}
+                <strong>Modo cadera:</strong> ENVÍO REAL A BASE DE DATOS
               </li>
               <li>
-                <strong>Modo módulo obesidad:</strong>{" "}
-                {moduloObesidadMode === MODULO_OBESIDAD_UPLOAD_MODES.REAL
-                  ? "ENVÍO REAL A BASE DE DATOS"
-                  : "SIMULACIÓN"}
+                <strong>Modo módulo obesidad:</strong> ENVÍO REAL A BASE DE
+                DATOS
+              </li>
+              <li>
+                <strong>Modo hombro:</strong> ENVÍO REAL A BASE DE DATOS
               </li>
             </ul>
-            <li>
-              <strong>Modo hombro:</strong>{" "}
-              {hombroMode === HOMBRO_UPLOAD_MODES.REAL
-                ? "ENVÍO REAL A BASE DE DATOS"
-                : "SIMULACIÓN"}
-            </li>
           </div>
 
           <UploadModeControl
@@ -239,7 +141,7 @@ export default function FotosAdminMode() {
             mode={fotoMode}
             realValue={FOTO_UPLOAD_MODES.REAL}
             simulationValue={FOTO_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetFotoMode}
+            onChange={() => {}}
             realLabel="Activar envío real fotos"
             simulationLabel="Activar simulación fotos"
           />
@@ -249,7 +151,7 @@ export default function FotosAdminMode() {
             mode={checkinMode}
             realValue={CHECKIN_UPLOAD_MODES.REAL}
             simulationValue={CHECKIN_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetCheckinMode}
+            onChange={() => {}}
             realLabel="Activar envío real check-in"
             simulationLabel="Activar simulación check-in"
           />
@@ -259,7 +161,7 @@ export default function FotosAdminMode() {
             mode={anamnesisGlobalMode}
             realValue={ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL}
             simulationValue={ANAMNESIS_GLOBAL_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetAnamnesisGlobalMode}
+            onChange={() => {}}
             realLabel="Activar envío real anamnesis global"
             simulationLabel="Activar simulación anamnesis global"
           />
@@ -269,7 +171,7 @@ export default function FotosAdminMode() {
             mode={moduloObesidadMode}
             realValue={MODULO_OBESIDAD_UPLOAD_MODES.REAL}
             simulationValue={MODULO_OBESIDAD_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetModuloObesidadMode}
+            onChange={() => {}}
             realLabel="Activar envío real módulo obesidad"
             simulationLabel="Activar simulación módulo obesidad"
           />
@@ -279,16 +181,17 @@ export default function FotosAdminMode() {
             mode={caderaMode}
             realValue={CADERA_UPLOAD_MODES.REAL}
             simulationValue={CADERA_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetCaderaMode}
+            onChange={() => {}}
             realLabel="Activar envío real cadera"
             simulationLabel="Activar simulación cadera"
           />
+
           <UploadModeControl
             title="Control de hombro"
             mode={hombroMode}
             realValue={HOMBRO_UPLOAD_MODES.REAL}
             simulationValue={HOMBRO_UPLOAD_MODES.SIMULACION}
-            onChange={handleSetHombroMode}
+            onChange={() => {}}
             realLabel="Activar envío real hombro"
             simulationLabel="Activar simulación hombro"
           />
