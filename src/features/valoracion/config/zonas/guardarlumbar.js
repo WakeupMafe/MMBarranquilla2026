@@ -12,9 +12,7 @@ function limpiarTexto(valor) {
 }
 
 function limpiarNumeroEntero(valor) {
-  if (valor === null || valor === undefined || valor === "") {
-    return null;
-  }
+  if (valor === "" || valor === null || valor === undefined) return null;
 
   const numero = Number(valor);
   return Number.isFinite(numero) ? numero : null;
@@ -22,20 +20,18 @@ function limpiarNumeroEntero(valor) {
 
 export async function guardarAnamnesisLumbar({ numeroDocumento, formData }) {
   try {
+    // 🔹 validar documento
     const documentoNormalizado = limpiarNumero(numeroDocumento);
 
     if (!documentoNormalizado) {
-      throw new Error(
-        "No se pudo guardar la anamnesis lumbar: documento inválido.",
-      );
+      throw new Error("Documento inválido");
     }
 
-    if (!formData || typeof formData !== "object") {
-      throw new Error(
-        "No se pudo guardar la anamnesis lumbar: formulario inválido.",
-      );
+    if (!formData) {
+      throw new Error("Formulario vacío");
     }
 
+    // 🔹 payload limpio EXACTO a la tabla
     const payload = {
       numero_documento_fisico: documentoNormalizado,
 
@@ -61,6 +57,7 @@ export async function guardarAnamnesisLumbar({ numeroDocumento, formData }) {
       razon_no_hace_ejercicio: limpiarTexto(formData.razon_no_hace_ejercicio),
     };
 
+    // 🔹 guardar (insert o update)
     const { data, error } = await supabase
       .from("anamnesis_lumbar")
       .upsert([payload], {
@@ -70,28 +67,15 @@ export async function guardarAnamnesisLumbar({ numeroDocumento, formData }) {
       .single();
 
     if (error) {
-      console.error("Error guardando anamnesis lumbar:", error);
-
-      if (error.code === "23503") {
-        throw new Error(
-          "No se pudo guardar la anamnesis lumbar porque el paciente no existe en checkin_anamnesis.",
-        );
-      }
-
-      if (error.code === "42P01") {
-        throw new Error(
-          "No se pudo guardar la anamnesis lumbar porque la tabla anamnesis_lumbar no existe.",
-        );
-      }
-
-      throw new Error(
-        error.message || "Ocurrió un error al guardar la anamnesis lumbar.",
-      );
+      console.error("❌ Error Supabase lumbar:", error);
+      throw new Error(error.message || "Error al guardar anamnesis lumbar");
     }
 
+    console.log("✅ Lumbar guardado correctamente:", data);
+
     return data;
-  } catch (error) {
-    console.error("Error en guardarAnamnesisLumbar:", error);
-    throw error;
+  } catch (err) {
+    console.error("❌ Error guardarAnamnesisLumbar:", err.message);
+    throw err;
   }
 }
