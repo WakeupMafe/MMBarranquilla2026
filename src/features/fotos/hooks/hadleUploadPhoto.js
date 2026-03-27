@@ -141,27 +141,22 @@ export async function hadleUploadPhoto({
     }
 
     /* =========================
-       NAVEGACIÓN INTELIGENTE
+       NAVEGACIÓN FINAL
     ========================= */
 
     const rutaPostEnvio = String(locationState?.rutaPostEnvio || "").trim();
 
-    // 🔹 Caso 1: ruta explícita
+    // 🔹 Caso 1: ruta explícita si viene definida
     if (rutaPostEnvio) {
       navigate(rutaPostEnvio, { state: { ...locationState } });
       return;
     }
 
-    // 🔹 Caso 2: flujo clínico
-    if (String(pacienteDocumento || "").trim()) {
-      navigate("/herramientas/anamnesis-zona", {
-        state: { ...locationState },
-      });
-      return;
-    }
-
-    // 🔹 Caso 3: fallback
-    navigate("/herramientas", { replace: true });
+    // 🔹 Caso 2: por defecto vuelve a Check In
+    navigate("/herramientas/valoracion/check-in", {
+      state: { ...locationState },
+      replace: true,
+    });
   } catch (error) {
     await alertError(
       "Error al enviar",
