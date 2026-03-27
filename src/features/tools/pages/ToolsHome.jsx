@@ -16,7 +16,9 @@ import admin from "../../../assets/admin.png";
 import iconConsultaBD from "../../../assets/ConsultaBD.png";
 
 const SESSION_KEY = "wk_profesional";
-const CEDULA_ADMIN_FOTOS = "1037670182";
+
+// 🔴 AHORA SON VARIAS CÉDULAS
+const CEDULAS_ADMIN_FOTOS = ["1037670182", "1037649258"];
 
 export default function ToolsHome() {
   const navigate = useNavigate();
@@ -57,9 +59,10 @@ export default function ToolsHome() {
 
   const userName = profesional.nombre;
 
-  // Solo esta cédula puede ver la card de administración de fotos
-  const puedeVerAdminFotos =
-    String(profesional?.cedula || "").trim() === CEDULA_ADMIN_FOTOS;
+  // 🔴 VALIDACIÓN PARA VARIAS CÉDULAS
+  const puedeVerAdminFotos = CEDULAS_ADMIN_FOTOS.includes(
+    String(profesional?.cedula || "").trim(),
+  );
 
   const handleLogout = async () => {
     const ok = await alertConfirm({
@@ -150,6 +153,7 @@ export default function ToolsHome() {
           />
         </div>
 
+        {/* 🔴 ADMIN BD RESTRINGIDO */}
         {puedeVerAdminFotos && (
           <div className="cards">
             <ToolCard
@@ -182,6 +186,7 @@ export default function ToolsHome() {
           />
         </div>
 
+        {/* 🔴 ELIMINACIÓN POR ERROR TAMBIÉN RESTRINGIDO */}
         {puedeVerAdminFotos && (
           <div className="cards">
             <ToolCard
