@@ -5,16 +5,12 @@ import { validarLumbar } from "../../services/zonas/validarLumbar";
 import { evaluarLumbar } from "../../services/zonas/evaluarLumbar";
 import LumbarFields from "./LumbarFields";
 import { guardarAnamnesisLumbar } from "../../config/zonas/guardarlumbar";
+import { alertError, alertOk } from "../../../../shared/lib/alerts";
 
-// dentro de handleSubmit DESPUÉS de evaluar:
-
-await guardarAnamnesisLumbar({
-  numeroDocumento: "CEDULA_DEL_PACIENTE", // ⚠️ debes traerla del contexto
-  formData,
-});
 export default function LumbarForm({
   onZonaEvaluada,
   resultadoPersistido = null,
+  numeroDocumento,
 }) {
   const [formData, setFormData] = useState(
     resultadoPersistido?.formData || lumbarInitialState,
@@ -23,6 +19,7 @@ export default function LumbarForm({
   const [resultado, setResultado] = useState(
     resultadoPersistido?.resultado || null,
   );
+  const [guardando, setGuardando] = useState(false);
 
   useEffect(() => {
     if (!resultadoPersistido) return;
@@ -52,8 +49,10 @@ export default function LumbarForm({
     });
   }
 
-  function handleSubmit(e) {
+  async function handleSubmit(e) {
     e.preventDefault();
+
+    if (guardando) return;
 
     const nuevosErrores = validarLumbar(formData);
 
@@ -70,19 +69,46 @@ export default function LumbarForm({
       return;
     }
 
+    if (!numeroDocumento) {
+      await alertError(
+        "No se encontró el documento del paciente para guardar la anamnesis lumbar.",
+      );
+      return;
+    }
+
     const evaluacion = evaluarLumbar(formData);
 
     setErrores({});
     setResultado(evaluacion);
 
-    onZonaEvaluada?.("lumbar", {
-      zona: "lumbar",
-      resultado: evaluacion,
-      formData,
-    });
+    try {
+      setGuardando(true);
 
-    console.log("Lumbar formData", formData);
-    console.log("Lumbar evaluación", evaluacion);
+      await guardarAnamnesisLumbar({
+        numeroDocumento,
+        formData,
+      });
+
+      onZonaEvaluada?.("lumbar", {
+        zona: "lumbar",
+        resultado: evaluacion,
+        formData,
+      });
+
+      console.log("Lumbar formData", formData);
+      console.log("Lumbar evaluación", evaluacion);
+
+      await alertOk("Anamnesis lumbar guardada correctamente.");
+    } catch (error) {
+      console.error("Error guardando anamnesis lumbar:", error);
+
+      await alertError(
+        error?.message ||
+          "No fue posible guardar la anamnesis lumbar en base de datos.",
+      );
+    } finally {
+      setGuardando(false);
+    }
   }
 
   return (
@@ -97,8 +123,12 @@ export default function LumbarForm({
         />
 
         <div className="valoracionActions">
-          <button type="submit" className="valoracionPrimaryBtn">
-            Evaluar lumbar
+          <button
+            type="submit"
+            className="valoracionPrimaryBtn"
+            disabled={guardando}
+          >
+            {guardando ? "Guardando..." : "Evaluar lumbar"}
           </button>
         </div>
       </form>
