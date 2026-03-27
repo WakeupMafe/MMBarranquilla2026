@@ -250,7 +250,7 @@ export default function ModuloObesidad() {
     if (!checkinValidado) {
       await alertError(
         "Check-in requerido",
-        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in. Sin este paso no se pueden tomar los datos de talla, peso e IMC. Por favor, comuníquese con el encargado de realizar el check-in.",
+        "Este paciente no ha aceptado los términos y condiciones en el paso de check-in.",
       );
       return;
     }
@@ -258,7 +258,7 @@ export default function ModuloObesidad() {
     if (bloqueadoPorDatosPrevios) {
       await alertError(
         "Edición no permitida",
-        "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
+        "Esta persona ya tiene datos registrados.",
       );
       return;
     }
@@ -278,7 +278,7 @@ export default function ModuloObesidad() {
 
     const confirmar = await alertConfirm({
       title: "Confirmar registro",
-      text: "¿Deseas guardar los datos de peso, talla e IMC de este paciente?",
+      text: "¿Deseas guardar los datos?",
       confirmText: "Sí, guardar",
       cancelText: "Cancelar",
     });
@@ -295,82 +295,41 @@ export default function ModuloObesidad() {
         peso: Number(peso),
         talla: Number(talla),
         imc,
+        obesidad, // 🔥 AHORA SÍ LO GUARDA
       };
 
-      const mode = getModuloObesidadUploadMode();
+      console.log("📤 Enviando a anamnesis_global:", payload);
 
-      if (mode === MODULO_OBESIDAD_UPLOAD_MODES.REAL) {
-        const { data: existente, error: errorExistente } = await supabase
-          .from("anamnesis_global")
-          .select("numero_documento_fisico, peso, talla, imc")
-          .eq("numero_documento_fisico", documento)
-          .maybeSingle();
+      // 🔥 UPSERT DIRECTO (INSERT o UPDATE automático)
+      const { data, error } = await supabase
+        .from("anamnesis_global")
+        .upsert([payload], {
+          onConflict: "numero_documento_fisico",
+        })
+        .select()
+        .single();
 
-        if (errorExistente) {
-          throw errorExistente;
-        }
-
-        if (
-          existente &&
-          tieneDato(existente.peso) &&
-          tieneDato(existente.talla) &&
-          tieneDato(existente.imc)
-        ) {
-          setBloqueadoPorDatosPrevios(true);
-
-          await alertError(
-            "Datos ya registrados",
-            "Esta persona ya tiene datos de peso, talla e IMC, por lo cual no se puede modificar. Si necesitan modificar, debe comunicarse con el administrador de la página.",
-          );
-          return;
-        }
-
-        if (existente) {
-          const { error: errorUpdate } = await supabase
-            .from("anamnesis_global")
-            .update(payload)
-            .eq("numero_documento_fisico", documento);
-
-          if (errorUpdate) throw errorUpdate;
-        } else {
-          const { error: errorInsert } = await supabase
-            .from("anamnesis_global")
-            .insert([payload]);
-
-          if (errorInsert) throw errorInsert;
-        }
-
-        await alertOk(
-          "Medidas registradas",
-          `Se guardaron correctamente las medidas de ${
-            paciente.nombre_apellido_documento || "No registrado"
-          }.`,
-        );
-      } else {
-        console.log("SIMULACIÓN MÓDULO OBESIDAD", {
-          numero_documento_fisico: paciente.numero_documento_fisico,
-          nombre_paciente: paciente.nombre_apellido_documento,
-          peso: Number(peso),
-          talla: Number(talla),
-          imc,
-          obesidad,
-        });
-
-        await alertOk(
-          "Modo simulación",
-          `La información de ${
-            paciente.nombre_apellido_documento || "No registrado"
-          } no se guardó en base de datos porque el módulo está en simulación.`,
-        );
+      if (error) {
+        console.error("❌ Error Supabase:", error);
+        throw error;
       }
+
+      console.log("✅ Guardado exitoso:", data);
+
+      await alertOk(
+        "Guardado correcto",
+        `Se guardaron los datos de ${
+          paciente.nombre_apellido_documento || "Paciente"
+        }`,
+      );
 
       setBloqueadoPorDatosPrevios(true);
     } catch (error) {
-      console.error("Error guardando medidas:", error);
+      console.error("💥 Error guardando medidas:", error);
 
       await alertError(
         "Error al guardar",
-        error.message || "No se pudieron procesar las medidas.",
+        error.message || "No se pudieron guardar los datos.",
       );
     } finally {
       setGuardando(false);
