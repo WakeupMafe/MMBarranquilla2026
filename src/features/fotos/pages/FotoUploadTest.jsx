@@ -443,36 +443,37 @@ export default function FotoUploadTest() {
      conservando el state actual.
 ========================= */
 
+  /* =========================
+     VOLVER
+  ========================= */
+  // ✅ CAMBIO EN BOTÓN VOLVER:
+  // Ya NO depende de cédula, cache ni valoracionActiva.
+  // Solo depende del origen real enviado por navegación.
+  // - Si viene desde check-in, vuelve a check-in.
+  // - Si viene desde herramientas, vuelve a herramientas.
+  // - Si no viene nada, por defecto vuelve a herramientas.
   const handleVolver = () => {
-    // 🔹 Ruta opcional que puedes enviar desde otras pantallas
-    // ejemplo: navigate("/herramientas/fotos-test", { state: { volverA: "/herramientas" } })
-    const rutaVolver = String(location.state?.volverA || "").trim();
+    const rutaOrigen = String(
+      location.state?.from || location.state?.origen || "",
+    ).trim();
 
-    // 🔹 Verifica si realmente tenemos una cédula usable
-    const tieneCedulaPaciente = Boolean(String(pacienteDocumento || "").trim());
+    const vieneDesdeCheckIn =
+      rutaOrigen === "/herramientas/valoracion/check-in" ||
+      location.state?.vieneDesdeCheckIn === true;
 
-    // 🔹 Si viene una ruta explícita, se respeta primero
-    if (rutaVolver) {
-      navigate(rutaVolver, {
+    if (vieneDesdeCheckIn) {
+      navigate("/herramientas/valoracion/check-in", {
         state: {
-          ...location.state,
+          profesional: location.state?.profesional || null,
+          paciente: location.state?.paciente || null,
+          checkIn: location.state?.checkIn || null,
+          clasificacionPaciente: location.state?.clasificacionPaciente || null,
         },
       });
       return;
     }
 
-    // 🔹 Si no hay cédula ni contexto suficiente, mejor salir a herramientas
-    if (!tieneCedulaPaciente) {
-      navigate("/herramientas", { replace: true });
-      return;
-    }
-
-    // 🔹 Si sí hay cédula, volvemos al flujo clínico
-    navigate("/herramientas/anamnesis-zona", {
-      state: {
-        ...location.state,
-      },
-    });
+    navigate("/herramientas");
   };
   /* =========================
      ENVIAR TODO JUNTO

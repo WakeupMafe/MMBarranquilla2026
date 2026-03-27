@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { supabase } from "../../../shared/lib/supabaseClient";
 import BotonImportante from "../../../shared/components/BotonImportante/BotonImportante";
 import "./FotoAuthGate.css";
@@ -21,9 +21,11 @@ function getZonaLabel(zona) {
 
 export default function FotoAuthGate({ children }) {
   const location = useLocation();
+  const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
+  const [checkingSession, setCheckingSession] = useState(true);
   const [session, setSession] = useState(null);
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -43,26 +45,35 @@ export default function FotoAuthGate({ children }) {
   useEffect(() => {
     let mounted = true;
 
-    async function loadSession() {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    async function restoreSession() {
+      try {
+        const {
+          data: { session },
+          error,
+        } = await supabase.auth.getSession();
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      setSession(session ?? null);
-      setLoading(false);
+        if (error) {
+          console.error("Error restaurando sesión de fotos:", error);
+        }
+
+        setSession(session ?? null);
+      } catch (err) {
+        console.error("Error verificando sesión de fotos:", err);
+        if (mounted) setSession(null);
+      } finally {
+        if (mounted) setCheckingSession(false);
+      }
     }
 
-    loadSession();
+    restoreSession();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    } = supabase.auth.onAuthStateChange((event, newSession) => {
       if (!mounted) return;
-
       setSession(newSession ?? null);
-      setLoading(false);
     });
 
     return () => {
@@ -76,7 +87,7 @@ export default function FotoAuthGate({ children }) {
     setSubmitting(true);
     setError("");
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
     });
@@ -87,10 +98,37 @@ export default function FotoAuthGate({ children }) {
       return;
     }
 
+    setSession(data?.session ?? null);
     setSubmitting(false);
   };
 
-  if (loading) {
+  // ✅ CAMBIO EN BOTÓN VOLVER:
+  // Ya NO depende de cédula, cache ni datos viejos.
+  // Si viene desde check-in, vuelve a check-in.
+  // En cualquier otro caso, vuelve a /herramientas.
+  const handleVolver = () => {
+    const rutaOrigen = location.state?.from || location.state?.origen || "";
+
+    const vieneDesdeCheckIn =
+      rutaOrigen === "/herramientas/valoracion/check-in" ||
+      location.state?.vieneDesdeCheckIn === true;
+
+    if (vieneDesdeCheckIn) {
+      navigate("/herramientas/valoracion/check-in", {
+        state: {
+          profesional: location.state?.profesional || null,
+          paciente: location.state?.paciente || null,
+          checkIn: location.state?.checkIn || null,
+          clasificacionPaciente: location.state?.clasificacionPaciente || null,
+        },
+      });
+      return;
+    }
+
+    navigate("/herramientas");
+  };
+
+  if (checkingSession) {
     return (
       <div className="fotoAuthPage">
         <div className="fotoAuthCard">
@@ -113,6 +151,14 @@ export default function FotoAuthGate({ children }) {
                 Protocolo activo: <strong>{getZonaLabel(zonaActiva)}</strong>
               </p>
             </div>
+
+            <button
+              type="button"
+              className="fotoAuthBackButton"
+              onClick={handleVolver}
+            >
+              ← Volver
+            </button>
           </div>
         </div>
 
@@ -124,6 +170,14 @@ export default function FotoAuthGate({ children }) {
   return (
     <div className="fotoAuthPage">
       <div className="fotoAuthCard">
+        <button
+          type="button"
+          className="fotoAuthBackButton fotoAuthBackButton--standalone"
+          onClick={handleVolver}
+        >
+          ← Volver
+        </button>
+
         <h2 className="fotoAuthTitle">Acceso al módulo de fotos</h2>
 
         <p className="fotoAuthText">
