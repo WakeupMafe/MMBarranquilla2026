@@ -362,7 +362,7 @@ export default function BusquedayEliminacion() {
     [profesional],
   );
 
-  const autorizado = cedulaProfesional === CEDULA_ADMIN;
+  const autorizado = CEDULAS_ADMIN.includes(cedulaProfesional);
 
   const totalRegistros = useMemo(() => {
     if (!resultadoBusqueda) return 0;
