@@ -10,10 +10,13 @@ import ZonaRenderer from "../components/zonas/ZonaRenderer";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
 import { obtenerValoracionActiva } from "../utils/valoracionSession";
 import { eleccionDePasoAFotos } from "../config/eleccionDePasoAFotos";
+import {
+  resolverDocumentoPacienteDesdeCache,
+  resolverProfesionalCedulaDesdeCache,
+  resolverProfesionalObjetoDesdeCache,
+} from "../utils/zonaPersistContext";
 
 import "./Valoracion.css";
-
-const SESSION_KEY = "wk_profesional";
 
 function normalizarZona(zona) {
   return String(zona || "")
@@ -94,27 +97,29 @@ export default function AnamnesisZona() {
   const paciente =
     location.state?.paciente || valoracionActiva?.paciente || null;
 
-  // Recupera la cédula del paciente desde varios posibles orígenes.
-  const cedula =
-    location.state?.cedula ||
-    location.state?.paciente?.numero_documento_fisico ||
-    valoracionActiva?.paciente?.numero_documento_fisico ||
-    paciente?.numero_documento_fisico ||
-    paciente?.cedula ||
-    "";
+  const cedula = useMemo(
+    () =>
+      resolverDocumentoPacienteDesdeCache({
+        propDocumento: "",
+        locationState: location.state,
+        valoracionActiva,
+      }),
+    [location.state, valoracionActiva],
+  );
 
-  // Recupera los datos del profesional desde state o sessionStorage.
-  const profesional = useMemo(() => {
-    const fromState = location.state?.profesional;
-    if (fromState) return fromState;
+  const profesional = useMemo(
+    () => resolverProfesionalObjetoDesdeCache({ locationState: location.state }),
+    [location.state],
+  );
 
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, [location.state]);
+  const profesionalCedulaParaZonas = useMemo(
+    () =>
+      resolverProfesionalCedulaDesdeCache({
+        propCedula: profesional?.cedula,
+        locationState: location.state,
+      }),
+    [profesional?.cedula, location.state],
+  );
 
   // Guarda el resultado persistido por cada zona evaluada.
   const [evaluacionesPorZona, setEvaluacionesPorZona] = useState({});
@@ -292,8 +297,8 @@ export default function AnamnesisZona() {
                   resultadoPersistido={evaluacionesPorZona[zona]}
                   numeroDocumento={cedula}
                   numero_documento_fisico={cedula}
-                  profesionalCedula={profesional?.cedula || ""}
-                  profesional_cedula={profesional?.cedula || ""}
+                  profesionalCedula={profesionalCedulaParaZonas}
+                  profesional_cedula={profesionalCedulaParaZonas}
                 />
               ))}
 

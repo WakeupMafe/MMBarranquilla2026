@@ -5,11 +5,15 @@ import { validarHombro } from "../../services/zonas/validarHombro";
 import { evaluarHombro } from "../../services/zonas/evaluarHombro";
 import { guardarAnamnesisHombro } from "../../services/zonas/guardarAnamnesisHombro";
 import HombroFields from "./HombroFields";
+import { useZonaDatosParaGuardado } from "../../hooks/useZonaDatosParaGuardado";
+import { alertError } from "../../../../shared/lib/alerts";
 
 export default function HombroForm({
   onZonaEvaluada,
   resultadoPersistido = null,
+  numeroDocumento,
   numero_documento_fisico,
+  profesionalCedula,
   profesional_cedula,
 }) {
   const [formData, setFormData] = useState(
@@ -19,6 +23,14 @@ export default function HombroForm({
   const [resultado, setResultado] = useState(
     resultadoPersistido?.resultado || null,
   );
+
+  const { documentoPaciente, profesionalCedula: cedulaProfesional } =
+    useZonaDatosParaGuardado({
+      numeroDocumento,
+      numero_documento_fisico,
+      profesionalCedula,
+      profesional_cedula,
+    });
 
   useEffect(() => {
     if (!resultadoPersistido) return;
@@ -64,24 +76,46 @@ export default function HombroForm({
     setErrores({});
     setResultado(evaluacion);
 
-    // 🔥 GUARDA EN BASE DE DATOS (o simula según el modo activo)
-    // - Si está en SIMULACIÓN → NO guarda (solo console.log)
-    // - Si está en REAL → hace UPSERT en anamnesis_hombro
-    await guardarAnamnesisHombro({
-      numero_documento_fisico,
-      profesional_cedula,
-      formData,
-      resultado: evaluacion,
-    });
+    if (!documentoPaciente) {
+      await alertError(
+        "Documento no disponible",
+        "No se encontró la cédula del paciente (revisa la valoración activa o vuelve a cargar el flujo).",
+      );
+      return;
+    }
 
-    onZonaEvaluada?.("hombro", {
-      zona: "hombro",
-      resultado: evaluacion,
-      formData,
-    });
+    if (!cedulaProfesional) {
+      await alertError(
+        "Profesional no identificado",
+        "No se encontró la cédula del profesional en sesión. Vuelve a identificarte en el flujo de valoración.",
+      );
+      return;
+    }
 
-    console.log("Hombro formData", formData);
-    console.log("Hombro evaluación", evaluacion);
+    try {
+      await guardarAnamnesisHombro({
+        numero_documento_fisico: documentoPaciente,
+        profesional_cedula: cedulaProfesional,
+        formData,
+        resultado: evaluacion,
+      });
+
+      onZonaEvaluada?.("hombro", {
+        zona: "hombro",
+        resultado: evaluacion,
+        formData,
+      });
+
+      console.log("Hombro formData", formData);
+      console.log("Hombro evaluación", evaluacion);
+    } catch (error) {
+      console.error("Error guardando anamnesis de hombro:", error);
+      await alertError(
+        "Error al guardar",
+        error?.message ||
+          "No fue posible guardar la anamnesis de hombro en base de datos.",
+      );
+    }
   }
 
   return (

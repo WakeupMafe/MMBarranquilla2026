@@ -5,9 +5,13 @@ import { validarRodilla } from "../../services/zonas/validarRodilla";
 import { evaluarRodilla } from "../../services/zonas/evaluarRodilla";
 import { guardarAnamnesisRodilla } from "../../services/zonas/guardarAnamnesisRodilla";
 import RodillaFields from "./RodillaFields";
+import { useZonaDatosParaGuardado } from "../../hooks/useZonaDatosParaGuardado";
+import { alertError } from "../../../../shared/lib/alerts";
 
 export default function RodillaForm({
+  numeroDocumento,
   numero_documento_fisico,
+  profesionalCedula,
   profesional_cedula,
   onZonaEvaluada,
   resultadoPersistido = null,
@@ -20,6 +24,14 @@ export default function RodillaForm({
     resultadoPersistido?.resultado || null,
   );
   const [guardando, setGuardando] = useState(false);
+
+  const { documentoPaciente, profesionalCedula: cedulaProfesional } =
+    useZonaDatosParaGuardado({
+      numeroDocumento,
+      numero_documento_fisico,
+      profesionalCedula,
+      profesional_cedula,
+    });
 
   useEffect(() => {
     if (!resultadoPersistido) return;
@@ -85,12 +97,28 @@ export default function RodillaForm({
     setErrores({});
     setResultado(evaluacion);
 
+    if (!documentoPaciente) {
+      await alertError(
+        "Documento no disponible",
+        "No se encontró la cédula del paciente (revisa la valoración activa o vuelve a cargar el flujo).",
+      );
+      return;
+    }
+
+    if (!cedulaProfesional) {
+      await alertError(
+        "Profesional no identificado",
+        "No se encontró la cédula del profesional en sesión. Vuelve a identificarte en el flujo de valoración.",
+      );
+      return;
+    }
+
     try {
       setGuardando(true);
 
       await guardarAnamnesisRodilla({
-        numero_documento_fisico,
-        profesional_cedula,
+        numero_documento_fisico: documentoPaciente,
+        profesional_cedula: cedulaProfesional,
         formData,
         resultado: evaluacion,
       });
@@ -106,6 +134,11 @@ export default function RodillaForm({
       console.log("Rodilla guardada en BD correctamente");
     } catch (error) {
       console.error("Error guardando anamnesis de rodilla:", error);
+      await alertError(
+        "Error al guardar",
+        error?.message ||
+          "No fue posible guardar la anamnesis de rodilla en base de datos.",
+      );
     } finally {
       setGuardando(false);
     }

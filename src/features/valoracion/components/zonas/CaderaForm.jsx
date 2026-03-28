@@ -6,9 +6,9 @@ import { validarCadera } from "../../services/zonas/validarcadera";
 import { evaluarCadera } from "../../services/zonas/evaluarCadera";
 import { alertError } from "../../../../shared/lib/alerts";
 import { obtenerValoracionActiva } from "../../utils/valoracionSession";
+import { resolverProfesionalObjetoDesdeCache } from "../../utils/zonaPersistContext";
+import { useZonaDatosParaGuardado } from "../../hooks/useZonaDatosParaGuardado";
 import CaderaFields from "./CaderaFields";
-
-const SESSION_KEY = "wk_profesional";
 
 export default function CaderaForm({
   numeroDocumento,
@@ -19,6 +19,11 @@ export default function CaderaForm({
 
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
 
+  const { documentoPaciente } = useZonaDatosParaGuardado({
+    numeroDocumento,
+    numero_documento_fisico,
+  });
+
   const paciente = useMemo(() => {
     return (
       location.state?.paciente ||
@@ -27,35 +32,10 @@ export default function CaderaForm({
     );
   }, [location.state, valoracionActiva]);
 
-  const cedula = useMemo(() => {
-    const doc =
-      location.state?.cedula ||
-      location.state?.paciente?.numero_documento_fisico ||
-      valoracionActiva?.paciente?.numero_documento_fisico ||
-      paciente?.numero_documento_fisico ||
-      paciente?.num_documento ||
-      paciente?.cedula ||
-      numeroDocumento ||
-      numero_documento_fisico ||
-      "";
-    return String(doc).trim();
-  }, [
-    location.state,
-    valoracionActiva,
-    paciente,
-    numeroDocumento,
-    numero_documento_fisico,
-  ]);
-
-  const profesional = useMemo(() => {
-    if (location.state?.profesional) return location.state.profesional;
-    try {
-      const raw = sessionStorage.getItem(SESSION_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
-  }, [location.state]);
+  const profesional = useMemo(
+    () => resolverProfesionalObjetoDesdeCache({ locationState: location.state }),
+    [location.state],
+  );
 
   const [formData, setFormData] = useState(caderaInitialState);
   const [errores, setErrores] = useState({});
@@ -108,15 +88,21 @@ export default function CaderaForm({
       return;
     }
 
+    if (!documentoPaciente) {
+      await alertError(
+        "Documento no disponible",
+        "No se encontró la cédula del paciente para continuar al protocolo fotográfico.",
+      );
+      return;
+    }
+
     const pacienteParaFotos =
       paciente && (paciente.numero_documento_fisico || paciente.num_documento || paciente.cedula)
         ? paciente
-        : cedula
-          ? {
-              ...valoracionActiva?.paciente,
-              numero_documento_fisico: cedula,
-            }
-          : null;
+        : {
+            ...valoracionActiva?.paciente,
+            numero_documento_fisico: documentoPaciente,
+          };
 
     navigate("/herramientas/fotos-test", {
       state: {
@@ -124,7 +110,7 @@ export default function CaderaForm({
         from: "/herramientas/anamnesis-zona",
         vieneDesdeAnamnesisZona: true,
         paciente: pacienteParaFotos,
-        cedula,
+        cedula: documentoPaciente,
         profesional,
         clasificacionPaciente:
           location.state?.clasificacionPaciente ||
