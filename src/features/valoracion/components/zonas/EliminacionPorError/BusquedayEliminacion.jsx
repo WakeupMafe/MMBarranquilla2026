@@ -13,6 +13,10 @@ import TopHeader from "../../../../../shared/components/TopHeader/TopHeader";
 import BotonImportante from "../../../../../shared/components/BotonImportante/BotonImportante";
 import logoWakeup from "../../../../../assets/LogoWakeup.png";
 
+import EliminacionAuthGate, {
+  useEliminacionSupabaseSession,
+} from "./EliminacionAuthGate";
+
 import "./BusquedayEliminacion.css";
 
 const CEDULAS_ADMIN = ["1037670182", "1037649258"];
@@ -271,6 +275,8 @@ function esRutaSimulacion(path) {
 }
 
 function EvidenciasPreviewBlock({ fotos, videos, authRevision = "" }) {
+  const sesionDesdeGate = useEliminacionSupabaseSession();
+
   const entries = useMemo(
     () => [
       ...listarEntradasMedia(fotos, "foto"),
@@ -297,10 +303,9 @@ function EvidenciasPreviewBlock({ fotos, videos, authRevision = "" }) {
       const out = [];
 
       try {
-        const {
-          data: { session },
-        } = await supabase.auth.getSession();
-        const puedeFirmarUrls = Boolean(session);
+        const { data: fresh } = await supabase.auth.getSession();
+        const sessionEfectiva = sesionDesdeGate ?? fresh?.session ?? null;
+        const puedeFirmarUrls = Boolean(sessionEfectiva);
 
         for (const e of entries) {
           if (cancelled) return;
@@ -350,7 +355,7 @@ function EvidenciasPreviewBlock({ fotos, videos, authRevision = "" }) {
       cancelled = true;
       setLoading(false);
     };
-  }, [entries, authRevision]);
+  }, [entries, authRevision, sesionDesdeGate]);
 
   if (!entries.length) {
     return null;
@@ -627,15 +632,15 @@ function ResumenCard({ title, count, rows, itemKey, authRevision }) {
   );
 }
 
-export default function BusquedayEliminacion() {
+function BusquedayEliminacionContenido() {
   const navigate = useNavigate();
   const { profesional } = useProfesionalSession();
+  const sesionSupabaseAuth = useEliminacionSupabaseSession();
 
   const [cedula, setCedula] = useState("");
   const [loading, setLoading] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [resultadoBusqueda, setResultadoBusqueda] = useState(null);
-  const [sesionSupabaseAuth, setSesionSupabaseAuth] = useState(null);
 
   const userName = profesional?.nombre || "Profesional";
   const cedulaProfesional = useMemo(
@@ -648,28 +653,6 @@ export default function BusquedayEliminacion() {
   const revisionAuthVistaPrevia = sesionSupabaseAuth?.user?.id
     ? String(sesionSupabaseAuth.user.id)
     : "sin-auth";
-
-  useEffect(() => {
-    let mounted = true;
-
-    async function syncAuth() {
-      const { data } = await supabase.auth.getSession();
-      if (mounted) setSesionSupabaseAuth(data.session ?? null);
-    }
-
-    syncAuth();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
-      if (mounted) setSesionSupabaseAuth(nextSession ?? null);
-    });
-
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
 
   const totalRegistros = useMemo(() => {
     if (!resultadoBusqueda) return 0;
@@ -906,5 +889,13 @@ export default function BusquedayEliminacion() {
         </section>
       </div>
     </div>
+  );
+}
+
+export default function BusquedayEliminacion() {
+  return (
+    <EliminacionAuthGate>
+      <BusquedayEliminacionContenido />
+    </EliminacionAuthGate>
   );
 }

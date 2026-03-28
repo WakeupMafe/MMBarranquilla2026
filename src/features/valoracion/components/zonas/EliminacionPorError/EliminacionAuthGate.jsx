@@ -1,10 +1,17 @@
-import { useEffect, useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { supabase } from "../../../../../shared/lib/supabaseClient";
 import BotonImportante from "../../../../../shared/components/BotonImportante/BotonImportante";
 
 import "./EliminacionAuthGate.css";
+
+const EliminacionSupabaseSessionContext = createContext(null);
+
+/** Sesión validada por EliminacionAuthGate (misma que usa Storage para firmar URLs). */
+export function useEliminacionSupabaseSession() {
+  return useContext(EliminacionSupabaseSessionContext);
+}
 
 /**
  * Misma autenticación Supabase que el módulo de fotos.
@@ -85,11 +92,6 @@ export default function EliminacionAuthGate({ children }) {
     navigate("/herramientas");
   };
 
-  const handleCerrarSesionAuth = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-  };
-
   if (checkingSession) {
     return (
       <div className="fotoAuthPage">
@@ -102,7 +104,7 @@ export default function EliminacionAuthGate({ children }) {
 
   if (session) {
     return (
-      <>
+      <EliminacionSupabaseSessionContext.Provider value={session}>
         <div className="fotoAuthTopbar">
           <div className="fotoAuthTopbar__content">
             <div>
@@ -115,39 +117,26 @@ export default function EliminacionAuthGate({ children }) {
             </div>
 
             <div className="eliminacion-auth-gate__actions">
-              <button
-                type="button"
-                className="fotoAuthLogoutBtn"
-                onClick={handleCerrarSesionAuth}
-              >
-                Cerrar sesión
-              </button>
-              <button
-                type="button"
-                className="fotoAuthBackButton"
-                onClick={handleVolver}
-              >
+              <BotonImportante variant="outline" onClick={handleVolver}>
                 ← Herramientas
-              </button>
+              </BotonImportante>
             </div>
           </div>
         </div>
 
         {children}
-      </>
+      </EliminacionSupabaseSessionContext.Provider>
     );
   }
 
   return (
     <div className="fotoAuthPage">
       <div className="fotoAuthCard">
-        <button
-          type="button"
-          className="fotoAuthBackButton fotoAuthBackButton--standalone"
-          onClick={handleVolver}
-        >
-          ← Volver a herramientas
-        </button>
+        <div className="eliminacion-auth-gate__volver">
+          <BotonImportante variant="outline" onClick={handleVolver}>
+            ← Volver a herramientas
+          </BotonImportante>
+        </div>
 
         <h2 className="fotoAuthTitle">Acceso — búsqueda y eliminación</h2>
 
