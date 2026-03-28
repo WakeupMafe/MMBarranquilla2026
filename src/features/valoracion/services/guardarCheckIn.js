@@ -1,4 +1,5 @@
 import { supabase } from "../../../shared/lib/supabaseClient";
+import { normalizarDocumentoCkin } from "../config/validarCedulaCkin";
 
 function textoSeguro(valor) {
   return String(valor ?? "").trim();
@@ -13,21 +14,29 @@ export async function guardarCheckIn({
   seguridadSocial,
   paciente,
 }) {
-  // 🔴 IMPORTANTE:
-  // usar el documento EXACTO que viene del paciente encontrado en participantes
-  // para no romper la FK con participantes
-  const numeroDocumento = String(
-    paciente?.numero_documento_fisico || cedula || "",
+  const docCanon = normalizarDocumentoCkin(
+    String(paciente?.numero_documento_fisico ?? cedula ?? ""),
   );
 
-  const numeroDocumentoLimpio = textoSeguro(numeroDocumento);
   const instructorNombre = textoSeguro(instructor);
   const lugar = textoSeguro(lugarValoracion);
   const seguridad = textoSeguro(seguridadSocial);
 
-  if (!numeroDocumentoLimpio) {
+  if (!docCanon) {
     throw new Error("La cédula del paciente es obligatoria.");
   }
+
+  // FK suele ir a participantes.id (participante_id) o al documento exacto en participantes.
+  const participanteId =
+    paciente?.id != null && paciente.id !== "" ? paciente.id : null;
+
+  const numeroDocumentoFisico =
+    participanteId != null
+      ? docCanon
+      : paciente?.numero_documento_fisico != null &&
+          String(paciente.numero_documento_fisico).trim() !== ""
+        ? String(paciente.numero_documento_fisico)
+        : docCanon;
 
   if (!instructorNombre) {
     throw new Error("El nombre del instructor es obligatorio.");
@@ -41,11 +50,11 @@ export async function guardarCheckIn({
     throw new Error("La seguridad social es obligatoria.");
   }
 
-  // 🔍 VALIDAR SI YA EXISTE
+  // 🔍 VALIDAR SI YA EXISTE (misma lógica que validarCheckInExistente: documento solo dígitos)
   const { data: existente, error: errorBusqueda } = await supabase
     .from("checkin_anamnesis")
     .select("numero_documento_fisico")
-    .eq("numero_documento_fisico", numeroDocumentoLimpio)
+    .eq("numero_documento_fisico", docCanon)
     .maybeSingle();
 
   if (errorBusqueda) {
@@ -63,7 +72,7 @@ export async function guardarCheckIn({
 
   // 🧠 GUARDAR
   const payload = {
-    numero_documento_fisico: numeroDocumentoLimpio,
+    numero_documento_fisico: numeroDocumentoFisico,
     instructor_nombre: instructorNombre,
     lugar_valoracion: lugar,
     habeas_data: Boolean(habeasData),
@@ -74,6 +83,10 @@ export async function guardarCheckIn({
         paciente?.nombre_apellido_documento || paciente?.nombres_apellidos,
       ) || null,
   };
+
+  if (participanteId != null) {
+    payload.participante_id = participanteId;
+  }
 
   const { data, error } = await supabase
     .from("checkin_anamnesis")

@@ -79,7 +79,7 @@ export async function buscarPacienteCheckin(cedulaIngresada) {
   const { data: exacta, error: errorExacta } = await supabase
     .from("participantes")
     .select(
-      "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
+      "id, numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
     )
     .eq("numero_documento_fisico", documentoNormalizado)
     .maybeSingle();
@@ -114,7 +114,7 @@ export async function buscarPacienteCheckin(cedulaIngresada) {
   const { data: candidatos, error: errorTolerante } = await supabase
     .from("participantes")
     .select(
-      "numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
+      "id, numero_documento_fisico, nombre_apellido_documento, numero_telefono, genero, fecha_nacimiento",
     )
     .ilike("numero_documento_fisico", `%${documentoNormalizado}%`)
     .limit(50);
