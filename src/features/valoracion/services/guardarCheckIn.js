@@ -26,17 +26,13 @@ export async function guardarCheckIn({
     throw new Error("La cédula del paciente es obligatoria.");
   }
 
-  // FK suele ir a participantes.id (participante_id) o al documento exacto en participantes.
-  const participanteId =
-    paciente?.id != null && paciente.id !== "" ? paciente.id : null;
-
+  // FK hacia participantes(numero_documento_fisico): debe coincidir exactamente con el valor en BD
+  // (p. ej. si hay caracteres invisibles en la tabla, hay que reenviar el mismo texto).
   const numeroDocumentoFisico =
-    participanteId != null
-      ? docCanon
-      : paciente?.numero_documento_fisico != null &&
-          String(paciente.numero_documento_fisico).trim() !== ""
-        ? String(paciente.numero_documento_fisico)
-        : docCanon;
+    paciente?.numero_documento_fisico != null &&
+    String(paciente.numero_documento_fisico).trim() !== ""
+      ? String(paciente.numero_documento_fisico)
+      : docCanon;
 
   if (!instructorNombre) {
     throw new Error("El nombre del instructor es obligatorio.");
@@ -83,10 +79,6 @@ export async function guardarCheckIn({
         paciente?.nombre_apellido_documento || paciente?.nombres_apellidos,
       ) || null,
   };
-
-  if (participanteId != null) {
-    payload.participante_id = participanteId;
-  }
 
   const { data, error } = await supabase
     .from("checkin_anamnesis")
