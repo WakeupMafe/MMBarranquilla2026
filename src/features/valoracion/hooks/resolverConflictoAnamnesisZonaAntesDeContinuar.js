@@ -56,24 +56,10 @@ async function existeRegistroEnZona({ tabla, numeroDocumento }) {
     throw error;
   }
 
-  if (data) {
-    console.log(
-      `🟢 Se encontró este paciente en ${tabla} con cédula ${numeroDocumento}`,
-    );
-  } else {
-    console.log(
-      `⚪ No se encontró registro en ${tabla} para la cédula ${numeroDocumento}`,
-    );
-  }
-
   return Boolean(data);
 }
 
 async function eliminarRegistroZona({ tabla, numeroDocumento }) {
-  console.log(
-    `🧨 Eliminando anamnesis en ${tabla} para la cédula ${numeroDocumento}`,
-  );
-
   const { error } = await supabase
     .from(tabla)
     .delete()
@@ -82,10 +68,6 @@ async function eliminarRegistroZona({ tabla, numeroDocumento }) {
   if (error) {
     throw error;
   }
-
-  console.log(
-    `✅ Eliminación completada en ${tabla} para la cédula ${numeroDocumento}`,
-  );
 }
 
 async function buscarAnamnesisExistentesPorZona(numeroDocumento) {
@@ -196,7 +178,7 @@ export async function resolverConflictoAnamnesisZonaAntesDeContinuar({
     };
   }
 
-  // CASO FUNCIONAL: no hay tabla propia; si existen anamnesis previas, se eliminan
+  // CASO FUNCIONAL
   if (zonaObjetivo === "funcional") {
     if (!registrosExistentes.length) {
       return {
@@ -270,7 +252,6 @@ export async function resolverConflictoAnamnesisZonaAntesDeContinuar({
     }
   }
 
-  // Para zonas normales sí debe existir una tabla configurada
   const tablaZonaNueva = obtenerTablaPorZona(zonaObjetivo);
 
   if (!tablaZonaNueva) {
@@ -290,6 +271,7 @@ export async function resolverConflictoAnamnesisZonaAntesDeContinuar({
     };
   }
 
+  // 🔹 si no hay registros previos, deja seguir sin mostrar nada
   if (!registrosExistentes.length) {
     return {
       puedeContinuar: true,

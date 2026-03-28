@@ -183,14 +183,17 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     }
     // Antiguo sin clasificación preliminar clara
     else {
-      flujo = "ANTIGUO_SIN_PRECLASIFICACION_CLARA";
-      estadoPreclasificacion = "Sin dato suficiente";
+      flujo = "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
+      estadoPreclasificacion = "Sin clasificación previa";
       mensajePreclasificacion =
-        "Paciente con antecedente en la cohorte 2025, sin información suficiente para definir ruta abreviada. Debe iniciar anamnesis global.";
+        "Paciente con antecedente en la cohorte 2025, pero sin clasificación preliminar ni secundaria válida. Debe continuar con flujo de paciente nuevo: anamnesis global, selección de zona y fotos.";
       ocultarDeteccionDolor = false;
       destinoSugerido = "anamnesis_global";
       mensajeFlujoGlobal =
-        "Paciente con antecedente previo sin ruta terapéutica claramente definida. Requiere anamnesis global con evaluación completa.";
+        "Aunque el paciente presenta antecedente previo, no cuenta con clasificación preliminar ni secundaria válida. Por tanto, debe seguir flujo completo: anamnesis global, anamnesis de zona y registro de fotos.";
+
+      // 🔹 importante: no hereda zona previa
+      zonaDestino = null;
     }
   }
 

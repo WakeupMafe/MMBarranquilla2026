@@ -31,23 +31,26 @@ export function useAnamnesisGlobalContinue({
 }) {
   const navigate = useNavigate();
 
+  const pacienteActivo = valoracionActiva?.paciente || null;
+
+  const cedulaPacienteActual = String(
+    valoracionActiva?.paciente?.numero_documento_fisico ||
+      valoracionActiva?.paciente?.num_documento ||
+      valoracionActiva?.paciente?.cedula ||
+      "",
+  ).trim();
+
   const irAFotos = useCallback(
     (zonaProtocoloFotos) => {
-      const pacienteActivo = valoracionActiva?.paciente || null;
-
-      const cedulaPacienteActual =
-        valoracionActiva?.paciente?.numero_documento_fisico ||
-        valoracionActiva?.paciente?.num_documento ||
-        valoracionActiva?.paciente?.cedula ||
-        "";
-
       navigate("/herramientas/fotos-test", {
         state: {
+          from: "/herramientas/anamnesis-zona",
           resultado,
           formData: formDataNormalizado,
           clasificacionPaciente,
           zonaProtocoloFotos,
           zonaSeleccionadaFinal: zonaProtocoloFotos,
+          zonasProtocoloFotos: [zonaProtocoloFotos],
           profesional,
           paciente: pacienteActivo,
           cedula: cedulaPacienteActual,
@@ -60,44 +63,96 @@ export function useAnamnesisGlobalContinue({
       formDataNormalizado,
       clasificacionPaciente,
       profesional,
-      valoracionActiva,
+      pacienteActivo,
+      cedulaPacienteActual,
     ],
   );
 
   const irAAnamnesisZona = useCallback(
     (zonaElegida, zonasDisponiblesCambio = []) => {
+      const pacienteActivo = valoracionActiva?.paciente || null;
+
+      const cedulaPacienteActual =
+        valoracionActiva?.paciente?.numero_documento_fisico ||
+        valoracionActiva?.paciente?.num_documento ||
+        valoracionActiva?.paciente?.cedula ||
+        "";
+
       navigate("/herramientas/anamnesis-zona", {
         state: {
+          from: "/herramientas/anamnesis-global",
+          zonaSeleccionadaFinal: zonaElegida,
           zonasDetectadas: [zonaElegida],
+          zonasProtocoloFotos: [zonaElegida],
           resultado,
           formData: formDataNormalizado,
           clasificacionPaciente,
           esCambioDiagnostico: true,
           zonasDisponiblesCambio,
           zonaSeleccionadaCambio: zonaElegida,
+          paciente: pacienteActivo,
+          profesional,
+          cedula: cedulaPacienteActual,
         },
       });
     },
-    [navigate, resultado, formDataNormalizado, clasificacionPaciente],
+    [
+      navigate,
+      resultado,
+      formDataNormalizado,
+      clasificacionPaciente,
+      valoracionActiva,
+      profesional,
+    ],
   );
 
   const irAAnamnesisZonaDirecta = useCallback(
     (zonasDetectadas = []) => {
+      const zonasLimpias = Array.isArray(zonasDetectadas)
+        ? zonasDetectadas.filter(Boolean)
+        : [];
+
+      const zonaPrincipal = zonasLimpias[0] || null;
+
+      const pacienteActivo = valoracionActiva?.paciente || null;
+
+      const cedulaPacienteActual =
+        valoracionActiva?.paciente?.numero_documento_fisico ||
+        valoracionActiva?.paciente?.num_documento ||
+        valoracionActiva?.paciente?.cedula ||
+        "";
+
       navigate("/herramientas/anamnesis-zona", {
         state: {
-          zonasDetectadas,
+          from: "/herramientas/anamnesis-global",
+
+          zonasDetectadas: zonasLimpias,
+          zonaSeleccionadaFinal: zonaPrincipal,
+          zonasProtocoloFotos: zonaPrincipal ? [zonaPrincipal] : [],
+
           resultado,
           formData: formDataNormalizado,
           clasificacionPaciente,
+
           esCambioDiagnostico: false,
           zonasDisponiblesCambio: [],
           zonaSeleccionadaCambio: null,
+
+          paciente: pacienteActivo,
+          profesional,
+          cedula: cedulaPacienteActual,
         },
       });
     },
-    [navigate, resultado, formDataNormalizado, clasificacionPaciente],
+    [
+      navigate,
+      resultado,
+      formDataNormalizado,
+      clasificacionPaciente,
+      valoracionActiva,
+      profesional,
+    ],
   );
-
   const handleContinuar = useCallback(async () => {
     if (!resultado) return;
 
@@ -121,13 +176,6 @@ export function useAnamnesisGlobalContinue({
     try {
       const mode = getAnamnesisGlobalUploadMode();
       let decisionEdicion = null;
-
-      const cedulaPacienteActual = String(
-        valoracionActiva?.paciente?.numero_documento_fisico ||
-          valoracionActiva?.paciente?.num_documento ||
-          valoracionActiva?.paciente?.cedula ||
-          "",
-      ).trim();
 
       if (!cedulaPacienteActual) {
         await alertError(
@@ -250,13 +298,19 @@ export function useAnamnesisGlobalContinue({
       limpiarAnamnesisGlobalDraft();
 
       const esPacienteNuevo = Boolean(clasificacionPaciente?.esPacienteNuevo);
+      const tomaFlujoNuevoPorHistorial =
+        clasificacionPaciente?.flujo ===
+        "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
+
       const zonasDetectadas = Array.isArray(resultado?.zonasDetectadas)
-        ? resultado.zonasDetectadas
+        ? resultado.zonasDetectadas.filter(Boolean)
         : [];
 
+      // 🔹 CASO CLAVE:
+      // paciente nuevo o antiguo sin clasificación que toma flujo nuevo
+      // NO debe pasar por resolvedor de conflicto ni por flujo de actualización
       if (
-        esPacienteNuevo &&
-        resultado?.siguientePaso === "anamnesis_especifica_zona" &&
+        (esPacienteNuevo || tomaFlujoNuevoPorHistorial) &&
         zonasDetectadas.length > 0
       ) {
         await alertOk(
@@ -418,6 +472,8 @@ export function useAnamnesisGlobalContinue({
     irAFotos,
     irAAnamnesisZona,
     irAAnamnesisZonaDirecta,
+    pacienteActivo,
+    cedulaPacienteActual,
   ]);
 
   return {

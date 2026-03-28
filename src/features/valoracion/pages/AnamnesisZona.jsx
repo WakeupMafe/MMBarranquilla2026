@@ -290,7 +290,9 @@ export default function AnamnesisZona() {
                   zona={zona}
                   onZonaEvaluada={handleZonaEvaluada}
                   resultadoPersistido={evaluacionesPorZona[zona]}
+                  numeroDocumento={cedula}
                   numero_documento_fisico={cedula}
+                  profesionalCedula={profesional?.cedula || ""}
                   profesional_cedula={profesional?.cedula || ""}
                 />
               ))}

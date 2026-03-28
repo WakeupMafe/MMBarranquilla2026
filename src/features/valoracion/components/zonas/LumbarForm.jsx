@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import { lumbarInitialState } from "../../config/zonas/lumbarInitialState";
 import { validarLumbar } from "../../services/zonas/validarLumbar";
@@ -6,6 +6,12 @@ import { evaluarLumbar } from "../../services/zonas/evaluarLumbar";
 import LumbarFields from "./LumbarFields";
 import { guardarAnamnesisLumbar } from "../../config/zonas/guardarlumbar";
 import { alertError, alertOk } from "../../../../shared/lib/alerts";
+
+function normalizarDocumento(valor) {
+  return String(valor ?? "")
+    .replace(/\D/g, "")
+    .trim();
+}
 
 export default function LumbarForm({
   onZonaEvaluada,
@@ -20,6 +26,11 @@ export default function LumbarForm({
     resultadoPersistido?.resultado || null,
   );
   const [guardando, setGuardando] = useState(false);
+
+  const numeroDocumentoLimpio = useMemo(
+    () => normalizarDocumento(numeroDocumento),
+    [numeroDocumento],
+  );
 
   useEffect(() => {
     if (!resultadoPersistido) return;
@@ -69,9 +80,10 @@ export default function LumbarForm({
       return;
     }
 
-    if (!numeroDocumento) {
+    if (!numeroDocumentoLimpio) {
       await alertError(
-        "No se encontró el documento del paciente para guardar la anamnesis lumbar.",
+        "Documento no disponible",
+        "No se encontró la cédula del paciente para guardar la anamnesis lumbar.",
       );
       return;
     }
@@ -85,7 +97,7 @@ export default function LumbarForm({
       setGuardando(true);
 
       await guardarAnamnesisLumbar({
-        numeroDocumento,
+        numeroDocumento: numeroDocumentoLimpio,
         formData,
       });
 
@@ -94,9 +106,6 @@ export default function LumbarForm({
         resultado: evaluacion,
         formData,
       });
-
-      console.log("Lumbar formData", formData);
-      console.log("Lumbar evaluación", evaluacion);
 
       await alertOk("Anamnesis lumbar guardada correctamente.");
     } catch (error) {
