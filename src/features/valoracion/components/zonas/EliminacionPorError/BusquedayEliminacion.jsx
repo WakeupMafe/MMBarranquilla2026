@@ -76,7 +76,7 @@ const TABLAS_BUSQUEDA = [
     table: "fotos_pacientes",
     column: "numero_documento_fisico",
     fields:
-      "id, numero_documento_fisico, fotos, videos, zonas_evaluadas, created_at, updated_at",
+      "numero_documento_fisico, sesion_tipo, fotos, videos, zonas_evaluadas, created_at, updated_at",
   },
 ];
 
@@ -197,8 +197,8 @@ function construirItemsResumen(key, row) {
 
     case "fotos_pacientes":
       return [
-        ["ID", row.id || "Sin dato"],
         ["Cédula", row.numero_documento_fisico || "Sin dato"],
+        ["Tipo sesión", row.sesion_tipo || "Sin dato"],
         [
           "Zonas evaluadas",
           Array.isArray(row.zonas_evaluadas) && row.zonas_evaluadas.length
