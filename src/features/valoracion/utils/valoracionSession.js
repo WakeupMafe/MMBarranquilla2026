@@ -1,7 +1,19 @@
 const STORAGE_KEY = "valoracion_activa";
 
+function documentoPacienteCanonico(paciente) {
+  return String(
+    paciente?.numero_documento_fisico ||
+      paciente?.num_documento ||
+      paciente?.cedula ||
+      "",
+  )
+    .replace(/\D/g, "")
+    .trim();
+}
+
 export function iniciarValoracionActiva(paciente) {
-  if (!paciente?.numero_documento_fisico) return;
+  const docCanon = documentoPacienteCanonico(paciente);
+  if (!docCanon) return;
 
   const clasificacion = paciente?.clasificacionPaciente || {};
 
@@ -11,9 +23,11 @@ export function iniciarValoracionActiva(paciente) {
     startedAt: new Date().toISOString(),
 
     paciente: {
-      numero_documento_fisico: paciente.numero_documento_fisico,
-      nombre_apellido_documento: paciente.nombre_apellido_documento,
+      numero_documento_fisico: docCanon,
+      nombre_apellido_documento: paciente.nombre_apellido_documento ?? "",
       genero: paciente.genero ?? "",
+      num_documento: paciente.num_documento ?? null,
+      cedula: paciente.cedula ?? null,
     },
 
     // 🔥 NUEVO: guardar TODA la lógica de flujo
