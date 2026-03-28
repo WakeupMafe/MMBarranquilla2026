@@ -1,0 +1,27 @@
+@import "../../../../fotos/components/FotoAuthGate.css";
+
+.fotoAuthBackButton {
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-weight: 700;
+  color: #1f2a44;
+  padding: 0.25rem 0;
+  font-size: 0.95rem;
+}
+
+.fotoAuthBackButton:hover {
+  color: #92bd4a;
+}
+
+.fotoAuthBackButton--standalone {
+  margin-bottom: 1rem;
+  display: block;
+  text-align: left;
+}
+
+.eliminacion-auth-gate__actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}

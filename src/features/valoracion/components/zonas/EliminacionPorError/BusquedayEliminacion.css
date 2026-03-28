@@ -80,6 +80,16 @@
   background: #fff5e6;
 }
 
+.eliminacion-chip--ok {
+  background: #e8f4e4;
+  color: #2d5a27;
+}
+
+.eliminacion-chip--auth-missing {
+  background: #fdeaea;
+  color: #7a2a2a;
+}
+
 .eliminacion-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
@@ -160,6 +170,100 @@
   color: #1f1f1f;
   line-height: 1.45;
   word-break: break-word;
+}
+
+.eliminacion-evidencias {
+  margin-top: clamp(12px, 1.5vw, 14px);
+  padding-top: clamp(12px, 1.5vw, 14px);
+  border-top: 1px solid #e8e7e0;
+}
+
+.eliminacion-evidencias__title {
+  margin: 0 0 clamp(10px, 1.2vw, 12px);
+  font-size: clamp(0.82rem, 0.95vw, 0.88rem);
+  font-weight: 800;
+  color: #5f5f5f;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.eliminacion-evidencias__hint {
+  margin: 0 0 10px;
+  font-size: 0.9rem;
+  color: #6b6b6b;
+}
+
+.eliminacion-evidencias__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: clamp(10px, 1.2vw, 12px);
+}
+
+.eliminacion-evidencias__item {
+  margin: 0;
+  padding: 8px;
+  background: #fff;
+  border: 1px solid #e4e3dc;
+  border-radius: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.eliminacion-evidencias__caption {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.eliminacion-evidencias__tipo {
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #6a8f5e;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  word-break: break-word;
+}
+
+.eliminacion-evidencias__nombre {
+  font-size: 0.78rem;
+  color: #555;
+  word-break: break-word;
+}
+
+.eliminacion-evidencias__link {
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  line-height: 0;
+}
+
+.eliminacion-evidencias__media {
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  background: #f0f0eb;
+  border-radius: 8px;
+}
+
+.eliminacion-evidencias__media--img {
+  cursor: zoom-in;
+}
+
+.eliminacion-evidencias__error {
+  margin: 0;
+  font-size: 0.78rem;
+  color: #a94442;
+  line-height: 1.35;
+}
+
+.eliminacion-evidencias__path {
+  margin: 0;
+  font-size: 0.65rem;
+  color: #888;
+  line-height: 1.3;
+  word-break: break-all;
+  max-height: 3.2em;
+  overflow: hidden;
 }
 
 @media (max-width: 900px) {

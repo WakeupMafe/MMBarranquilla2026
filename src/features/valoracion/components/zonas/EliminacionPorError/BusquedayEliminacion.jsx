@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import { supabase } from "../../../../../shared/lib/supabaseClient";
@@ -150,6 +150,278 @@ function extraerPathsStorageDesdeJson(valor, acumulado = []) {
   }
 
   return acumulado;
+}
+
+const SIGNED_URL_TTL_SEG = 7200;
+const SIGNED_URL_MAX_INTENTOS = 3;
+
+const MSG_SIN_SESION_AUTH =
+  "No hay sesión de Supabase Auth en este navegador. Las miniaturas usan enlaces firmados: entra al módulo de fotos (/herramientas/fotos-test), inicia sesión con correo y contraseña, y vuelve a esta página.";
+
+function delayMs(ms) {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
+function esErrorTransitorioSignedUrl(error) {
+  const msg = String(error?.message || "").toLowerCase();
+  const status = error?.statusCode ?? error?.status;
+  if (status === 502 || status === 503 || status === 504) return true;
+  if (msg.includes("502") || msg.includes("503") || msg.includes("504"))
+    return true;
+  if (msg.includes("bad gateway") || msg.includes("gateway timeout"))
+    return true;
+  if (msg.includes("service unavailable")) return true;
+  return false;
+}
+
+async function crearSignedUrlConReintentos(storagePath, ttlSegundos) {
+  let ultimoError = null;
+
+  for (let intento = 0; intento < SIGNED_URL_MAX_INTENTOS; intento += 1) {
+    const { data, error } = await supabase.storage
+      .from(FOTOS_BUCKET)
+      .createSignedUrl(storagePath, ttlSegundos);
+
+    if (!error && data?.signedUrl) {
+      return { data, error: null };
+    }
+
+    ultimoError = error;
+
+    if (
+      intento < SIGNED_URL_MAX_INTENTOS - 1 &&
+      error &&
+      esErrorTransitorioSignedUrl(error)
+    ) {
+      await delayMs(500 * (intento + 1));
+    } else {
+      break;
+    }
+  }
+
+  return { data: null, error: ultimoError };
+}
+
+function mensajeFalloSignedUrl(error) {
+  const raw = String(error?.message || error || "").trim();
+  const lower = raw.toLowerCase();
+
+  if (
+    lower.includes("502") ||
+    lower.includes("bad gateway") ||
+    lower.includes("503") ||
+    lower.includes("504") ||
+    lower.includes("gateway timeout")
+  ) {
+    return (
+      (raw || "502 Bad Gateway") +
+      ". Es un fallo del lado del servidor de Supabase o de la red (no de permisos). " +
+      "Reintenta en unos segundos o vuelve a pulsar Buscar; si persiste, revisa el estado del servicio en supabase.com/status."
+    );
+  }
+
+  const sugiereRls =
+    !raw ||
+    lower.includes("policy") ||
+    lower.includes("permission") ||
+    lower.includes("denied") ||
+    lower.includes("not authorized") ||
+    lower.includes("jwt") ||
+    raw === "Object not found";
+
+  const extra = sugiereRls
+    ? " Revisa en Supabase (Storage → políticas del bucket) que el rol authenticated tenga permiso de lectura en los objetos."
+    : "";
+
+  return (raw || "No se pudo generar el enlace de vista previa.") + extra;
+}
+
+function listarEntradasMedia(obj, kind) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return [];
+
+  return Object.entries(obj)
+    .map(([tipo, meta]) => {
+      const storage_path = meta?.storage_path
+        ? limpiarPathStorage(meta.storage_path)
+        : "";
+      const public_url =
+        typeof meta?.public_url === "string" && meta.public_url.trim()
+          ? meta.public_url.trim()
+          : "";
+
+      return {
+        key: `${kind}:${tipo}`,
+        tipo,
+        kind,
+        nombre: meta?.nombre_archivo || tipo,
+        storage_path,
+        public_url,
+        mime: String(meta?.mime_type || ""),
+      };
+    })
+    .filter((e) => e.storage_path || e.public_url);
+}
+
+function esRutaSimulacion(path) {
+  return String(path || "")
+    .toLowerCase()
+    .startsWith("simulacion/");
+}
+
+function EvidenciasPreviewBlock({ fotos, videos, authRevision = "" }) {
+  const entries = useMemo(
+    () => [
+      ...listarEntradasMedia(fotos, "foto"),
+      ...listarEntradasMedia(videos, "video"),
+    ],
+    [fotos, videos],
+  );
+
+  const [resolved, setResolved] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!entries.length) {
+      setResolved([]);
+      setLoading(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setResolved([]);
+
+    async function resolver() {
+      setLoading(true);
+      const out = [];
+
+      try {
+        const {
+          data: { session },
+        } = await supabase.auth.getSession();
+        const puedeFirmarUrls = Boolean(session);
+
+        for (const e of entries) {
+          if (cancelled) return;
+
+          let src = e.public_url || "";
+          let errMsg = "";
+
+          if (e.storage_path && esRutaSimulacion(e.storage_path)) {
+            errMsg = "Simulación (sin archivo en storage)";
+          } else if (!src && e.storage_path) {
+            if (!puedeFirmarUrls) {
+              errMsg = MSG_SIN_SESION_AUTH;
+            } else {
+              const { data, error } = await crearSignedUrlConReintentos(
+                e.storage_path,
+                SIGNED_URL_TTL_SEG,
+              );
+
+              if (error) {
+                errMsg = mensajeFalloSignedUrl(error);
+              } else if (data?.signedUrl) {
+                src = data.signedUrl;
+              }
+            }
+          }
+
+          if (!src && !errMsg) {
+            errMsg = "Sin ruta ni URL pública";
+          }
+
+          out.push({ ...e, src, errMsg });
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+
+      if (!cancelled) {
+        setResolved(out);
+      }
+    }
+
+    resolver();
+
+    return () => {
+      cancelled = true;
+      setLoading(false);
+    };
+  }, [entries, authRevision]);
+
+  if (!entries.length) {
+    return null;
+  }
+
+  return (
+    <div className="eliminacion-evidencias">
+      <p className="eliminacion-evidencias__title">Vista previa de evidencias</p>
+
+      {loading && resolved.length === 0 ? (
+        <p className="eliminacion-evidencias__hint">Cargando imágenes y videos…</p>
+      ) : null}
+
+      <div className="eliminacion-evidencias__grid">
+        {resolved.map((item) => {
+          const esVideo =
+            item.kind === "video" ||
+            String(item.mime || "").toLowerCase().startsWith("video/");
+
+          return (
+            <figure key={item.key} className="eliminacion-evidencias__item">
+              <figcaption className="eliminacion-evidencias__caption">
+                <span className="eliminacion-evidencias__tipo">{item.tipo}</span>
+                {item.nombre && item.nombre !== item.tipo ? (
+                  <span className="eliminacion-evidencias__nombre">
+                    {item.nombre}
+                  </span>
+                ) : null}
+              </figcaption>
+
+              {item.errMsg ? (
+                <p className="eliminacion-evidencias__error">{item.errMsg}</p>
+              ) : null}
+
+              {item.src && !item.errMsg ? (
+                esVideo ? (
+                  <video
+                    className="eliminacion-evidencias__media"
+                    controls
+                    playsInline
+                    preload="metadata"
+                    src={item.src}
+                  />
+                ) : (
+                  <a
+                    href={item.src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="eliminacion-evidencias__link"
+                  >
+                    <img
+                      className="eliminacion-evidencias__media eliminacion-evidencias__media--img"
+                      src={item.src}
+                      alt={item.tipo}
+                      loading="lazy"
+                    />
+                  </a>
+                )
+              ) : null}
+
+              {item.storage_path ? (
+                <p className="eliminacion-evidencias__path" title={item.storage_path}>
+                  {item.storage_path}
+                </p>
+              ) : null}
+            </figure>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
 
 function construirItemsResumen(key, row) {
@@ -310,7 +582,7 @@ async function eliminarTabla(config, cedula) {
   console.log(`✅ Eliminación completada en ${config.table} para ${cedula}`);
 }
 
-function ResumenCard({ title, count, rows, itemKey }) {
+function ResumenCard({ title, count, rows, itemKey, authRevision }) {
   return (
     <article className="eliminacion-card">
       <div className="eliminacion-card__header">
@@ -338,6 +610,14 @@ function ResumenCard({ title, count, rows, itemKey }) {
                     </li>
                   ))}
                 </ul>
+
+                {itemKey === "fotos_pacientes" ? (
+                  <EvidenciasPreviewBlock
+                    fotos={row.fotos}
+                    videos={row.videos}
+                    authRevision={authRevision}
+                  />
+                ) : null}
               </div>
             );
           })}
@@ -355,6 +635,7 @@ export default function BusquedayEliminacion() {
   const [loading, setLoading] = useState(false);
   const [eliminando, setEliminando] = useState(false);
   const [resultadoBusqueda, setResultadoBusqueda] = useState(null);
+  const [sesionSupabaseAuth, setSesionSupabaseAuth] = useState(null);
 
   const userName = profesional?.nombre || "Profesional";
   const cedulaProfesional = useMemo(
@@ -363,6 +644,32 @@ export default function BusquedayEliminacion() {
   );
 
   const autorizado = CEDULAS_ADMIN.includes(cedulaProfesional);
+
+  const revisionAuthVistaPrevia = sesionSupabaseAuth?.user?.id
+    ? String(sesionSupabaseAuth.user.id)
+    : "sin-auth";
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function syncAuth() {
+      const { data } = await supabase.auth.getSession();
+      if (mounted) setSesionSupabaseAuth(data.session ?? null);
+    }
+
+    syncAuth();
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+      if (mounted) setSesionSupabaseAuth(nextSession ?? null);
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []);
 
   const totalRegistros = useMemo(() => {
     if (!resultadoBusqueda) return 0;
@@ -568,6 +875,17 @@ export default function BusquedayEliminacion() {
               <span className="eliminacion-chip eliminacion-chip--warning">
                 Bucket fotos: {FOTOS_BUCKET}
               </span>
+
+              <span
+                className={
+                  sesionSupabaseAuth
+                    ? "eliminacion-chip eliminacion-chip--ok"
+                    : "eliminacion-chip eliminacion-chip--auth-missing"
+                }
+              >
+                Supabase Auth (vista previa):{" "}
+                {sesionSupabaseAuth ? "sesión activa" : "sin sesión"}
+              </span>
             </div>
           </div>
 
@@ -580,6 +898,7 @@ export default function BusquedayEliminacion() {
                   count={item.count}
                   rows={item.rows}
                   itemKey={item.key}
+                  authRevision={revisionAuthVistaPrevia}
                 />
               ))}
             </div>
