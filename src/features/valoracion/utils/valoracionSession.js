@@ -46,6 +46,16 @@ export function iniciarValoracionActiva(paciente) {
       zonaSecundaria: clasificacion.zonaSecundaria,
 
       mensajeFlujoGlobal: clasificacion.mensajeFlujoGlobal,
+
+      patologiaRelacionadaDesdeAsistencia:
+        clasificacion.patologiaRelacionadaDesdeAsistencia,
+      personaNoValoradaFisioterapia: clasificacion.personaNoValoradaFisioterapia,
+      clasificacionPreliminarDerivadaAsistencia:
+        clasificacion.clasificacionPreliminarDerivadaAsistencia,
+      zonaCanonDesdePatologiaAsistencia:
+        clasificacion.zonaCanonDesdePatologiaAsistencia,
+      etiquetaZonaOpcionesContinuidad:
+        clasificacion.etiquetaZonaOpcionesContinuidad,
     },
   };
 

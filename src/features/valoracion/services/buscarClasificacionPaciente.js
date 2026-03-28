@@ -1,8 +1,15 @@
 import { supabase } from "../../../shared/lib/supabaseClient";
 import {
+  mismoDocumentoBd,
+  normalizarDocumentoCkin,
+} from "../config/validarCedulaCkin";
+import {
   esClasificacionSecundariaValida,
   evaluarObjetivosEncuesta,
 } from "./valoracionRules";
+import { mapearPatologiaRelacionadaAZona } from "../utils/mapearPatologiaRelacionadaAZona";
+
+let asistenciaSelectIncluyePatologiaRelacionada = true;
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -12,61 +19,189 @@ function tieneTexto(valor) {
   return normalizarTexto(valor).length > 0;
 }
 
+/**
+ * encuesta2.cedula es entero en BD: PostgREST debe recibir número (no string "123").
+ * No usar ilike (no aplica a columnas integer/bigint).
+ */
+async function obtenerFilaEncuesta2PorCedulaEntera({
+  tabla,
+  columnaDocumento,
+  columnasSelect,
+  documentoNormalizado,
+  mensajeError,
+}) {
+  const soloDigitos = String(documentoNormalizado).replace(/\D/g, "");
+  if (!soloDigitos) return null;
+
+  const cedulaNumerica = Number(soloDigitos);
+  if (!Number.isFinite(cedulaNumerica) || !Number.isInteger(cedulaNumerica)) {
+    return null;
+  }
+
+  // INTEGER: el cliente debe enviar número JSON. BIGINT muy largo: filtro como string de dígitos.
+  const valorFiltro = Number.isSafeInteger(cedulaNumerica)
+    ? cedulaNumerica
+    : soloDigitos;
+
+  const { data: filas, error } = await supabase
+    .from(tabla)
+    .select(columnasSelect)
+    .eq(columnaDocumento, valorFiltro)
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message || mensajeError);
+  }
+
+  return filas?.[0] ?? null;
+}
+
+/**
+ * num_documento / numero_documento son VARCHAR: eq con string + ilike tolerante.
+ */
+async function obtenerFilaPorDocumentoVarchar({
+  tabla,
+  columnaDocumento,
+  columnasSelect,
+  documentoNormalizado,
+  mensajeError,
+}) {
+  const docStr = String(documentoNormalizado);
+
+  const { data: filasExactas, error } = await supabase
+    .from(tabla)
+    .select(columnasSelect)
+    .eq(columnaDocumento, docStr)
+    .limit(1);
+
+  if (error) {
+    throw new Error(error.message || mensajeError);
+  }
+
+  let fila = filasExactas?.[0] ?? null;
+
+  if (!fila) {
+    const sinCeros = docStr.replace(/^0+/, "") || docStr;
+    if (sinCeros !== docStr) {
+      const { data: filasAlt, error: errAlt } = await supabase
+        .from(tabla)
+        .select(columnasSelect)
+        .eq(columnaDocumento, sinCeros)
+        .limit(1);
+
+      if (errAlt) {
+        throw new Error(errAlt.message || mensajeError);
+      }
+      fila = filasAlt?.[0] ?? null;
+    }
+  }
+
+  if (fila) return fila;
+
+  const { data: candidatos, error: errorTolerante } = await supabase
+    .from(tabla)
+    .select(columnasSelect)
+    .ilike(columnaDocumento, `%${docStr}%`)
+    .limit(120);
+
+  if (errorTolerante) {
+    throw new Error(errorTolerante.message || mensajeError);
+  }
+
+  return (
+    (candidatos || []).find((row) =>
+      mismoDocumentoBd(row?.[columnaDocumento], documentoNormalizado),
+    ) || null
+  );
+}
+
 export async function buscarClasificacionPaciente(numeroDocumento) {
-  if (!numeroDocumento) {
+  const documentoNormalizado = normalizarDocumentoCkin(numeroDocumento);
+
+  if (!documentoNormalizado) {
     throw new Error("El número de documento es obligatorio");
   }
 
-  const documento = String(numeroDocumento).trim();
+  const valoracion = await obtenerFilaPorDocumentoVarchar({
+    tabla: "valoraciones_fisioterapia",
+    columnaDocumento: "num_documento",
+    columnasSelect:
+      "num_documento, clasificacion_preliminar, clasificacion_secundaria",
+    documentoNormalizado,
+    mensajeError: "No se pudo consultar la valoración física",
+  });
 
-  const { data: valoracionRows, error: errorValoracion } = await supabase
-    .from("valoraciones_fisioterapia")
-    .select("num_documento, clasificacion_preliminar, clasificacion_secundaria")
-    .eq("num_documento", documento)
-    .limit(1);
+  const columnasAsistenciaConPatologia =
+    "numero_documento, porcentaje_asistencia, patologia_relacionada";
+  const columnasAsistenciaBase =
+    "numero_documento, porcentaje_asistencia";
 
-  if (errorValoracion) {
-    throw new Error(
-      errorValoracion.message || "No se pudo consultar la valoración física",
-    );
+  let asistencia;
+  try {
+    asistencia = await obtenerFilaPorDocumentoVarchar({
+      tabla: "asistencia",
+      columnaDocumento: "numero_documento",
+      columnasSelect: asistenciaSelectIncluyePatologiaRelacionada
+        ? columnasAsistenciaConPatologia
+        : columnasAsistenciaBase,
+      documentoNormalizado,
+      mensajeError: "No se pudo consultar la asistencia del paciente",
+    });
+  } catch (errAsistencia) {
+    const msg = String(errAsistencia?.message || "");
+    if (
+      asistenciaSelectIncluyePatologiaRelacionada &&
+      (msg.includes("patologia_relacionada") || msg.includes("does not exist"))
+    ) {
+      asistenciaSelectIncluyePatologiaRelacionada = false;
+      asistencia = await obtenerFilaPorDocumentoVarchar({
+        tabla: "asistencia",
+        columnaDocumento: "numero_documento",
+        columnasSelect: columnasAsistenciaBase,
+        documentoNormalizado,
+        mensajeError: "No se pudo consultar la asistencia del paciente",
+      });
+    } else {
+      throw errAsistencia;
+    }
   }
 
-  const valoracion = valoracionRows?.[0] || null;
-
-  const { data: encuestaRows, error: errorEncuesta2 } = await supabase
-    .from("encuesta2")
-    .select(
+  const encuesta2 = await obtenerFilaEncuesta2PorCedulaEntera({
+    tabla: "encuesta2",
+    columnaDocumento: "cedula",
+    columnasSelect:
       "cedula, obj1_original, obj1_nuevo, obj2_original, obj2_nuevo, obj3_original, obj3_nuevo",
-    )
-    .eq("cedula", documento)
-    .limit(1);
+    documentoNormalizado,
+    mensajeError: "No se pudo consultar la encuesta de logros",
+  });
 
-  if (errorEncuesta2) {
-    throw new Error(
-      errorEncuesta2.message || "No se pudo consultar la encuesta de logros",
-    );
-  }
+  const preliminarCruda = String(
+    valoracion?.clasificacion_preliminar ?? "",
+  ).trim();
+  const secundariaCruda = String(
+    valoracion?.clasificacion_secundaria ?? "",
+  ).trim();
 
-  const encuesta2 = encuestaRows?.[0] || null;
-
-  const { data: asistenciaRows, error: errorAsistencia } = await supabase
-    .from("asistencia")
-    .select("porcentaje_asistencia")
-    .eq("numero_documento", documento)
-    .limit(1);
-
-  if (errorAsistencia) {
-    throw new Error(
-      errorAsistencia.message ||
-        "No se pudo consultar la asistencia del paciente",
-    );
-  }
-
-  const asistencia = asistenciaRows?.[0] || null;
-
-  const clasificacionPreliminar = normalizarTexto(
+  const preliminarDesdeValoracion = normalizarTexto(
     valoracion?.clasificacion_preliminar,
   );
+  const tienePreliminarValoracion = tieneTexto(preliminarDesdeValoracion);
+
+  const patologiaRelacionadaRaw = String(
+    asistencia?.patologia_relacionada ?? "",
+  ).trim();
+  const zonaCanonPatologia = mapearPatologiaRelacionadaAZona(
+    patologiaRelacionadaRaw,
+  );
+  const clasificacionPreliminarDerivadaAsistencia =
+    !tienePreliminarValoracion && Boolean(zonaCanonPatologia);
+
+  const clasificacionPreliminar = tienePreliminarValoracion
+    ? preliminarDesdeValoracion
+    : zonaCanonPatologia
+      ? patologiaRelacionadaRaw || zonaCanonPatologia
+      : "";
+
   const clasificacionSecundaria = normalizarTexto(
     valoracion?.clasificacion_secundaria,
   );
@@ -74,6 +209,8 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
   const valoracionEncontrada = !!valoracion;
   const asistenciaEncontrada = !!asistencia;
   const encuestaLogrosRealizada = !!encuesta2;
+  const personaNoValoradaFisioterapia =
+    (valoracionEncontrada || asistenciaEncontrada) && !valoracionEncontrada;
 
   const hizoParteMmb2025 = valoracionEncontrada || asistenciaEncontrada;
   const esPacienteNuevo = !hizoParteMmb2025;
@@ -85,7 +222,13 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
   const evaluacionObjetivos = evaluarObjetivosEncuesta(encuesta2);
   const objetivosCumplidos = !!evaluacionObjetivos.objetivosCumplidos;
 
-  const tieneClasificacionPreliminar = tieneTexto(clasificacionPreliminar);
+  const tieneClasificacionPreliminar =
+    tienePreliminarValoracion || clasificacionPreliminarDerivadaAsistencia;
+
+  const etiquetaZonaOpcionesContinuidad =
+    clasificacionPreliminarDerivadaAsistencia
+      ? patologiaRelacionadaRaw || null
+      : null;
 
   const tieneClasificacionSecundariaValida = esClasificacionSecundariaValida(
     clasificacionSecundaria,
@@ -103,7 +246,6 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     "Paciente sin registro previo en la cohorte 2025. Debe iniciar proceso mediante anamnesis global.";
   let tipoAnamnesis = "Anamnesis global";
   let ruta = "ruta_global";
-  let preclasifica = false;
 
   let ocultarDeteccionDolor = false;
   let mostrarOpcionZonaSecundaria = false;
@@ -121,25 +263,22 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
   let mensajeFlujoGlobal = "";
 
   if (esPacienteAntiguo) {
-    // CASO 1:
-    // No cumple asistencia o no cumple objetivos -> vuelve a su zona preliminar
     if (
       tieneClasificacionPreliminar &&
       (!cumpleAsistencia || !objetivosCumplidos)
     ) {
       flujo = "ANTIGUO_REINICIA_ZONA";
       estadoPreclasificacion = "Activa";
-      mensajePreclasificacion = `Usuario preclasificado para continuar en la fase correspondiente a ${clasificacionPreliminar}.`;
+      mensajePreclasificacion = clasificacionPreliminarDerivadaAsistencia
+        ? `No hay registro en valoración fisioterapia 2025 (persona no valorada en esa tabla). La continuidad se orienta con la patología relacionada registrada en asistencia (${patologiaRelacionadaRaw}). Tras la anamnesis global podrás ir directo a fotos de esa zona o elegir otra zona con anamnesis específica.`
+        : `Usuario preclasificado para continuar en la fase correspondiente a ${clasificacionPreliminar}.`;
       ocultarDeteccionDolor = true;
       zonaDestino = clasificacionPreliminar;
       destinoSugerido = "anamnesis_zona";
-      mensajeFlujoGlobal =
-        "El paciente presenta un proceso previo no culminado y debe continuar la intervención correspondiente a su zona preliminar.";
-    }
-
-    // CASO 2:
-    // Cumple todo y sí tiene secundaria -> elegir entre preliminar o segundo diagnóstico
-    else if (
+      mensajeFlujoGlobal = clasificacionPreliminarDerivadaAsistencia
+        ? "Paciente con registro de asistencia en 2025 pero sin fila en valoración fisioterapia. La zona sugerida proviene del campo patología relacionada en asistencia; puedes ir a fotos de esa zona sin anamnesis de zona previa."
+        : "El paciente presenta un proceso previo no culminado y debe continuar la intervención correspondiente a su zona preliminar.";
+    } else if (
       tieneClasificacionPreliminar &&
       cumpleAsistencia &&
       objetivosCumplidos &&
@@ -147,21 +286,16 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     ) {
       flujo = "ANTIGUO_ELIGE_PRELIMINAR_O_SECUNDARIA";
       estadoPreclasificacion = "Activa";
-      mensajePreclasificacion = `Usuario preclasificado con opción de continuidad en ${clasificacionPreliminar} o activación de segundo diagnóstico en ${clasificacionSecundaria}.`;
+      mensajePreclasificacion = clasificacionPreliminarDerivadaAsistencia
+        ? `Preclasificación apoyada en patología relacionada en asistencia (${patologiaRelacionadaRaw}), sin registro en valoración fisioterapia. Opción de continuidad en esa zona o segundo diagnóstico en ${clasificacionSecundaria}.`
+        : `Usuario preclasificado con opción de continuidad en ${clasificacionPreliminar} o activación de segundo diagnóstico en ${clasificacionSecundaria}.`;
       ocultarDeteccionDolor = true;
       mostrarOpcionZonaSecundaria = true;
       zonaDestino = clasificacionPreliminar;
       destinoSugerido = "decision_preliminar_o_secundaria";
       mensajeFlujoGlobal =
         "El paciente cumple criterios para progresión terapéutica y puede definir continuidad en su zona preliminar o activar la fase correspondiente a su segundo diagnóstico.";
-    }
-
-    // CASO 3:
-    // Cumple todo y no tiene secundaria -> elegir entre preliminar o funcional
-    // CASO 3:
-    // Cumple todo y no tiene secundaria -> sugerir funcional,
-    // pero permitir quedarse en su zona actual o cambiar a otra zona
-    else if (
+    } else if (
       tieneClasificacionPreliminar &&
       cumpleAsistencia &&
       objetivosCumplidos &&
@@ -169,20 +303,18 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     ) {
       flujo = "ANTIGUO_FUNCIONAL_O_CAMBIO";
       estadoPreclasificacion = "Activa";
-      mensajePreclasificacion =
-        "Usuario preclasificado para progresión a fase funcional. También puede permanecer en su zona actual o solicitar cambio a otra zona.";
+      mensajePreclasificacion = clasificacionPreliminarDerivadaAsistencia
+        ? `Preclasificación desde patología en asistencia (${patologiaRelacionadaRaw}), sin valoración fisioterapia en 2025. Puede avanzar a funcional, continuar en la zona sugerida o cambiar de zona.`
+        : "Usuario preclasificado para progresión a fase funcional. También puede permanecer en su zona actual o solicitar cambio a otra zona.";
       ocultarDeteccionDolor = true;
 
-      // 🔵 ya no usaremos el flujo viejo de preliminar o funcional
       mostrarOpcionPreliminarFuncional = false;
 
       zonaDestino = clasificacionPreliminar;
       destinoSugerido = "decision_funcional_o_cambio";
       mensajeFlujoGlobal =
         "El paciente cumplió asistencia y objetivos, no presenta segundo diagnóstico y puede avanzar a funcional. Si lo requiere, también puede permanecer en su zona actual o cambiar a otra zona diagnóstica.";
-    }
-    // Antiguo sin clasificación preliminar clara
-    else {
+    } else {
       flujo = "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
       estadoPreclasificacion = "Sin clasificación previa";
       mensajePreclasificacion =
@@ -192,12 +324,15 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
       mensajeFlujoGlobal =
         "Aunque el paciente presenta antecedente previo, no cuenta con clasificación preliminar ni secundaria válida. Por tanto, debe seguir flujo completo: anamnesis global, anamnesis de zona y registro de fotos.";
 
-      // 🔹 importante: no hereda zona previa
       zonaDestino = null;
     }
   }
 
+  const preclasifica = estadoPreclasificacion === "Activa";
+
   return {
+    documentoConsultaNormalizado: documentoNormalizado,
+
     hizoParteMmb2025,
     esPacienteNuevo,
     esPacienteAntiguo,
@@ -213,6 +348,14 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
 
     porcentajeAsistencia,
     cumpleAsistencia,
+
+    clasificacionPreliminarDesdeBd: preliminarCruda || null,
+    clasificacionSecundariaDesdeBd: secundariaCruda || null,
+    patologiaRelacionadaDesdeAsistencia: patologiaRelacionadaRaw || null,
+    personaNoValoradaFisioterapia,
+    clasificacionPreliminarDerivadaAsistencia,
+    zonaCanonDesdePatologiaAsistencia: zonaCanonPatologia,
+    etiquetaZonaOpcionesContinuidad,
 
     clasificacionPreliminar: tieneClasificacionPreliminar
       ? clasificacionPreliminar

@@ -8,6 +8,7 @@ import EditarPacienteModal from "../components/EditarPacienteModal";
 
 import { supabase } from "../../../shared/lib/supabaseClient";
 import { alertConfirm, alertError, alertOk } from "../../../shared/lib/alerts";
+import { normalizarDocumentoCkin } from "../config/validarCedulaCkin";
 
 const SESSION_KEY = "wk_profesional";
 
@@ -60,8 +61,10 @@ export default function Valoracion() {
   const pacienteDesdeCheckIn = location.state?.paciente || null;
   const checkIn = location.state?.checkIn || null;
 
-  const [cedula, setCedula] = useState(
-    pacienteDesdeCheckIn?.numero_documento_fisico || "",
+  const [cedula, setCedula] = useState(() =>
+    normalizarDocumentoCkin(
+      pacienteDesdeCheckIn?.numero_documento_fisico || "",
+    ),
   );
   const [paciente, setPaciente] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -111,12 +114,13 @@ export default function Valoracion() {
     async function cargarPacienteDesdeCheckIn() {
       if (!pacienteDesdeCheckIn?.numero_documento_fisico) return;
 
+      const documento = normalizarDocumentoCkin(
+        pacienteDesdeCheckIn.numero_documento_fisico || "",
+      );
+      if (!documento) return;
+
       try {
         setLoading(true);
-
-        const documento = String(
-          pacienteDesdeCheckIn.numero_documento_fisico || "",
-        ).trim();
 
         const pacienteBd = await obtenerPacientePorDocumento(documento);
         const pacienteBase = pacienteBd || pacienteDesdeCheckIn;
@@ -151,7 +155,7 @@ export default function Valoracion() {
   async function handleBuscar(e) {
     e.preventDefault();
 
-    if (!cedula.trim()) {
+    if (!normalizarDocumentoCkin(cedula)) {
       await alertError("Falta información", "Debes ingresar una cédula.");
       return;
     }
@@ -159,7 +163,15 @@ export default function Valoracion() {
     try {
       setLoading(true);
 
-      const documento = cedula.trim();
+      const documento = normalizarDocumentoCkin(cedula);
+      if (!documento) {
+        await alertError(
+          "Documento inválido",
+          "Ingresa un número de documento válido.",
+        );
+        return;
+      }
+
       const data = await obtenerPacientePorDocumento(documento);
 
       if (!data) {
@@ -183,6 +195,8 @@ export default function Valoracion() {
         clasificacionPaciente,
         estadoCalidad,
       });
+
+      setCedula(documento);
     } catch (error) {
       console.error("Error consultando paciente:", error);
 

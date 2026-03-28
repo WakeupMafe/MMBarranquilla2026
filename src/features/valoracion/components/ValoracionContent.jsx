@@ -18,13 +18,14 @@ export default function ValoracionContent({
   onVolver,
   onEditarDatos,
 }) {
-  const estadoPreclasificacion =
-    paciente?.clasificacionPaciente?.estadoPreclasificacion || "Sin dato";
+  const estadoPrec =
+    paciente?.clasificacionPaciente?.estadoPreclasificacion ?? null;
+  const estadoPreclasificacion = estadoPrec || "Sin dato";
 
   const claseAlerta = paciente?.clasificacionPaciente?.preclasifica
     ? "valoracionStatusAlert valoracionStatusAlert--ok"
-    : paciente?.clasificacionPaciente?.estadoPreclasificacion ===
-        "Se sugiere nuevo análisis"
+    : estadoPrec === "Se sugiere nuevo análisis" ||
+        estadoPrec === "Paciente nuevo"
       ? "valoracionStatusAlert valoracionStatusAlert--info"
       : "valoracionStatusAlert valoracionStatusAlert--warn";
 
@@ -194,20 +195,81 @@ export default function ValoracionContent({
                   </p>
 
                   <p>
+                    <strong>Registro valoración fisioterapia 2025:</strong>{" "}
+                    {paciente?.clasificacionPaciente?.valoracionEncontrada
+                      ? "Sí"
+                      : "No"}
+                  </p>
+
+                  <p>
+                    <strong>Registro asistencia 2025:</strong>{" "}
+                    {paciente?.clasificacionPaciente?.asistenciaEncontrada
+                      ? "Sí"
+                      : "No"}
+                  </p>
+
+                  <p>
+                    <strong>Encuesta de logros:</strong>{" "}
+                    {paciente?.clasificacionPaciente?.encuestaLogrosRealizada
+                      ? "Sí"
+                      : "No"}{" "}
+                    (
+                    {paciente?.clasificacionPaciente?.encuestaLogrosEstado ||
+                      "Sin dato"}
+                    )
+                  </p>
+
+                  <p>
                     <strong>Preclasificación:</strong>{" "}
                     {paciente?.clasificacionPaciente?.estadoPreclasificacion ||
                       "-"}
                   </p>
 
                   <p>
-                    <strong>Patología 2025:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.clasificacionPreliminar ||
-                      "-"}
+                    <strong>Clasificación preliminar (valoración fisioterapia):</strong>{" "}
+                    {paciente?.clasificacionPaciente?.personaNoValoradaFisioterapia
+                      ? "(Persona no valorada en valoraciones_fisioterapia)"
+                      : paciente?.clasificacionPaciente
+                            ?.clasificacionPreliminarDesdeBd || "—"}
                   </p>
 
                   <p>
-                    <strong>Clasificación final:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.clasificacionFinal || "-"}
+                    <strong>Patología relacionada (asistencia):</strong>{" "}
+                    {paciente?.clasificacionPaciente
+                      ?.patologiaRelacionadaDesdeAsistencia || "—"}
+                    {paciente?.clasificacionPaciente
+                      ?.clasificacionPreliminarDerivadaAsistencia ? (
+                      <span className="valoracionStatusMeta">
+                        {" "}
+                        (usada como preclasificación cuando no hay valoración
+                        fisioterapia)
+                      </span>
+                    ) : null}
+                  </p>
+
+                  <p>
+                    <strong>Clasificación secundaria (BD):</strong>{" "}
+                    {paciente?.clasificacionPaciente
+                      ?.clasificacionSecundariaDesdeBd || "—"}
+                    {paciente?.clasificacionPaciente?.clasificacionSecundariaDesdeBd &&
+                    !paciente?.clasificacionPaciente
+                      ?.tieneClasificacionSecundariaValida ? (
+                      <span className="valoracionStatusMeta">
+                        {" "}
+                        (no aplica para el flujo: vacía o NO APLICA)
+                      </span>
+                    ) : null}
+                  </p>
+
+                  <p>
+                    <strong>Patología 2025 (usada en flujo):</strong>{" "}
+                    {paciente?.clasificacionPaciente?.clasificacionPreliminar ||
+                      "—"}
+                  </p>
+
+                  <p>
+                    <strong>Clasificación final (flujo):</strong>{" "}
+                    {paciente?.clasificacionPaciente?.clasificacionFinal || "—"}
                   </p>
 
                   <p>

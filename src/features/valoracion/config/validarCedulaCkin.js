@@ -6,11 +6,32 @@ function textoSeguro(valor) {
 
 // 🔹 Normaliza dejando solo números (clave para comparar contra BD sucia)
 export function normalizarDocumentoCkin(valor) {
-  return textoSeguro(valor)
+  if (valor == null) return "";
+  // PostgREST puede devolver números si la columna es numérica; VARCHAR suele venir como string
+  const base =
+    typeof valor === "number" && Number.isFinite(valor)
+      ? String(Math.trunc(valor))
+      : textoSeguro(valor);
+  return base
     .replace(/[\u200B-\u200D\uFEFF]/g, "") // invisibles comunes
     .replace(/\s+/g, "") // espacios normales o raros
     .replace(/\D/g, "") // deja solo números
     .trim();
+}
+
+/**
+ * Compara documento buscado (solo dígitos) con valor desde BD (VARCHAR u otro).
+ * Trata ceros a la izquierda distintos entre app y tabla.
+ */
+export function mismoDocumentoBd(valorEnBd, documentoNormalizadoDigitos) {
+  const busqueda = normalizarDocumentoCkin(documentoNormalizadoDigitos);
+  if (!busqueda) return false;
+  const enBd = normalizarDocumentoCkin(valorEnBd);
+  if (!enBd) return false;
+  if (enBd === busqueda) return true;
+  const bd = enBd.replace(/^0+/, "") || "0";
+  const doc = busqueda.replace(/^0+/, "") || "0";
+  return bd === doc;
 }
 
 // 🔹 Valida que sí haya algo usable

@@ -1,3 +1,4 @@
+import { normalizarDocumentoCkin } from "../config/validarCedulaCkin";
 import { buscarClasificacionPaciente } from "./buscarClasificacionPaciente";
 
 export async function prepararNavegacionCheckIn({
@@ -5,9 +6,8 @@ export async function prepararNavegacionCheckIn({
   profesional,
   checkInPayload,
 }) {
-  const clasificacionPaciente = await buscarClasificacionPaciente(
-    checkInPayload.cedula,
-  );
+  const documento = normalizarDocumentoCkin(checkInPayload?.cedula || "");
+  const clasificacionPaciente = await buscarClasificacionPaciente(documento);
 
   return {
     profesional,

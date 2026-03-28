@@ -47,6 +47,17 @@ export function formatearNombreZona(zona) {
   return mapa[zona] || zona;
 }
 
+function labelFotosZonaSugeridaEncuesta(clasificacionPaciente, zonaActual) {
+  const etiqueta = clasificacionPaciente?.etiquetaZonaOpcionesContinuidad;
+  const canon =
+    clasificacionPaciente?.zonaCanonDesdePatologiaAsistencia ||
+    clasificacionPaciente?.zonaCanonDesdePatologiaEncuesta;
+  if (etiqueta && canon && zonaActual === canon) {
+    return `Continuar con ${etiqueta} (ir a fotos)`;
+  }
+  return null;
+}
+
 export function construirOpcionesContinuidad({
   resultado,
   clasificacionPaciente,
@@ -100,9 +111,15 @@ export function construirOpcionesContinuidad({
 
   if (siguientePaso === "decision_reinicia_zona_o_cambio") {
     if (zonaActual) {
+      const labelSugerida = labelFotosZonaSugeridaEncuesta(
+        clasificacionPaciente,
+        zonaActual,
+      );
       opciones.push({
         value: `fotos_${zonaActual}`,
-        label: `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
+        label:
+          labelSugerida ||
+          `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -122,9 +139,15 @@ export function construirOpcionesContinuidad({
 
   if (siguientePaso === "decision_fotos_preliminar_o_secundaria") {
     if (zonaActual) {
+      const labelSugerida = labelFotosZonaSugeridaEncuesta(
+        clasificacionPaciente,
+        zonaActual,
+      );
       opciones.push({
         value: `fotos_${zonaActual}`,
-        label: `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
+        label:
+          labelSugerida ||
+          `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -153,9 +176,15 @@ export function construirOpcionesContinuidad({
 
   if (siguientePaso === "decision_fotos_preliminar_o_funcional") {
     if (zonaActual && zonaActual !== "funcional") {
+      const labelSugerida = labelFotosZonaSugeridaEncuesta(
+        clasificacionPaciente,
+        zonaActual,
+      );
       opciones.push({
         value: `fotos_${zonaActual}`,
-        label: `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
+        label:
+          labelSugerida ||
+          `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -189,9 +218,15 @@ export function construirOpcionesContinuidad({
     });
 
     if (zonaActual) {
+      const labelSugerida = labelFotosZonaSugeridaEncuesta(
+        clasificacionPaciente,
+        zonaActual,
+      );
       opciones.push({
         value: `fotos_${zonaActual}`,
-        label: `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
+        label:
+          labelSugerida ||
+          `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -218,9 +253,15 @@ export function construirOpcionesContinuidad({
     });
 
     if (zonaActual) {
+      const labelSugerida = labelFotosZonaSugeridaEncuesta(
+        clasificacionPaciente,
+        zonaActual,
+      );
       opciones.push({
         value: `fotos_${zonaActual}`,
-        label: `Continuar diagnóstico actual: ${formatearNombreZona(zonaActual)}`,
+        label:
+          labelSugerida ||
+          `Continuar diagnóstico actual: ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
