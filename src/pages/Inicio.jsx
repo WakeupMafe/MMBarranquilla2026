@@ -1,5 +1,5 @@
 // src/pages/Inicio.jsx
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../shared/lib/supabaseClient";
 
@@ -9,11 +9,27 @@ import "./Inicio.css";
 import logoWakeup from "../assets/LogoWakeup.png";
 import avatar from "../assets/avatarbienvenida.svg";
 
+/** Mismo corte que `@media (max-width: 480px)` en Inicio.css */
+const MOBILE_PLACEHOLDER_MQ = "(max-width: 480px)";
+
 export default function Inicio() {
   const navigate = useNavigate();
   const [cedula, setCedula] = useState("");
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
+  const [esVistaMovil, setEsVistaMovil] = useState(() =>
+    typeof window !== "undefined"
+      ? window.matchMedia(MOBILE_PLACEHOLDER_MQ).matches
+      : false,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia(MOBILE_PLACEHOLDER_MQ);
+    const actualizar = () => setEsVistaMovil(mq.matches);
+    actualizar();
+    mq.addEventListener("change", actualizar);
+    return () => mq.removeEventListener("change", actualizar);
+  }, []);
 
   const onSubmit = async (e) => {
     e.preventDefault();
@@ -79,7 +95,9 @@ export default function Inicio() {
                   const v = e.target.value.replace(/[^\d]/g, "");
                   setCedula(v);
                 }}
-                placeholder="Documento de identidad"
+                placeholder={
+                  esVistaMovil ? "Cédula" : "Documento de identidad"
+                }
                 inputMode="numeric"
                 autoComplete="off"
               />
