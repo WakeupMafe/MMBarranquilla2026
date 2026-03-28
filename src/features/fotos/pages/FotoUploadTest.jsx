@@ -74,12 +74,10 @@ export default function FotoUploadTest() {
     location.state?.vieneDesdeAnamnesisZona === true;
 
   /* =========================
-     CACHE CONTROLADO
+     Valoración en localStorage (mismo paciente que anamnesis global/zona).
+     Siempre disponible como respaldo si falta location.state (refresh, navegación incompleta).
   ========================= */
-  const valoracionActiva = useMemo(() => {
-    if (!vieneDesdeAnamnesisZona) return null;
-    return obtenerValoracionActiva();
-  }, [vieneDesdeAnamnesisZona]);
+  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
 
   /* =========================
      ZONAS ACTIVAS
@@ -97,17 +95,13 @@ export default function FotoUploadTest() {
         location.state?.resultado?.zonasDetectadas?.[0] ||
         location.state?.clasificacionPaciente?.zonaSecundaria ||
         location.state?.clasificacionPaciente?.zonaDestino ||
-        (vieneDesdeAnamnesisZona
-          ? valoracionActiva?.clasificacionPaciente?.zonaSecundaria
-          : null) ||
-        (vieneDesdeAnamnesisZona
-          ? valoracionActiva?.clasificacionPaciente?.zonaDestino
-          : null) ||
+        valoracionActiva?.clasificacionPaciente?.zonaSecundaria ||
+        valoracionActiva?.clasificacionPaciente?.zonaDestino ||
         "funcional",
     );
 
     return [zonaUnica];
-  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
+  }, [location.state, valoracionActiva]);
 
   /* =========================
      GRUPOS DE FOTOS
@@ -145,26 +139,25 @@ export default function FotoUploadTest() {
      PACIENTE / PROFESIONAL
   ========================= */
   const paciente = useMemo(() => {
-    if (location.state?.paciente) return location.state.paciente;
-    if (vieneDesdeAnamnesisZona) return valoracionActiva?.paciente || null;
-    return null;
-  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
+    return (
+      location.state?.paciente ||
+      valoracionActiva?.paciente ||
+      null
+    );
+  }, [location.state, valoracionActiva]);
 
   const pacienteDocumento = useMemo(() => {
-    return (
+    const doc =
+      location.state?.cedula ||
       location.state?.paciente?.numero_documento_fisico ||
       location.state?.paciente?.num_documento ||
       location.state?.paciente?.cedula ||
-      (vieneDesdeAnamnesisZona
-        ? valoracionActiva?.paciente?.numero_documento_fisico
-        : "") ||
-      (vieneDesdeAnamnesisZona
-        ? valoracionActiva?.paciente?.num_documento
-        : "") ||
-      (vieneDesdeAnamnesisZona ? valoracionActiva?.paciente?.cedula : "") ||
-      ""
-    );
-  }, [location.state, valoracionActiva, vieneDesdeAnamnesisZona]);
+      valoracionActiva?.paciente?.numero_documento_fisico ||
+      valoracionActiva?.paciente?.num_documento ||
+      valoracionActiva?.paciente?.cedula ||
+      "";
+    return String(doc).trim();
+  }, [location.state, valoracionActiva]);
 
   const profesional = useMemo(() => {
     if (location.state?.profesional) return location.state.profesional;

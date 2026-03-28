@@ -1,14 +1,61 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 
 import { caderaInitialState } from "../../config/zonas/caderaInitialState";
 import { validarCadera } from "../../services/zonas/validarcadera";
 import { evaluarCadera } from "../../services/zonas/evaluarCadera";
 import { alertError } from "../../../../shared/lib/alerts";
+import { obtenerValoracionActiva } from "../../utils/valoracionSession";
 import CaderaFields from "./CaderaFields";
 
-export default function CaderaForm() {
+const SESSION_KEY = "wk_profesional";
+
+export default function CaderaForm({
+  numeroDocumento,
+  numero_documento_fisico,
+} = {}) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
+
+  const paciente = useMemo(() => {
+    return (
+      location.state?.paciente ||
+      valoracionActiva?.paciente ||
+      null
+    );
+  }, [location.state, valoracionActiva]);
+
+  const cedula = useMemo(() => {
+    const doc =
+      location.state?.cedula ||
+      location.state?.paciente?.numero_documento_fisico ||
+      valoracionActiva?.paciente?.numero_documento_fisico ||
+      paciente?.numero_documento_fisico ||
+      paciente?.num_documento ||
+      paciente?.cedula ||
+      numeroDocumento ||
+      numero_documento_fisico ||
+      "";
+    return String(doc).trim();
+  }, [
+    location.state,
+    valoracionActiva,
+    paciente,
+    numeroDocumento,
+    numero_documento_fisico,
+  ]);
+
+  const profesional = useMemo(() => {
+    if (location.state?.profesional) return location.state.profesional;
+    try {
+      const raw = sessionStorage.getItem(SESSION_KEY);
+      return raw ? JSON.parse(raw) : null;
+    } catch {
+      return null;
+    }
+  }, [location.state]);
 
   const [formData, setFormData] = useState(caderaInitialState);
   const [errores, setErrores] = useState({});
@@ -61,12 +108,32 @@ export default function CaderaForm() {
       return;
     }
 
+    const pacienteParaFotos =
+      paciente && (paciente.numero_documento_fisico || paciente.num_documento || paciente.cedula)
+        ? paciente
+        : cedula
+          ? {
+              ...valoracionActiva?.paciente,
+              numero_documento_fisico: cedula,
+            }
+          : null;
+
     navigate("/herramientas/fotos-test", {
       state: {
+        ...location.state,
+        from: "/herramientas/anamnesis-zona",
+        vieneDesdeAnamnesisZona: true,
+        paciente: pacienteParaFotos,
+        cedula,
+        profesional,
+        clasificacionPaciente:
+          location.state?.clasificacionPaciente ||
+          valoracionActiva?.clasificacionPaciente,
         resultado,
         formData,
         zonaProtocoloFotos: "cadera",
         zonaSeleccionadaFinal: "cadera",
+        zonasProtocoloFotos: ["cadera"],
       },
     });
   }
