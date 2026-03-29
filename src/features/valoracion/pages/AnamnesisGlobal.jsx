@@ -7,11 +7,14 @@ import { alertConfirm, alertError } from "../../../shared/lib/alerts";
 import useProfesionalSession from "../../../shared/hooks/useProfesionalSession";
 
 import { anamnesisSections } from "../config/anamnesisSections";
+import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
 import { evaluarAnamnesisGlobal } from "../services/anamnesisGlobalRules";
 import { validarAnamnesisGlobal } from "../services/validarAnamnesisGlobal";
 import {
-  guardarAnamnesisGlobalDraft,
-  limpiarAnamnesisGlobalDraft,
+  guardarAnamnesisGlobalBorrador,
+  limpiarAnamnesisGlobalBorrador,
+  obtenerAnamnesisGlobalBorrador,
+  normalizarDocPaciente,
 } from "../utils/anamnesisGlobalDraft";
 import { obtenerValoracionActiva } from "../utils/valoracionSession";
 import { useAnamnesisGlobalForm } from "../hooks/useAnamnesisGlobalForm";
@@ -131,15 +134,35 @@ function limpiarCamposDolorSiOculto(formData, ocultarDeteccionDolor) {
 
 export default function AnamnesisGlobal() {
   const navigate = useNavigate();
-  const [resultado, setResultado] = useState(null);
 
   const { profesional } = useProfesionalSession();
 
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
 
+  const docPaciente = useMemo(
+    () => normalizarDocPaciente(valoracionActiva?.paciente),
+    [valoracionActiva],
+  );
+
+  const borradorInicial = useMemo(
+    () => (docPaciente ? obtenerAnamnesisGlobalBorrador(docPaciente) : null),
+    [docPaciente],
+  );
+
+  const formularioInicial = useMemo(() => {
+    if (borradorInicial?.form) {
+      return { ...anamnesisGlobalInitialState, ...borradorInicial.form };
+    }
+    return anamnesisGlobalInitialState;
+  }, [borradorInicial]);
+
+  const [resultado, setResultado] = useState(
+    () => borradorInicial?.resultado ?? null,
+  );
+
   const { formData, errores, setErrores, handleChange, resetForm } =
-    useAnamnesisGlobalForm();
+    useAnamnesisGlobalForm(formularioInicial);
 
   const ocultarDeteccionDolor = !!clasificacionPaciente?.ocultarDeteccionDolor;
 
@@ -166,22 +189,14 @@ export default function AnamnesisGlobal() {
   }, [ocultarDeteccionDolor]);
 
   useEffect(() => {
-    const hayInformacion = Object.values(formData).some((value) => {
-      if (value === null || value === undefined) return false;
-      return String(value).trim() !== "";
-    });
-
-    if (!hayInformacion) {
-      limpiarAnamnesisGlobalDraft();
-      return;
-    }
+    if (!docPaciente) return;
 
     const timeout = setTimeout(() => {
-      guardarAnamnesisGlobalDraft(formData);
+      guardarAnamnesisGlobalBorrador(docPaciente, formData, resultado);
     }, 400);
 
     return () => clearTimeout(timeout);
-  }, [formData]);
+  }, [formData, resultado, docPaciente]);
 
   const { handleContinuar } = useAnamnesisGlobalContinue({
     resultado,
@@ -197,10 +212,6 @@ export default function AnamnesisGlobal() {
     const nuevosErrores = validarAnamnesisGlobal(formDataNormalizado);
 
     if (Object.keys(nuevosErrores).length > 0) {
-      console.log("ocultarDeteccionDolor", ocultarDeteccionDolor);
-      console.log("formDataNormalizado", formDataNormalizado);
-      console.log("Errores anamnesis global:", nuevosErrores);
-
       setErrores(nuevosErrores);
       setResultado(null);
 
@@ -246,7 +257,7 @@ export default function AnamnesisGlobal() {
 
     resetForm();
     setResultado(null);
-    limpiarAnamnesisGlobalDraft();
+    limpiarAnamnesisGlobalBorrador();
   }
 
   return (

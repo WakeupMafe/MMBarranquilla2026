@@ -16,9 +16,11 @@ import logoWakeup from "../../../../../assets/LogoWakeup.png";
 import EliminacionAuthGate, {
   useEliminacionSupabaseSession,
 } from "./EliminacionAuthGate";
+import MostrarHombro from "./Mostrarzonas/MostrarHombro";
 
 import "./BusquedayEliminacion.css";
 
+/** Cédula del profesional en la app (useProfesionalSession). Quién puede borrar en BD lo define RLS en Supabase. */
 const CEDULAS_ADMIN = ["1037670182", "1037649258"];
 const FOTOS_BUCKET = "fotos_pacientes";
 
@@ -44,14 +46,15 @@ const TABLAS_BUSQUEDA = [
     table: "anamnesis_global",
     column: "numero_documento_fisico",
     fields:
-      "numero_documento_fisico, created_at, siguiente_paso, zonas_detectadas, mensaje_resultado",
+      "numero_documento_fisico, alertas, descartado, motivos_descarte, zonas_detectadas, cantidad_zonas_dolor, pendiente_aprobacion, obesidad, created_at, mensaje_resultado",
   },
   {
     key: "anamnesis_hombro",
     label: "Anamnesis hombro",
     table: "anamnesis_hombro",
     column: "numero_documento_fisico",
-    fields: "numero_documento_fisico, created_at",
+    fields:
+      "numero_documento_fisico, created_at, updated_at, dolor_semana, clasificacion, mensaje, alertas, requiere_revision_profesional, motivos_revision_profesional, profesional_cedula, dolor_para, limitacion_funcional",
   },
   {
     key: "anamnesis_cadera",
@@ -84,6 +87,11 @@ const TABLAS_BUSQUEDA = [
   },
 ];
 
+/**
+ * Orden respetando FKs: hijos antes que padres.
+ * `anamnesis_global` referencia `checkin_anamnesis` → global antes que checkin.
+ * No usar el count de la búsqueda para omitir DELETE: si count=0 y aún hay filas en BD, fallaría el borrado del padre.
+ */
 const ORDEN_ELIMINACION = [
   "fotos_pacientes",
   "anamnesis_hombro",
@@ -94,6 +102,10 @@ const ORDEN_ELIMINACION = [
   "obesidad",
   "checkin",
 ];
+
+function mapaConfigTablasPorKey() {
+  return new Map(TABLAS_BUSQUEDA.map((c) => [c.key, c]));
+}
 
 function normalizarCedula(valor) {
   return String(valor ?? "")
@@ -118,6 +130,76 @@ function textoBooleano(valor) {
   if (valor === true) return "Sí";
   if (valor === false) return "No";
   return "Sin dato";
+}
+
+function textoObesidad(valor) {
+  if (valor === true) return "Sí";
+  if (valor === false) return "No";
+  return "Sin datos";
+}
+
+function formatearJsonbParaLista(valor) {
+  if (valor == null) return "Sin dato";
+  if (Array.isArray(valor)) {
+    if (valor.length === 0) return "Sin dato";
+    return valor
+      .map((item) =>
+        typeof item === "object" ? JSON.stringify(item) : String(item),
+      )
+      .join("; ");
+  }
+  if (typeof valor === "object") {
+    try {
+      return JSON.stringify(valor);
+    } catch {
+      return String(valor);
+    }
+  }
+  return String(valor);
+}
+
+function formatearZonasDetectadasBusqueda(valor) {
+  if (valor == null) return "Sin dato";
+  if (Array.isArray(valor)) {
+    return valor.length ? valor.join(", ") : "Sin dato";
+  }
+  if (typeof valor === "object") {
+    return formatearJsonbParaLista(valor);
+  }
+  return String(valor);
+}
+
+const CLAVES_ANAMNESIS_ZONA = [
+  { key: "anamnesis_hombro", etiqueta: "Hombro" },
+  { key: "anamnesis_cadera", etiqueta: "Cadera" },
+  { key: "anamnesis_rodilla", etiqueta: "Rodilla" },
+  { key: "anamnesis_lumbar", etiqueta: "Lumbar" },
+];
+
+function resumenAnamnesisZonasDesdeBusqueda(resultadoBusqueda) {
+  if (!resultadoBusqueda || typeof resultadoBusqueda !== "object") {
+    return [];
+  }
+
+  const out = [];
+  for (const { key, etiqueta } of CLAVES_ANAMNESIS_ZONA) {
+    const bloque = resultadoBusqueda[key];
+    const n = bloque?.count ?? 0;
+    if (n <= 0) continue;
+
+    const filas = Array.isArray(bloque?.rows) ? bloque.rows : [];
+    const fechas = filas
+      .map((r) => formatearFecha(r?.created_at))
+      .filter((f) => f && f !== "Sin fecha");
+
+    let valor = `${n} registro(s)`;
+    if (fechas.length) {
+      valor += ` — ${fechas.join(" · ")}`;
+    }
+
+    out.push([`Anamnesis zona (${etiqueta})`, valor]);
+  }
+  return out;
 }
 
 function extraerPathsStorageDesdeJson(valor, acumulado = []) {
@@ -429,7 +511,7 @@ function EvidenciasPreviewBlock({ fotos, videos, authRevision = "" }) {
   );
 }
 
-function construirItemsResumen(key, row) {
+function construirItemsResumen(key, row, resultadoBusqueda, indiceFila = 0) {
   switch (key) {
     case "checkin":
       return [
@@ -449,21 +531,31 @@ function construirItemsResumen(key, row) {
         ["Fecha", formatearFecha(row.created_at)],
       ];
 
-    case "anamnesis_global":
-      return [
-        ["Cédula", row.numero_documento_fisico || "Sin dato"],
-        ["Siguiente paso", row.siguiente_paso || "Sin dato"],
+    case "anamnesis_global": {
+      const base = [
+        ["Número documento (físico)", row.numero_documento_fisico || "Sin dato"],
+        ["Alertas", formatearJsonbParaLista(row.alertas)],
+        ["Descartado", textoBooleano(row.descartado)],
+        ["Motivos descarte", formatearJsonbParaLista(row.motivos_descarte)],
+        ["Zonas detectadas", formatearZonasDetectadasBusqueda(row.zonas_detectadas)],
         [
-          "Zonas detectadas",
-          Array.isArray(row.zonas_detectadas) && row.zonas_detectadas.length
-            ? row.zonas_detectadas.join(", ")
+          "Cantidad zonas dolor",
+          row.cantidad_zonas_dolor != null && row.cantidad_zonas_dolor !== ""
+            ? String(row.cantidad_zonas_dolor)
             : "Sin dato",
         ],
-        ["Resultado", row.mensaje_resultado || "Sin dato"],
-        ["Fecha", formatearFecha(row.created_at)],
+        ["Pendiente aprobación", textoBooleano(row.pendiente_aprobacion)],
+        ["Obesidad", textoObesidad(row.obesidad)],
+        ["Fecha creación", formatearFecha(row.created_at)],
+        ["Mensaje resultado", row.mensaje_resultado || "Sin dato"],
       ];
+      const zonas =
+        indiceFila === 0
+          ? resumenAnamnesisZonasDesdeBusqueda(resultadoBusqueda)
+          : [];
+      return zonas.length ? [...base, ...zonas] : base;
+    }
 
-    case "anamnesis_hombro":
     case "anamnesis_cadera":
     case "anamnesis_rodilla":
     case "anamnesis_lumbar":
@@ -572,9 +664,9 @@ async function eliminarTabla(config, cedula) {
     `🧨 Eliminando registros en ${config.table} donde ${config.column} = ${cedula}`,
   );
 
-  const { error } = await supabase
+  const { error, count } = await supabase
     .from(config.table)
-    .delete()
+    .delete({ count: "exact" })
     .eq(config.column, cedula);
 
   if (error) {
@@ -584,10 +676,26 @@ async function eliminarTabla(config, cedula) {
     );
   }
 
-  console.log(`✅ Eliminación completada en ${config.table} para ${cedula}`);
+  const n = count ?? 0;
+  if (config.table === "anamnesis_global" && n === 0) {
+    console.warn(
+      "anamnesis_global: 0 filas eliminadas (revisar RLS DELETE o que no exista la fila).",
+    );
+  }
+
+  console.log(
+    `✅ Eliminación completada en ${config.table} para ${cedula} (${n} fila(s))`,
+  );
 }
 
-function ResumenCard({ title, count, rows, itemKey, authRevision }) {
+function ResumenCard({
+  title,
+  count,
+  rows,
+  itemKey,
+  authRevision,
+  resultadoBusqueda,
+}) {
   return (
     <article className="eliminacion-card">
       <div className="eliminacion-card__header">
@@ -600,7 +708,20 @@ function ResumenCard({ title, count, rows, itemKey, authRevision }) {
       ) : (
         <div className="eliminacion-card__list">
           {rows.map((row, index) => {
-            const items = construirItemsResumen(itemKey, row);
+            if (itemKey === "anamnesis_hombro") {
+              return (
+                <div key={`${title}-${index}`} className="eliminacion-record">
+                  <MostrarHombro row={row} />
+                </div>
+              );
+            }
+
+            const items = construirItemsResumen(
+              itemKey,
+              row,
+              resultadoBusqueda,
+              index,
+            );
 
             return (
               <div key={`${title}-${index}`} className="eliminacion-record">
@@ -736,12 +857,12 @@ function BusquedayEliminacionContenido() {
         await eliminarArchivosStorage(pathsStorage);
       }
 
+      const configsPorKey = mapaConfigTablasPorKey();
       for (const key of ORDEN_ELIMINACION) {
-        const item = resultadosActuales[key];
+        const config = configsPorKey.get(key);
+        if (!config) continue;
 
-        if (!item || !item.count) continue;
-
-        await eliminarTabla(item, cedulaNormalizada);
+        await eliminarTabla(config, cedulaNormalizada);
       }
 
       const resultadosDespues = await buscarTodoPorCedula(cedulaNormalizada);
@@ -781,7 +902,8 @@ function BusquedayEliminacionContenido() {
               <h2 className="eliminacion-title">Acceso restringido</h2>
               <p className="eliminacion-description">
                 Esta herramienta de eliminación masiva solo está habilitada para
-                el usuario administrador autorizado.
+                el usuario administrador autorizado (cédula). Las operaciones en
+                base de datos siguen las políticas de Supabase.
               </p>
 
               <BotonImportante onClick={() => navigate("/herramientas")}>
@@ -882,6 +1004,7 @@ function BusquedayEliminacionContenido() {
                   rows={item.rows}
                   itemKey={item.key}
                   authRevision={revisionAuthVistaPrevia}
+                  resultadoBusqueda={resultadoBusqueda}
                 />
               ))}
             </div>

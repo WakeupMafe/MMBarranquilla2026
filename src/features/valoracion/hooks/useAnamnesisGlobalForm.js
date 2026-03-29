@@ -1,11 +1,10 @@
 import { useState } from "react";
 import { anamnesisGlobalInitialState } from "../config/anamnesisGlobalInitialState";
-import { obtenerAnamnesisGlobalDraft } from "../utils/anamnesisGlobalDraft";
 
-export function useAnamnesisGlobalForm() {
-  const [formData, setFormData] = useState(() => {
-    return obtenerAnamnesisGlobalDraft() || anamnesisGlobalInitialState;
-  });
+export function useAnamnesisGlobalForm(formularioInicial) {
+  const [formData, setFormData] = useState(
+    () => formularioInicial ?? anamnesisGlobalInitialState,
+  );
 
   const [errores, setErrores] = useState({});
 

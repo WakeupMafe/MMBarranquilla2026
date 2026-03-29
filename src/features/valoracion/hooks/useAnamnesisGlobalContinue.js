@@ -13,14 +13,76 @@ import {
   getAnamnesisGlobalUploadMode,
 } from "../../../shared/lib/anamnesisGlobalUploadMode";
 
+import { construirMensajeResultadoAnamnesisGlobal } from "../services/construirMensajeResultadoAnamnesisGlobal";
 import { guardarAnamnesisGlobal } from "../services/guardarAnamnesisGlobal";
-import { limpiarAnamnesisGlobalDraft } from "../utils/anamnesisGlobalDraft";
+import { limpiarAnamnesisGlobalBorrador } from "../utils/anamnesisGlobalDraft";
 import {
   construirOpcionesContinuidad,
   obtenerZonasCambioDisponibles,
 } from "../utils/construirOpcionesContinuidad";
 import { editarGlobalPorErrores } from "./editarGlobalporErrores";
 import { resolverConflictoAnamnesisZonaAntesDeContinuar } from "./resolverConflictoAnamnesisZonaAntesDeContinuar";
+
+function normalizarZonaClave(z) {
+  return String(z ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+/**
+ * Paciente nuevo (o antiguo sin clasificación que retoma flujo nuevo): zonas de dolor de la evaluación.
+ * Paciente antiguo: zona elegida en el menú de continuidad (fotos o anamnesis de zona).
+ */
+function armarZonasDetectadasYParaPayload({
+  resultado,
+  clasificacionPaciente,
+  opcionContinuidad,
+  zonasMultiAnamnesis,
+}) {
+  const esNuevo = clasificacionPaciente?.esPacienteNuevo === true;
+  const tomaFlujoNuevoSinClasificacion =
+    clasificacionPaciente?.flujo ===
+    "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
+
+  if (esNuevo || tomaFlujoNuevoSinClasificacion) {
+    const fuente =
+      Array.isArray(zonasMultiAnamnesis) && zonasMultiAnamnesis.length > 0
+        ? zonasMultiAnamnesis
+        : resultado?.zonasDetectadas;
+    const zonas = Array.isArray(fuente)
+      ? fuente.map(normalizarZonaClave).filter(Boolean)
+      : [];
+    const cantidad = Number(resultado?.cantidadZonasDolor ?? zonas.length);
+    return { zonas_detectadas: zonas, cantidad_zonas_dolor: cantidad };
+  }
+
+  const zSel = opcionContinuidad?.zona;
+  if (zSel != null && String(zSel).trim() !== "") {
+    const z = normalizarZonaClave(zSel);
+    return {
+      zonas_detectadas: z ? [z] : [],
+      cantidad_zonas_dolor: z ? 1 : 0,
+    };
+  }
+
+  const fallback = Array.isArray(resultado?.zonasDetectadas)
+    ? resultado.zonasDetectadas.map(normalizarZonaClave).filter(Boolean)
+    : [];
+  return {
+    zonas_detectadas: fallback,
+    cantidad_zonas_dolor: Number(
+      resultado?.cantidadZonasDolor ?? fallback.length,
+    ),
+  };
+}
+
+function armarAlertasParaPayload(resultado) {
+  const raw = resultado?.alertas;
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .map((a) => (a == null ? "" : String(a).trim()))
+    .filter(Boolean);
+}
 
 export function useAnamnesisGlobalContinue({
   resultado,
@@ -185,6 +247,140 @@ export function useAnamnesisGlobalContinue({
         return;
       }
 
+      const esPacienteNuevo = Boolean(clasificacionPaciente?.esPacienteNuevo);
+      const tomaFlujoNuevoPorHistorial =
+        clasificacionPaciente?.flujo ===
+        "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
+
+      const zonasDetectadas = Array.isArray(resultado?.zonasDetectadas)
+        ? resultado.zonasDetectadas.filter(Boolean)
+        : [];
+
+      let opcionContinuidad = null;
+      let zonasMultiAnamnesis = null;
+
+      if (
+        (esPacienteNuevo || tomaFlujoNuevoPorHistorial) &&
+        zonasDetectadas.length > 0
+      ) {
+        zonasMultiAnamnesis = zonasDetectadas;
+        opcionContinuidad = {
+          tipo: "anamnesis_zona",
+          zona: zonasDetectadas[0],
+        };
+      } else {
+        const opcionesContinuidad = construirOpcionesContinuidad({
+          resultado,
+          clasificacionPaciente,
+        });
+
+        if (!opcionesContinuidad.length) {
+          await alertError(
+            "Ruta no disponible",
+            "No se encontraron opciones de continuidad para este paciente.",
+          );
+          return;
+        }
+
+        if (opcionesContinuidad.length === 1) {
+          opcionContinuidad = opcionesContinuidad[0];
+        } else {
+          const inputOptions = Object.fromEntries(
+            opcionesContinuidad.map((opcion) => [opcion.value, opcion.label]),
+          );
+
+          const seleccion = await alertSelect({
+            title: "Definir continuidad terapéutica",
+            text: "Selecciona cómo deseas continuar con este paciente.",
+            inputOptions,
+            inputPlaceholder: "Selecciona una opción",
+            confirmButtonText: "Continuar",
+            cancelButtonText: "Cancelar",
+          });
+
+          if (!seleccion) {
+            return;
+          }
+
+          opcionContinuidad =
+            opcionesContinuidad.find((opcion) => opcion.value === seleccion) ||
+            null;
+
+          if (!opcionContinuidad) {
+            await alertError(
+              "Selección inválida",
+              "No se pudo identificar la opción seleccionada.",
+            );
+            return;
+          }
+        }
+      }
+
+      if (mode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
+        decisionEdicion = await editarGlobalPorErrores(
+          cedulaPacienteActual,
+          resultado,
+        );
+
+        if (!decisionEdicion.puedeContinuar) {
+          return;
+        }
+      }
+
+      const validarAntesDeNavegar = async (zonaFinal) => {
+        if (!decisionEdicion || mode !== ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
+          return {
+            puedeContinuar: true,
+            continuarConExistente: false,
+          };
+        }
+
+        const conflicto = await resolverConflictoAnamnesisZonaAntesDeContinuar({
+          numeroDocumento: cedulaPacienteActual,
+          zonaNueva: zonaFinal,
+        });
+
+        if (!conflicto.puedeContinuar) {
+          return {
+            puedeContinuar: false,
+            continuarConExistente: false,
+          };
+        }
+
+        return {
+          puedeContinuar: true,
+          continuarConExistente: conflicto.accion === "continuar_existente",
+        };
+      };
+
+      const decisionNavegacion = await validarAntesDeNavegar(
+        opcionContinuidad.zona,
+      );
+
+      if (!decisionNavegacion.puedeContinuar) {
+        return;
+      }
+
+      if (decisionNavegacion.continuarConExistente) {
+        return;
+      }
+
+      const mensajeResultado = construirMensajeResultadoAnamnesisGlobal({
+        clasificacionPaciente,
+        opcion: zonasMultiAnamnesis ? null : opcionContinuidad,
+        zonasMultiAnamnesis,
+      });
+
+      const { zonas_detectadas, cantidad_zonas_dolor } =
+        armarZonasDetectadasYParaPayload({
+          resultado,
+          clasificacionPaciente,
+          opcionContinuidad,
+          zonasMultiAnamnesis,
+        });
+
+      const alertasGuardado = armarAlertasParaPayload(resultado);
+
       const payload = {
         numero_documento_fisico: cedulaPacienteActual,
 
@@ -254,26 +450,19 @@ export function useAnamnesisGlobalContinue({
         dx_lumbalgia_cronica: formDataNormalizado.dx_lumbalgia_cronica || null,
         dx_manguito_rotador: formDataNormalizado.dx_manguito_rotador || null,
 
-        alertas: resultado.alertas || [],
+        alertas: alertasGuardado,
         descartado: Boolean(resultado.descartado),
-        motivos_descarte: resultado.motivosDescarte || [],
-        zonas_detectadas: resultado.zonasDetectadas || [],
-        cantidad_zonas_dolor: Number(resultado.cantidadZonasDolor || 0),
+        motivos_descarte: Array.isArray(resultado.motivosDescarte)
+          ? [...resultado.motivosDescarte]
+          : [],
+        zonas_detectadas,
+        cantidad_zonas_dolor,
         pendiente_aprobacion: Boolean(resultado.pendienteAprobacion),
         siguiente_paso: resultado.siguientePaso || null,
-        mensaje_resultado: resultado.mensajeResultado || null,
+        mensaje_resultado: mensajeResultado,
       };
 
       if (mode === ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
-        decisionEdicion = await editarGlobalPorErrores(
-          cedulaPacienteActual,
-          resultado,
-        );
-
-        if (!decisionEdicion.puedeContinuar) {
-          return;
-        }
-
         await guardarAnamnesisGlobal(payload);
 
         await alertOk(
@@ -288,6 +477,8 @@ export function useAnamnesisGlobalContinue({
               ? "La ruta previa del paciente fue reemplazada correctamente."
               : "La anamnesis global fue guardada correctamente en base de datos.",
         );
+
+        limpiarAnamnesisGlobalBorrador();
       } else {
         await alertOk(
           "Modo simulación",
@@ -295,156 +486,25 @@ export function useAnamnesisGlobalContinue({
         );
       }
 
-      limpiarAnamnesisGlobalDraft();
-
-      const esPacienteNuevo = Boolean(clasificacionPaciente?.esPacienteNuevo);
-      const tomaFlujoNuevoPorHistorial =
-        clasificacionPaciente?.flujo ===
-        "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
-
-      const zonasDetectadas = Array.isArray(resultado?.zonasDetectadas)
-        ? resultado.zonasDetectadas.filter(Boolean)
-        : [];
-
-      // 🔹 CASO CLAVE:
-      // paciente nuevo o antiguo sin clasificación que toma flujo nuevo
-      // NO debe pasar por resolvedor de conflicto ni por flujo de actualización
-      if (
-        (esPacienteNuevo || tomaFlujoNuevoPorHistorial) &&
-        zonasDetectadas.length > 0
-      ) {
+      if (zonasMultiAnamnesis) {
         await alertOk(
           "Continuación definida",
           "Iniciaremos la anamnesis de las zonas seleccionadas.",
         );
 
-        irAAnamnesisZonaDirecta(zonasDetectadas);
+        irAAnamnesisZonaDirecta(zonasMultiAnamnesis);
         return;
       }
 
-      const opcionesContinuidad = construirOpcionesContinuidad({
-        resultado,
-        clasificacionPaciente,
-      });
-
-      if (!opcionesContinuidad.length) {
-        await alertError(
-          "Ruta no disponible",
-          "No se encontraron opciones de continuidad para este paciente.",
-        );
+      if (opcionContinuidad.tipo === "fotos") {
+        irAFotos(opcionContinuidad.zona || "funcional");
         return;
       }
 
-      const validarAntesDeNavegar = async (zonaFinal) => {
-        if (!decisionEdicion || mode !== ANAMNESIS_GLOBAL_UPLOAD_MODES.REAL) {
-          return {
-            puedeContinuar: true,
-            continuarConExistente: false,
-          };
-        }
-
-        const conflicto = await resolverConflictoAnamnesisZonaAntesDeContinuar({
-          numeroDocumento: cedulaPacienteActual,
-          zonaNueva: zonaFinal,
-        });
-
-        if (!conflicto.puedeContinuar) {
-          return {
-            puedeContinuar: false,
-            continuarConExistente: false,
-          };
-        }
-
-        return {
-          puedeContinuar: true,
-          continuarConExistente: conflicto.accion === "continuar_existente",
-        };
-      };
-
-      if (opcionesContinuidad.length === 1) {
-        const unica = opcionesContinuidad[0];
-
-        const decisionNavegacion = await validarAntesDeNavegar(unica.zona);
-
-        if (!decisionNavegacion.puedeContinuar) {
-          return;
-        }
-
-        if (decisionNavegacion.continuarConExistente) {
-          return;
-        }
-
-        if (unica.tipo === "fotos") {
-          irAFotos(unica.zona || "funcional");
-          return;
-        }
-
-        if (unica.tipo === "anamnesis_zona") {
-          irAAnamnesisZona(
-            unica.zona,
-            unica.zonasDisponiblesCambio ||
-              obtenerZonasCambioDisponibles(clasificacionPaciente),
-          );
-          return;
-        }
-
-        await alertError(
-          "Ruta no disponible",
-          "La opción encontrada no tiene una navegación válida.",
-        );
-        return;
-      }
-
-      const inputOptions = Object.fromEntries(
-        opcionesContinuidad.map((opcion) => [opcion.value, opcion.label]),
-      );
-
-      const seleccion = await alertSelect({
-        title: "Definir continuidad terapéutica",
-        text: "Selecciona cómo deseas continuar con este paciente.",
-        inputOptions,
-        inputPlaceholder: "Selecciona una opción",
-        confirmButtonText: "Continuar",
-        cancelButtonText: "Cancelar",
-      });
-
-      if (!seleccion) {
-        return;
-      }
-
-      const opcionElegida =
-        opcionesContinuidad.find((opcion) => opcion.value === seleccion) ||
-        null;
-
-      if (!opcionElegida) {
-        await alertError(
-          "Selección inválida",
-          "No se pudo identificar la opción seleccionada.",
-        );
-        return;
-      }
-
-      const decisionNavegacion = await validarAntesDeNavegar(
-        opcionElegida.zona,
-      );
-
-      if (!decisionNavegacion.puedeContinuar) {
-        return;
-      }
-
-      if (decisionNavegacion.continuarConExistente) {
-        return;
-      }
-
-      if (opcionElegida.tipo === "fotos") {
-        irAFotos(opcionElegida.zona || "funcional");
-        return;
-      }
-
-      if (opcionElegida.tipo === "anamnesis_zona") {
+      if (opcionContinuidad.tipo === "anamnesis_zona") {
         irAAnamnesisZona(
-          opcionElegida.zona,
-          opcionElegida.zonasDisponiblesCambio ||
+          opcionContinuidad.zona,
+          opcionContinuidad.zonasDisponiblesCambio ||
             obtenerZonasCambioDisponibles(clasificacionPaciente),
         );
         return;
@@ -452,7 +512,7 @@ export function useAnamnesisGlobalContinue({
 
       await alertError(
         "Ruta no disponible",
-        "La opción seleccionada no tiene una ruta válida.",
+        "La opción elegida no tiene una navegación válida.",
       );
     } catch (error) {
       console.error("Error guardando anamnesis global:", error);
