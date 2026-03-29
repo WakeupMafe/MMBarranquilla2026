@@ -1,17 +1,4 @@
-function getSiguientePasoLabel(siguientePaso) {
-  const labels = {
-    funcional: "Evaluación funcional general",
-    anamnesis_especifica_zona: "Anamnesis por zona",
-    pendiente_aprobacion: "Pendiente de aprobación médica",
-    decision_zona_o_funcional: "Definición de continuidad terapéutica",
-    decision_preliminar_o_secundaria: "Definición de continuidad terapéutica",
-    decision_preliminar_o_funcional: "Definición de progresión terapéutica",
-    descartado: "No continuar",
-    revision_critica: "Revisión clínica prioritaria",
-  };
-
-  return labels[siguientePaso] || "No definido";
-}
+import { obtenerTextoRutaSugerida } from "../utils/construirOpcionesContinuidad";
 
 function getZonaLabel(zona) {
   if (!zona) return "Sin dato";
@@ -67,8 +54,8 @@ export default function AnamnesisResultCard({
           )}
 
           <li>
-            <strong>Ruta definida:</strong>{" "}
-            {getSiguientePasoLabel(resultado.siguientePaso)}
+            <strong>Ruta sugerida:</strong>{" "}
+            {obtenerTextoRutaSugerida(clasificacionPaciente)}
           </li>
         </ul>
 

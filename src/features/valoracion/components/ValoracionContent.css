@@ -270,11 +270,45 @@
   font-weight: 600;
 }
 
+.valoracionPrecLead {
+  margin-bottom: 1.35em;
+}
+
 .valoracionStatusMeta {
   margin: 8px 0 0;
   font-size: clamp(13px, 1.6vw, 14px);
   line-height: 1.5;
   font-weight: 600;
+}
+
+.valoracionPrecDetalle {
+  line-height: 1.6;
+}
+
+.valoracionPrecDetalle p {
+  margin: 0 0 0.55em;
+}
+
+.valoracionPrecBloqueResumen {
+  margin-bottom: 1.65em;
+}
+
+.valoracionPrecSeccionClasif {
+  margin-top: 0.25em;
+  padding-top: 1.35em;
+  border-top: 1px solid rgba(15, 23, 42, 0.12);
+}
+
+.valoracionPriorityNote {
+  display: block;
+  margin: 0.5em 0 0;
+  padding-left: 1rem;
+  margin-left: 0.35rem;
+  border-left: 3px solid rgba(15, 23, 42, 0.2);
+  font-size: clamp(12px, 1.45vw, 13.5px);
+  font-weight: 600;
+  line-height: 1.45;
+  opacity: 0.92;
 }
 
 .valoracionActions {

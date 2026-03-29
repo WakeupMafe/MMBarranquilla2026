@@ -1,3 +1,5 @@
+import { extraerZonasCanonDesdePatologiaRelacionada } from "./mapearPatologiaRelacionadaAZona";
+
 function normalizarZonaParaNavegacion(zona) {
   const value = String(zona || "")
     .trim()
@@ -47,6 +49,56 @@ export function formatearNombreZona(zona) {
   return mapa[zona] || zona;
 }
 
+/**
+ * Texto para "Ruta sugerida" en UI: prioriza zonas inferidas de `patologia_relacionada`
+ * (asistencia); si no hay mapeo, muestra el texto crudo; si no hay, la zona destino del flujo.
+ */
+export function obtenerTextoRutaSugerida(clasificacionPaciente) {
+  if (!clasificacionPaciente) return "Sin dato";
+
+  const raw = String(
+    clasificacionPaciente.patologiaRelacionadaDesdeAsistencia || "",
+  ).trim();
+
+  const desdePatologia = extraerZonasCanonDesdePatologiaRelacionada(raw);
+  if (desdePatologia.length > 0) {
+    return desdePatologia.map((z) => formatearNombreZona(z)).join(", ");
+  }
+
+  if (raw) return raw;
+
+  const z = normalizarZonaParaNavegacion(clasificacionPaciente.zonaDestino);
+  if (z) return formatearNombreZona(z);
+
+  return "Sin dato";
+}
+
+function pushOpcionesContinuarConZonaDirectoFotos({
+  clasificacionPaciente,
+  zonaActual,
+  opciones,
+}) {
+  const zonasPat = extraerZonasCanonDesdePatologiaRelacionada(
+    clasificacionPaciente?.patologiaRelacionadaDesdeAsistencia,
+  );
+  const seen = new Set();
+
+  const pushContinuarFotos = (zona, idPart) => {
+    if (!zona || seen.has(zona)) return;
+    seen.add(zona);
+    opciones.push({
+      value: `fotos_continuar_${idPart}_${zona}`,
+      label: `Continuar con ${formatearNombreZona(zona)}`,
+      tipo: "fotos",
+      zona,
+    });
+  };
+
+  zonasPat.forEach((z, i) => pushContinuarFotos(z, `pat${i}`));
+  if (zonaActual) pushContinuarFotos(zonaActual, "act");
+  if (!seen.has("funcional")) pushContinuarFotos("funcional", "fun");
+}
+
 function labelFotosZonaSugeridaEncuesta(clasificacionPaciente, zonaActual) {
   const etiqueta = clasificacionPaciente?.etiquetaZonaOpcionesContinuidad;
   const canon =
@@ -83,7 +135,7 @@ export function construirOpcionesContinuidad({
   if (siguientePaso === "funcional") {
     opciones.push({
       value: "fotos_funcional",
-      label: "Avanzar a funcional",
+      label: "Continuar con Funcional",
       tipo: "fotos",
       zona: "funcional",
     });
@@ -119,7 +171,7 @@ export function construirOpcionesContinuidad({
         value: `fotos_${zonaActual}`,
         label:
           labelSugerida ||
-          `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
+          `Continuar con ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -147,7 +199,7 @@ export function construirOpcionesContinuidad({
         value: `fotos_${zonaActual}`,
         label:
           labelSugerida ||
-          `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
+          `Continuar con ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -184,7 +236,7 @@ export function construirOpcionesContinuidad({
         value: `fotos_${zonaActual}`,
         label:
           labelSugerida ||
-          `Continuar zona preliminar: ${formatearNombreZona(zonaActual)}`,
+          `Continuar con ${formatearNombreZona(zonaActual)}`,
         tipo: "fotos",
         zona: zonaActual,
       });
@@ -192,7 +244,7 @@ export function construirOpcionesContinuidad({
 
     opciones.push({
       value: "fotos_funcional",
-      label: "Avanzar a funcional",
+      label: "Continuar con Funcional",
       tipo: "fotos",
       zona: "funcional",
     });
@@ -210,27 +262,11 @@ export function construirOpcionesContinuidad({
   }
 
   if (siguientePaso === "decision_funcional_actual_o_cambio") {
-    opciones.push({
-      value: "fotos_funcional",
-      label: "Avanzar a funcional",
-      tipo: "fotos",
-      zona: "funcional",
+    pushOpcionesContinuarConZonaDirectoFotos({
+      clasificacionPaciente,
+      zonaActual,
+      opciones,
     });
-
-    if (zonaActual) {
-      const labelSugerida = labelFotosZonaSugeridaEncuesta(
-        clasificacionPaciente,
-        zonaActual,
-      );
-      opciones.push({
-        value: `fotos_${zonaActual}`,
-        label:
-          labelSugerida ||
-          `Continuar zona actual: ${formatearNombreZona(zonaActual)}`,
-        tipo: "fotos",
-        zona: zonaActual,
-      });
-    }
 
     zonasDisponiblesCambio.forEach((zona) => {
       opciones.push({
@@ -245,27 +281,11 @@ export function construirOpcionesContinuidad({
   }
 
   if (siguientePaso === "decision_antiguo_funcional_actual_o_cambio") {
-    opciones.push({
-      value: "fotos_funcional",
-      label: "Avanzar a funcional",
-      tipo: "fotos",
-      zona: "funcional",
+    pushOpcionesContinuarConZonaDirectoFotos({
+      clasificacionPaciente,
+      zonaActual,
+      opciones,
     });
-
-    if (zonaActual) {
-      const labelSugerida = labelFotosZonaSugeridaEncuesta(
-        clasificacionPaciente,
-        zonaActual,
-      );
-      opciones.push({
-        value: `fotos_${zonaActual}`,
-        label:
-          labelSugerida ||
-          `Continuar diagnóstico actual: ${formatearNombreZona(zonaActual)}`,
-        tipo: "fotos",
-        zona: zonaActual,
-      });
-    }
 
     zonasDisponiblesCambio.forEach((zona) => {
       opciones.push({
@@ -291,7 +311,7 @@ export function construirOpcionesContinuidad({
 
     opciones.push({
       value: "fotos_funcional",
-      label: "Avanzar a funcional",
+      label: "Continuar con Funcional",
       tipo: "fotos",
       zona: "funcional",
     });

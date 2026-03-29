@@ -138,18 +138,6 @@ export default function AnamnesisGlobal() {
   const valoracionActiva = useMemo(() => obtenerValoracionActiva(), []);
   const clasificacionPaciente = valoracionActiva?.clasificacionPaciente || null;
 
-  // Mostrar la valoracion del paciente (Nuevo / Antiguo)
-  console.log("valoracionActiva desde session", valoracionActiva);
-  console.log(
-    "clasificacionPaciente en AnamnesisGlobal",
-    clasificacionPaciente,
-  );
-  console.log(
-    "esPacienteNuevo en AnamnesisGlobal",
-    clasificacionPaciente?.esPacienteNuevo,
-  );
-  console.log("flujo en AnamnesisGlobal", clasificacionPaciente?.flujo);
-
   const { formData, errores, setErrores, handleChange, resetForm } =
     useAnamnesisGlobalForm();
 
@@ -231,9 +219,6 @@ export default function AnamnesisGlobal() {
 
     setErrores({});
     setResultado(evaluacionFinal);
-
-    console.log("formData normalizado", formDataNormalizado);
-    console.log("evaluacionAnamnesisGlobal", evaluacionFinal);
   }
 
   async function handleLimpiarTodaLaAnamnesis() {

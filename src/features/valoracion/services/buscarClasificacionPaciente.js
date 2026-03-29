@@ -7,9 +7,15 @@ import {
   esClasificacionSecundariaValida,
   evaluarObjetivosEncuesta,
 } from "./valoracionRules";
-import { mapearPatologiaRelacionadaAZona } from "../utils/mapearPatologiaRelacionadaAZona";
+import {
+  extraerZonasCanonDesdePatologiaRelacionada,
+  mapearPatologiaRelacionadaAZona,
+} from "../utils/mapearPatologiaRelacionadaAZona";
 
 let asistenciaSelectIncluyePatologiaRelacionada = true;
+
+/** Mínimo de asistencias contadas para considerar cumplida la regla (columna `asistencias`). */
+const UMBRAL_ASISTENCIAS = 20;
 
 function normalizarTexto(valor) {
   return String(valor || "").trim();
@@ -132,9 +138,8 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
   });
 
   const columnasAsistenciaConPatologia =
-    "numero_documento, porcentaje_asistencia, patologia_relacionada";
-  const columnasAsistenciaBase =
-    "numero_documento, porcentaje_asistencia";
+    "numero_documento, asistencias, total_dias, patologia_relacionada";
+  const columnasAsistenciaBase = "numero_documento, asistencias, total_dias";
 
   let asistencia;
   try {
@@ -151,7 +156,8 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     const msg = String(errAsistencia?.message || "");
     if (
       asistenciaSelectIncluyePatologiaRelacionada &&
-      (msg.includes("patologia_relacionada") || msg.includes("does not exist"))
+      (msg.includes("patologia_relacionada") ||
+        msg.includes("does not exist"))
     ) {
       asistenciaSelectIncluyePatologiaRelacionada = false;
       asistencia = await obtenerFilaPorDocumentoVarchar({
@@ -216,8 +222,10 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
   const esPacienteNuevo = !hizoParteMmb2025;
   const esPacienteAntiguo = hizoParteMmb2025;
 
-  const porcentajeAsistencia = Number(asistencia?.porcentaje_asistencia ?? 0);
-  const cumpleAsistencia = porcentajeAsistencia >= 65;
+  const asistencias = Math.trunc(Number(asistencia?.asistencias ?? 0));
+  const totalDias = Math.trunc(Number(asistencia?.total_dias ?? 0));
+  const cumpleAsistencia =
+    asistenciaEncontrada && Number.isFinite(asistencias) && asistencias >= UMBRAL_ASISTENCIAS;
 
   const evaluacionObjetivos = evaluarObjetivosEncuesta(encuesta2);
   const objetivosCumplidos = !!evaluacionObjetivos.objetivosCumplidos;
@@ -303,17 +311,15 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     ) {
       flujo = "ANTIGUO_FUNCIONAL_O_CAMBIO";
       estadoPreclasificacion = "Activa";
-      mensajePreclasificacion = clasificacionPreliminarDerivadaAsistencia
-        ? `Preclasificación desde patología en asistencia (${patologiaRelacionadaRaw}), sin valoración fisioterapia en 2025. Puede avanzar a funcional, continuar en la zona sugerida o cambiar de zona.`
-        : "Usuario preclasificado para progresión a fase funcional. También puede permanecer en su zona actual o solicitar cambio a otra zona.";
+      mensajePreclasificacion =
+        "Usuario preclasificado para progresión a fase funcional. También puede permanecer en su zona actual o solicitar cambio a otra zona.";
       ocultarDeteccionDolor = true;
 
       mostrarOpcionPreliminarFuncional = false;
 
       zonaDestino = clasificacionPreliminar;
       destinoSugerido = "decision_funcional_o_cambio";
-      mensajeFlujoGlobal =
-        "El paciente cumplió asistencia y objetivos, no presenta segundo diagnóstico y puede avanzar a funcional. Si lo requiere, también puede permanecer en su zona actual o cambiar a otra zona diagnóstica.";
+      mensajeFlujoGlobal = `El paciente cumple el mínimo de asistencias (≥ ${UMBRAL_ASISTENCIAS}), cumplió objetivos, no presenta segundo diagnóstico y puede avanzar a funcional. Si lo requiere, también puede permanecer en su zona actual o cambiar a otra zona diagnóstica.`;
     } else {
       flujo = "ANTIGUO_SIN_CLASIFICACION_TOMA_FLUJO_NUEVO";
       estadoPreclasificacion = "Sin clasificación previa";
@@ -346,12 +352,16 @@ export async function buscarClasificacionPaciente(numeroDocumento) {
     cantidadObjetivos: evaluacionObjetivos.cantidadObjetivos,
     cantidadObjetivosCumplidos: evaluacionObjetivos.cantidadObjetivosCumplidos,
 
-    porcentajeAsistencia,
+    asistencias,
+    totalDias,
+    umbralAsistencias: UMBRAL_ASISTENCIAS,
     cumpleAsistencia,
 
     clasificacionPreliminarDesdeBd: preliminarCruda || null,
     clasificacionSecundariaDesdeBd: secundariaCruda || null,
     patologiaRelacionadaDesdeAsistencia: patologiaRelacionadaRaw || null,
+    zonasPatologiaRelacionadaCanon:
+      extraerZonasCanonDesdePatologiaRelacionada(patologiaRelacionadaRaw),
     personaNoValoradaFisioterapia,
     clasificacionPreliminarDerivadaAsistencia,
     zonaCanonDesdePatologiaAsistencia: zonaCanonPatologia,

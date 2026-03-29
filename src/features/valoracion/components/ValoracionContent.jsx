@@ -33,6 +33,20 @@ export default function ValoracionContent({
     paciente?.clasificacionPaciente?.mensajePreclasificacion ||
     "No se pudo determinar el estado de preclasificación.";
 
+  const cp = paciente?.clasificacionPaciente;
+  /** Nota visible siempre que haya fila en asistencia (no solo cuando la zona sale solo de ahí). */
+  const mostrarNotaPrioridadAsistencia = Boolean(cp?.asistenciaEncontrada);
+  const textoPrioridadAsistencia =
+    "El sistema dará prioridad a la clasificación registrada en la tabla de asistencias.";
+
+  const encuestaLogrosResumen = cp
+    ? `${cp.encuestaLogrosRealizada ? "Sí" : "No"} (${cp.encuestaLogrosEstado || "Sin dato"})`
+    : "—";
+
+  const preliminarValoracionEtiqueta = cp?.personaNoValoradaFisioterapia
+    ? "(Persona no valorada en valoraciones_fisioterapia)"
+    : cp?.clasificacionPreliminarDesdeBd || "—";
+
   return (
     <div className="valoracionShell">
       <TopHeader userName={userName} onLogout={onLogout} logoSrc={logoWakeup} />
@@ -184,121 +198,72 @@ export default function ValoracionContent({
                   Estado de preclasificación: {estadoPreclasificacion}
                 </h3>
 
-                <p className="valoracionStatusText">{mensajeAlerta}</p>
+                <p className="valoracionStatusText valoracionPrecLead">
+                  {mensajeAlerta}
+                </p>
 
-                <div style={{ marginTop: "10px", lineHeight: "1.6" }}>
+                <div className="valoracionPrecDetalle valoracionPrecBloqueResumen">
                   <p>
                     <strong>Hizo parte MMB 2025:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.hizoParteMmb2025
-                      ? "Sí"
-                      : "No"}
+                    {cp?.hizoParteMmb2025 ? "Sí" : "No"}
                   </p>
 
                   <p>
                     <strong>Registro valoración fisioterapia 2025:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.valoracionEncontrada
-                      ? "Sí"
-                      : "No"}
+                    {cp?.valoracionEncontrada ? "Sí" : "No"}
                   </p>
 
                   <p>
                     <strong>Registro asistencia 2025:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.asistenciaEncontrada
-                      ? "Sí"
-                      : "No"}
+                    {cp?.asistenciaEncontrada ? "Sí" : "No"}
                   </p>
+
+                  {cp?.asistenciaEncontrada ? (
+                    <p>
+                      <strong>Asistencia:</strong>{" "}
+                      {`(${cp.asistencias}/${cp.totalDias})`}
+                      {cp.cumpleAsistencia ? (
+                        <span>
+                          {" "}
+                          (cumple mínimo de {cp.umbralAsistencias} asistencias)
+                        </span>
+                      ) : (
+                        <span>
+                          {" "}
+                          — no supera el mínimo de {cp.umbralAsistencias}{" "}
+                          asistencias
+                        </span>
+                      )}
+                    </p>
+                  ) : null}
 
                   <p>
-                    <strong>Encuesta de logros:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.encuestaLogrosRealizada
-                      ? "Sí"
-                      : "No"}{" "}
-                    (
-                    {paciente?.clasificacionPaciente?.encuestaLogrosEstado ||
-                      "Sin dato"}
-                    )
+                    <strong>Encuesta de logros:</strong> {encuestaLogrosResumen}
                   </p>
+                </div>
 
-                  <p>
-                    <strong>Preclasificación:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.estadoPreclasificacion ||
-                      "-"}
-                  </p>
-
+                <div className="valoracionPrecDetalle valoracionPrecSeccionClasif">
                   <p>
                     <strong>Clasificación preliminar (valoración fisioterapia):</strong>{" "}
-                    {paciente?.clasificacionPaciente?.personaNoValoradaFisioterapia
-                      ? "(Persona no valorada en valoraciones_fisioterapia)"
-                      : paciente?.clasificacionPaciente
-                            ?.clasificacionPreliminarDesdeBd || "—"}
+                    {preliminarValoracionEtiqueta}
                   </p>
 
                   <p>
                     <strong>Patología relacionada (asistencia):</strong>{" "}
-                    {paciente?.clasificacionPaciente
-                      ?.patologiaRelacionadaDesdeAsistencia || "—"}
-                    {paciente?.clasificacionPaciente
-                      ?.clasificacionPreliminarDerivadaAsistencia ? (
-                      <span className="valoracionStatusMeta">
-                        {" "}
-                        (usada como preclasificación cuando no hay valoración
-                        fisioterapia)
-                      </span>
-                    ) : null}
+                    {cp?.patologiaRelacionadaDesdeAsistencia || "—"}
                   </p>
 
                   <p>
                     <strong>Clasificación secundaria (BD):</strong>{" "}
-                    {paciente?.clasificacionPaciente
-                      ?.clasificacionSecundariaDesdeBd || "—"}
-                    {paciente?.clasificacionPaciente?.clasificacionSecundariaDesdeBd &&
-                    !paciente?.clasificacionPaciente
-                      ?.tieneClasificacionSecundariaValida ? (
-                      <span className="valoracionStatusMeta">
-                        {" "}
-                        (no aplica para el flujo: vacía o NO APLICA)
-                      </span>
-                    ) : null}
+                    {cp?.clasificacionSecundariaDesdeBd || "—"}
                   </p>
 
-                  <p>
-                    <strong>Patología 2025 (usada en flujo):</strong>{" "}
-                    {paciente?.clasificacionPaciente?.clasificacionPreliminar ||
-                      "—"}
-                  </p>
-
-                  <p>
-                    <strong>Clasificación final (flujo):</strong>{" "}
-                    {paciente?.clasificacionPaciente?.clasificacionFinal || "—"}
-                  </p>
-
-                  <p>
-                    <strong>Logros:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.objetivosCumplidos
-                      ? "Cumplió objetivos"
-                      : "No cumplió objetivos"}
-                  </p>
-
-                  <p>
-                    <strong>Tipo de anamnesis:</strong>{" "}
-                    {paciente?.clasificacionPaciente?.tipoAnamnesis || "-"}
-                  </p>
+                  {mostrarNotaPrioridadAsistencia ? (
+                    <p className="valoracionPriorityNote">
+                      {textoPrioridadAsistencia}
+                    </p>
+                  ) : null}
                 </div>
-
-                {paciente?.clasificacionPaciente?.clasificacionFinal ? (
-                  <p className="valoracionStatusMeta">
-                    <strong>Clasificación sugerida:</strong>{" "}
-                    {paciente.clasificacionPaciente.clasificacionFinal}
-                  </p>
-                ) : null}
-
-                {typeof paciente?.clasificacionPaciente
-                  ?.porcentajeAsistencia === "number" ? (
-                  <p className="valoracionStatusMeta">
-                    <strong>Asistencia:</strong>{" "}
-                    {paciente.clasificacionPaciente.porcentajeAsistencia}%
-                  </p>
-                ) : null}
               </div>
 
               <div className="valoracionActions">
